@@ -2,7 +2,6 @@
 
 module SwissEphemerisSpec (spec) where
 
-import Data.ByteString.UTF8 as BSU
 import SwissEphemeris
 import System.Directory (makeAbsolute)
 import Test.Hspec
@@ -17,7 +16,7 @@ import Test.Hspec
 setRelativeEphePath :: FilePath -> IO ()
 setRelativeEphePath relativePath = do
   absolutePath <- makeAbsolute relativePath
-  setEphemeridesPath $ BSU.fromString absolutePath
+  setEphemeridesPath absolutePath
 
 spec :: Spec
 spec = do

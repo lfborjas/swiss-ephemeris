@@ -21,7 +21,6 @@ description:         Please see the README on GitHub at <https://github.com/lfbo
 
 dependencies:
 - base >= 4.7 && < 5
-- bytestring
 
 ghc-options:
 - -Wall
@@ -49,4 +48,3 @@ tests:
     - swiss-ephemeris
     - hspec
     - directory
-    - utf8-string

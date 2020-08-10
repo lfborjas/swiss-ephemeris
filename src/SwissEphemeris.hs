@@ -23,7 +23,6 @@ import           System.IO.Unsafe
 import           Foreign.C.Types
 import           Foreign.C.String
 import           Data.Char                      ( ord )
-import qualified Data.ByteString.Char8         as S
 
 data Planet = Sun
             | Moon
@@ -145,10 +144,17 @@ planetNumber p = PlanetNumber $ CInt y
 calculationOptions :: [CalcFlag] -> CalcFlag
 calculationOptions = CalcFlag . foldr ((.|.) . unCalcFlag) 0
 
-setEphemeridesPath :: S.ByteString -> IO ()
+-- | Given an *absolute* path, point the underlying ephemerides library to it.
+-- takes a `String` for easy use with the `directory` package.
+setEphemeridesPath :: String -> IO ()
 setEphemeridesPath path =
-    S.useAsCString path $ \ephePath -> c_swe_set_ephe_path ephePath
+    -- note, using the *CA* variants of String functions, since the swe
+    -- code seems to be ignorant of UTF8:
+    -- http://hackage.haskell.org/package/base-4.14.0.0/docs/Foreign-C-String.html#g:3
+    withCAString path $ \ephePath -> c_swe_set_ephe_path ephePath
 
+-- | Given year, month and day as @Int@ and a time as @Double@, return
+-- a single floating point number representing absolute Julian Time.
 julianDay :: Int -> Int -> Int -> Double -> JulianTime
 julianDay year month day hour = realToFrac $ c_swe_julday y m d h gregorian
   where

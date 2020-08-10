@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a87cb86694e08279992191273c11b4624584cdf89f9cb3e4588ea87c18a3fb95
+-- hash: 3e975e61b6f3c4f26a2f29b7e60cd17bcb7026465e08a582c4d89b4939b1f7d1
 
 name:           swiss-ephemeris
 version:        0.1.0.0
@@ -52,7 +52,6 @@ library
       csrc/swetest.c
   build-depends:
       base >=4.7 && <5
-    , bytestring
   default-language: Haskell2010
 
 test-suite swiss-ephemeris-test
@@ -66,9 +65,7 @@ test-suite swiss-ephemeris-test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
-    , bytestring
     , directory
     , hspec
     , swiss-ephemeris
-    , utf8-string
   default-language: Haskell2010
