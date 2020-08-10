@@ -28,7 +28,9 @@ programs provided by the original authors.
 
 All the code in the `csrc` folder comes from directly from the [latest official tarball, v2.09.01](https://www.astro.com/ftp/swisseph/). 
 
-The `swedist` folder includes the original documentation (see the `doc`) folder, and a copy of ephemeris data files.
+The `swedist` folder includes the original documentation from the tarball in PDF (see the `doc`) folder, and a copy of ephemeris data files.
+
+For other formats of the original documentation, see: https://www.astro.com/ftp/swisseph/doc/
 
 ### Ephemerides files
 
