@@ -1,5 +1,8 @@
 # swiss-ephemeris
 
+![build](https://github.com/lfborjas/swiss-ephemeris/workflows/Haskell%20CI/badge.svg)
+
+
 Haskell bindings for the [Swiss Ephemeris](https://www.astro.com/swisseph/swephinfo_e.htm) library.
 
 See the tests in the `spec` folder for example usage, but here's a simple "main" that demonstrates the current abilities, inspired by the [sample program in the official library](https://www.astro.com/swisseph/swephprg.htm#_Toc46406771):
