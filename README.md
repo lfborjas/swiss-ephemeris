@@ -8,18 +8,23 @@ Haskell bindings for the [Swiss Ephemeris](https://www.astro.com/swisseph/swephi
 See the tests in the `spec` folder for example usage, but here's a simple "main" that demonstrates the current abilities, inspired by the [sample program in the official library](https://www.astro.com/swisseph/swephprg.htm#_Toc46406771):
 
 ```haskell
+import SwissEphemeris
+
 main :: IO
 main = do 
   -- location of your ephemeris directory, must be absolute. We bundle a sample one in `swedist`.
   setEphemeridesPath "/Users/luis/code/swiss-ephemeris/swedist/sweph_18"
+
   let time = julianDay 1989 1 6 0.0
+  let place = defaultCoords{lat = 14.0839053, lng = -87.2750137}
   -- locate all bodies between the Sun and Chiron (further asteroids currently not supported, but they're an enum entry away)
-  let coords = map (\p -> (p, (calculateCoordinates time p))) [Sun .. Chiron]
+  let planetPositions = map (\p -> (p, (calculateCoordinates time p))) [Sun .. Chiron]
   -- use the Placidus house system, which is the most traditional.
-  let cusps  = calculateCusps time (basicCoords (14.0839053, -87.2750137)) Placidus
-  forM_ coords $ \(planet, coord)->
-    putStrLn $ show planet ++ ": " ++ show coord
-  putStrLn $ "Cusps: " ++ show cusps
+  let cusps  = calculateCusps time place Placidus
+
+  forM_ planetPositions $ \(planet, coord)->
+    putStrLn $ show planet <> ": " <> show coord
+  putStrLn $ "Cusps: " <> show cusps
 ```
 
 Should print the latitude and longitude (plus some velocities) for all planets, and the cusps and other major angles.
@@ -66,4 +71,8 @@ Not sure if it's due to the C compiler in the GH environment, or if it's somethi
 ## Contributing
 
 I've only made available the types and functions that are useful for my own, traditional, horoscope calculations.
-Feel free to add more! See the [astro.com documentation](https://www.astro.com/swisseph/swisseph.htm) for ideas!
+Feel free to add more! See the [astro.com documentation](https://www.astro.com/swisseph/swisseph.htm) for ideas.
+
+### Preparing for Hackage
+
+Since this is a Stack project, we use `stack sdist` to prepare the tarball.

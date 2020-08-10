@@ -12,7 +12,7 @@ extra-source-files:
 
 # Metadata used when publishing your package
 synopsis:            Haskell bindings for the Swiss Ephemeris C library
-category:            Data
+category:            Data, Astrology
 
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
