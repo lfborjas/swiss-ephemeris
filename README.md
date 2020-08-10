@@ -21,14 +21,14 @@ main = do
 
 Should print the latitude and longitude (plus some velocities) for all planets, and the cusps and other major angles.
 
-To see actual results, check out the tests.
+To see actual results, check out the tests. For some more advanced examples, see `swetest.c` and `swemini.c` in the `csrc` directory: they're the test/example 
+programs provided by the original authors.
 
 ## Notes
 
-All the code in the `csrc` folder comes from directly from the [latest official tarball, v2.09.01](https://www.astro.com/ftp/swisseph/). The `swemini.c` and `swetest.c` files are commented out since they both define a `main` which conflicted upon compilation, and we don't
-need it for this library anyway.
+All the code in the `csrc` folder comes from directly from the [latest official tarball, v2.09.01](https://www.astro.com/ftp/swisseph/). 
 
-The `swedist` folder includes the original documentation (see the `doc`) folder, and a copy of the actual ephemeris data files.
+The `swedist` folder includes the original documentation (see the `doc`) folder, and a copy of ephemeris data files.
 As noted in the [original documentation](https://www.astro.com/swisseph/swisseph.htm), you can omit the `setEphePath` call and calculations will use a built-in analytical
 ephemeris which:
 
