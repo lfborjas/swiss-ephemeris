@@ -1,0 +1,7 @@
+cradle:
+  stack:
+    - path: "./src"
+      component: "swiss-ephemeris:lib"
+
+    - path: "./test"
+      component: "swiss-ephemeris:test:swiss-ephemeris-test"

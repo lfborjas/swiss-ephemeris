@@ -56,8 +56,8 @@ type JulianTime = Double
 
 data Coordinates = Coordinates
   {
-    lat :: Double
-  , lng :: Double
+    lng :: Double
+  , lat :: Double
   , distance :: Double
   , lngSpeed :: Double
   , latSpeed :: Double
@@ -121,8 +121,7 @@ toHouseSystemFlag WholeSign     = ord 'W'
 fromList :: [Double] -> Coordinates
 -- N.B. note that for some reason the SWE guys really like lng,lat coordinates
 -- though only for this one function: https://www.astro.com/swisseph/swephprg.htm#_Toc19111235
--- so we need to flip them on the way out of the C code.
-fromList (sLng : sLat : c : d : e : f : _) = Coordinates sLat sLng c d e f
+fromList (sLng : sLat : c : d : e : f : _) = Coordinates sLng sLat c d e f
 fromList _                           = error "Invalid coordinate array"
 
 fromCuspsList :: [Double] -> HouseCusps
@@ -173,7 +172,7 @@ calculateCoordinates time planet =
 
         if unCalcFlag iflgret < 0
             then do
-                msg <- peekCString errorP
+                msg <- peekCAString errorP
                 return $ Left msg
             else do
                 result <- peekArray 6 coords

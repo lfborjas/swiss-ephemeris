@@ -48,3 +48,5 @@ tests:
     dependencies:
     - swiss-ephemeris
     - hspec
+    - directory
+    - utf8-string
