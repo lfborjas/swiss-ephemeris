@@ -52,6 +52,17 @@ I chose the bundled files due to this comment in the official docs:
 For a full explanation of the files available, see the [Description of the Ephemerides](https://www.astro.com/swisseph/swisseph.htm#_Toc46391649) section of the original manual, also of
 interest is the [comparison between the Swiss Ephemeris and the raw NASA JPL data](https://www.astro.com/swisseph/swisseph.htm#_Toc46391741)
 
+### CI Build
+
+You'll notice that I build against Github's [`macos-latest`](https://docs.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners#supported-runners-and-hardware-resources) VM. This mirrors my development machine -- I noticed that the tests suffer a precision degradation when run on ubuntu, e.g.:
+
+```haskell
+ expected: Right (Coordinates {lng = 285.64724200024165, lat = -8.254238068673002e-5, distance = 0.983344884137739, lngSpeed = 1.0196526213625938, latSpeed = 1.4968387810319695e-5, distSpeed = 1.734078975098347e-5})
+  but got: Right (Coordinates {lng = 285.6472420002416, lat = -8.254238068996486e-5, distance = 0.9833448841377388, lngSpeed = 1.0196526213625938, latSpeed = 1.496838781028185e-5, distSpeed = 1.7340789750982604e-5})
+```
+
+Not sure if it's due to the C compiler in the GH environment, or if it's something on the actual software; however, caveat emptor!
+
 ## Contributing
 
 I've only made available the types and functions that are useful for my own, traditional, horoscope calculations.
