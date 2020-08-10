@@ -29,10 +29,23 @@ programs provided by the original authors.
 All the code in the `csrc` folder comes from directly from the [latest official tarball, v2.09.01](https://www.astro.com/ftp/swisseph/). 
 
 The `swedist` folder includes the original documentation (see the `doc`) folder, and a copy of ephemeris data files.
-As noted in the [original documentation](https://www.astro.com/swisseph/swisseph.htm), you can omit the `setEphePath` call and calculations will use a built-in analytical
+
+### Ephemerides files
+
+As noted in the [original documentation](https://www.astro.com/swisseph/swisseph.htm) you can omit the `setEphePath` call and calculations will use a built-in analytical
 ephemeris which:
 
-> provides "only" a precision of 0.1 arc seconds for the planets and 3" for the Moon.No asteroids will be available, and no barycentric option can be used.
+> provides "only" a precision of 0.1 arc seconds for the planets and 3" for the Moon. No asteroids will be available, and no barycentric option can be used.
+
+For convenience, we bundle a few files for the time range `1800 AD – 2399 AD`. If you were born before that, or plan to code e.g. transits for after that (!) or 
+you'd prefer even more precision, you can [download more ephemerides files from the astro.com downloads page](https://www.astro.com/ftp/swisseph/ephe/)
+
+I chose the bundled files due to this comment in the official docs:
+
+> If the [JPL] file is too big, then you can download the files sepl_18.se1 and semo_18.se1 from here: http://www.astro.com/ftp/swisseph/ephe/
+
+For a full explanation of the files available, see the [Description of the Ephemerides](https://www.astro.com/swisseph/swisseph.htm#_Toc46391649) section of the original manual, also of
+interest is the [comparison between the Swiss Ephemeris and the raw NASA JPL data](https://www.astro.com/swisseph/swisseph.htm#_Toc46391741)
 
 ## Contributing
 
