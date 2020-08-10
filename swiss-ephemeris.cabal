@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2808eb8414eaf3c9185076316e39d1b3f2b315c155331b753f15a769560f18b6
+-- hash: a1f75e4d051c4de3fd8cca74c5e6d82f531c4c25694d79c68a76f35dd843fdac
 
 name:           swiss-ephemeris
 version:        0.1.0.0
@@ -59,6 +59,7 @@ test-suite swiss-ephemeris-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      SwissEphemerisSpec
       Paths_swiss_ephemeris
   hs-source-dirs:
       test
