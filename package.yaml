@@ -33,7 +33,18 @@ ghc-options:
 
 library:
   source-dirs: src
-  c-sources: csrc/*.c
+  c-sources:
+    - csrc/swecl.c
+    - csrc/swedate.c
+    - csrc/swehel.c
+    - csrc/swehouse.c
+    - csrc/swejpl.c
+    - csrc/swemmoon.c
+    - csrc/swemplan.c
+    - csrc/swepcalc.c
+    - csrc/swepdate.c
+    - csrc/sweph.c
+    - csrc/swephlib.c
   include-dirs: csrc
 
 tests:
