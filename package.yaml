@@ -1,10 +1,10 @@
 name:                swiss-ephemeris
 version:             0.1.0.0
-github:              "githubuser/swiss-ephemeris"
-license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2020 Author name here"
+github:              "lfborjas/swiss-ephemeris"
+license:             GPL-2
+author:              "Luis Borjas Reyes"
+maintainer:          "luis@lfborjas.com"
+copyright:           "2020 Luis Borjas Reyes"
 
 extra-source-files:
 - README.md
@@ -17,24 +17,25 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/swiss-ephemeris#readme>
+description:         Please see the README on GitHub at <https://github.com/lfborjas/swiss-ephemeris#readme>
 
 dependencies:
 - base >= 4.7 && < 5
+- bytestring
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wpartial-fields
+- -Wredundant-constraints
 
 library:
   source-dirs: src
-
-executables:
-  swiss-ephemeris-exe:
-    main:                Main.hs
-    source-dirs:         app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - swiss-ephemeris
+  c-sources: csrc/*.c
+  include-dirs: csrc
 
 tests:
   swiss-ephemeris-test:
@@ -46,3 +47,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - swiss-ephemeris
+    - hspec
