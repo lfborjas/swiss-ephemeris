@@ -55,6 +55,8 @@ newtype CalcFlag = CalcFlag
 foreign import ccall unsafe "swephexp.h swe_set_ephe_path"
     c_swe_set_ephe_path :: CString -> IO ()
 
+foreign import ccall unsafe "swephexp.h swe_close"
+    c_swe_close :: IO ()
 
 foreign import ccall unsafe "swephexp.h swe_julday"
     c_swe_julday :: CInt -- year

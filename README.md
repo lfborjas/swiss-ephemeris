@@ -40,6 +40,12 @@ The `swedist` folder includes the original documentation from the tarball in PDF
 
 For other formats of the original documentation, see: https://www.astro.com/ftp/swisseph/doc/
 
+The authors also host HTML versions of the manuals. Two are provided, a general reference and a programming reference. Both are very useful to get
+acquainted with the functionality and implementation details.
+
+* [General Reference](https://www.astro.com/swisseph/swisseph.htm)
+* [Programmer's Reference](https://www.astro.com/swisseph/swephprg.htm)
+
 ### Ephemerides files
 
 As noted in the [original documentation](https://www.astro.com/swisseph/swisseph.htm) you can omit the `setEphePath` call and calculations will use a built-in analytical

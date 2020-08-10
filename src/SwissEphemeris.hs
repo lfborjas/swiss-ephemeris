@@ -10,6 +10,7 @@ module SwissEphemeris (
 ,   CuspsCalculation(..)
 ,   defaultCoordinates
 ,   setEphemeridesPath
+,   closeEphemerides
 ,   julianDay
 ,   calculateCoordinates
 ,   calculateCusps
@@ -146,12 +147,19 @@ calculationOptions = CalcFlag . foldr ((.|.) . unCalcFlag) 0
 
 -- | Given an *absolute* path, point the underlying ephemerides library to it.
 -- takes a `String` for easy use with the `directory` package.
+-- You only need to call this function to provide an explicit ephemerides path,
+-- if the environment variable SE_EPHE_PATH is set, it overrides this function.
 setEphemeridesPath :: String -> IO ()
 setEphemeridesPath path =
     -- note, using the *CA* variants of String functions, since the swe
     -- code seems to be ignorant of UTF8:
     -- http://hackage.haskell.org/package/base-4.14.0.0/docs/Foreign-C-String.html#g:3
     withCAString path $ \ephePath -> c_swe_set_ephe_path ephePath
+
+-- | Explicitly release all "cache" pointers and open files obtained by the C
+-- library.
+closeEphemerides :: IO ()
+closeEphemerides = c_swe_close
 
 -- | Given year, month and day as @Int@ and a time as @Double@, return
 -- a single floating point number representing absolute Julian Time.
