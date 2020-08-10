@@ -2,10 +2,10 @@
 
 module SwissEphemerisSpec (spec) where
 
-import Test.Hspec
-import System.Directory (makeAbsolute)
 import Data.ByteString.UTF8 as BSU
 import SwissEphemeris
+import System.Directory (makeAbsolute)
+import Test.Hspec
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
 -- https://www.astro.com/swisseph/swetest.htm
@@ -16,9 +16,8 @@ import SwissEphemeris
 
 setRelativeEphePath :: FilePath -> IO ()
 setRelativeEphePath relativePath = do
-    absolutePath <- makeAbsolute relativePath
-    putStrLn absolutePath
-    setEphemeridesPath $ BSU.fromString absolutePath
+  absolutePath <- makeAbsolute relativePath
+  setEphemeridesPath $ BSU.fromString absolutePath
 
 spec :: Spec
 spec = do
@@ -59,31 +58,65 @@ spec = do
               (Earth, Right (Coordinates {lat = 0.0, lng = 0.0, distance = 0.0, lngSpeed = 0.0, latSpeed = 0.0, distSpeed = 0.0}))
             ]
       allCoords `shouldBe` expectedCoords
-    
     it "fails to calculate coordinates for Chiron if no ephemeris file is set" $ do
-          let time = julianDay 1989 1 6 0.0
-          let coords = calculateCoordinates time Chiron
-          let expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
-          coords `shouldBe` expectedCoords
+      let time = julianDay 1989 1 6 0.0
+      let coords = calculateCoordinates time Chiron
+      let expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
+      coords `shouldBe` expectedCoords
 
-
-  beforeAll_ (setRelativeEphePath "swedist/sweph_18" ) $ do 
+  beforeAll_ (setRelativeEphePath "swedist/sweph_18") $ do
     describe "setEphemeridesPath" $ do
-        it "calculates more precise coordinates for the Sun if an ephemeris file is set" $ do
-          let time = julianDay 1989 1 6 0.0
-          let coords = calculateCoordinates time Sun
-          let expectedCoords = Right $ Coordinates {
-              lng = 285.64724200024165, 
-              lat = -8.254238068673002e-5,
-              distance = 0.983344884137739, 
-              lngSpeed = 1.0196526213625938, 
-              latSpeed = 1.4968387810319695e-5, 
-              distSpeed = 1.734078975098347e-5
-            }
-          coords `shouldBe` expectedCoords
+      it "calculates more precise coordinates for the Sun if an ephemeris file is set" $ do
+        let time = julianDay 1989 1 6 0.0
+        let coords = calculateCoordinates time Sun
+        let expectedCoords =
+              Right $
+                Coordinates
+                  { lng = 285.64724200024165,
+                    lat = -8.254238068673002e-5,
+                    distance = 0.983344884137739,
+                    lngSpeed = 1.0196526213625938,
+                    latSpeed = 1.4968387810319695e-5,
+                    distSpeed = 1.734078975098347e-5
+                  }
+        coords `shouldBe` expectedCoords
 
-        it "calculates coordinates for Chiron if an ephemeris file is set" $ do
-          let time = julianDay 1989 1 6 0.0
-          let coords = calculateCoordinates time Chiron
-          let expectedCoords = Right (Coordinates {lng = 93.53727572747667, lat = -6.849325566420532, distance = 11.045971701732345, lngSpeed = -6.391339610156536e-2, latSpeed = 8.213606290819226e-4, distSpeed = 1.6210560093203594e-3})
-          coords `shouldBe` expectedCoords
+      it "calculates coordinates for Chiron if an ephemeris file is set" $ do
+        let time = julianDay 1989 1 6 0.0
+        let coords = calculateCoordinates time Chiron
+        let expectedCoords = Right (Coordinates {lng = 93.53727572747667, lat = -6.849325566420532, distance = 11.045971701732345, lngSpeed = -6.391339610156536e-2, latSpeed = 8.213606290819226e-4, distSpeed = 1.6210560093203594e-3})
+        coords `shouldBe` expectedCoords
+
+  describe "calculateCusps" $ do
+    it "calculates cusps and angles for a given place and time" $ do
+      let time = julianDay 1989 1 6 0.0
+      let place = defaultCoordinates {lat = 14.0839053, lng = -87.2750137}
+      let expectedCalculations =
+            CuspsCalculation
+              HouseCusps
+                { i = 112.20189657163523,
+                  ii = 138.4658382335878,
+                  iii = 167.69682489058204,
+                  iv = 199.79861981778183,
+                  v = 232.2797046698429,
+                  vi = 263.0249102802477,
+                  vii = 292.20189657163525,
+                  viii = 318.46583823358776,
+                  ix = 347.69682489058204,
+                  x = 19.798619817781823,
+                  xi = 52.27970466984291,
+                  xii = 83.02491028024768
+                }
+              Angles
+                { ascendant = 112.20189657163523,
+                  mc = 19.798619817781823,
+                  armc = 18.277351820745423,
+                  vertex = 216.1872418365295,
+                  equatorialAscendant = 106.85773516967282,
+                  coAscendantKoch = 101.19442735316477,
+                  coAscendantMunkasey = 153.1221838791593,
+                  polarAscendant = 281.19442735316477
+                }
+
+      let calcs = calculateCusps time place Placidus
+      calcs `shouldBe` expectedCalculations

@@ -6,11 +6,6 @@ import Foreign
 import Foreign.C.Types
 import Foreign.C.String
 
--- from: https://github.com/wkoszek/book-real-world-haskell/blob/master/examples/ch17/RegexFull.hsc
-import qualified Data.ByteString.Char8 as S
-import qualified Data.ByteString.Unsafe   as S
-import qualified Data.ByteString.Internal as S
-
 #include <swephexp.h>
 
 newtype PlanetNumber = PlanetNumber
