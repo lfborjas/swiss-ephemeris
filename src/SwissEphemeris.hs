@@ -66,7 +66,8 @@ data Coordinates = Coordinates
 
 -- | Default coordinates with all zeros -- when you don't care about/know the velocities,
 -- which would be the case for most inputs (though most outputs _will_ include them.)
--- Ideally you'll set lat and lng: defaultCoordinates{lat = 1.4, lng = 4.1}
+-- Usually you'll set only lat and lng (e.g. `defaultCoordinates{lat = 1.4, lng = 4.1}`)
+-- when using it as an input for another function.
 defaultCoordinates :: Coordinates
 defaultCoordinates = Coordinates 0 0 0 0 0 0
 
@@ -146,9 +147,9 @@ calculationOptions :: [CalcFlag] -> CalcFlag
 calculationOptions = CalcFlag . foldr ((.|.) . unCalcFlag) 0
 
 -- | Given an *absolute* path, point the underlying ephemerides library to it.
--- takes a `String` for easy use with the `directory` package.
+--  Takes a `String` for easy use with the `directory` package.
 -- You only need to call this function to provide an explicit ephemerides path,
--- if the environment variable SE_EPHE_PATH is set, it overrides this function.
+-- if the environment variable `SE_EPHE_PATH` is set, it overrides this function.
 setEphemeridesPath :: String -> IO ()
 setEphemeridesPath path =
     -- note, using the *CA* variants of String functions, since the swe
@@ -163,8 +164,8 @@ closeEphemerides = c_swe_close
 
 -- | Given year, month and day as @Int@ and a time as @Double@, return
 -- a single floating point number representing absolute Julian Time.
--- the whole date is assumed to be in Gregorian time.
--- more info on this:
+-- The input date is assumed to be in Gregorian time.
+-- More info on this:
 -- https://www.astro.com/swisseph/swephprg.htm#_Toc46406824
 julianDay :: Int -> Int -> Int -> Double -> JulianTime
 julianDay year month day hour = realToFrac $ c_swe_julday y m d h gregorian
