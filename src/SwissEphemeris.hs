@@ -158,7 +158,6 @@ setEphemeridesPath path =
 -- the whole date is assumed to be in Gregorian time.
 -- more info on this:
 -- https://www.astro.com/swisseph/swephprg.htm#_Toc46406824
--- 
 julianDay :: Int -> Int -> Int -> Double -> JulianTime
 julianDay year month day hour = realToFrac $ c_swe_julday y m d h gregorian
   where
