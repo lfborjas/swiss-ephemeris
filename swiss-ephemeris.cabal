@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1291a0b256404be1520ee1910ea146ca608421d2894b29474b638faa692d6fc9
+-- hash: a9d3b6dd4f5d100849c990835c883a7b39d22e26208c13ad2dbf95674d89600f
 
 name:           swiss-ephemeris
-version:        0.1.0.0
+version:        0.1.0.2
 synopsis:       Haskell bindings for the Swiss Ephemeris C library
 description:    Please see the README on GitHub at <https://github.com/lfborjas/swiss-ephemeris#readme>
 category:       Data, Astrology
@@ -38,8 +38,17 @@ library
   include-dirs:
       csrc
   install-includes:
-      csrc/swephexp.h
+      csrc/swedate.h
+      csrc/swedll.h
+      csrc/swehouse.h
+      csrc/swejpl.h
+      csrc/swemptab.h
+      csrc/swenut2000a.h
       csrc/sweodef.h
+      csrc/swepcalc.h
+      csrc/sweph.h
+      csrc/swephexp.h
+      csrc/swephlib.h
   c-sources:
       csrc/swecl.c
       csrc/swedate.c

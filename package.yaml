@@ -1,5 +1,5 @@
 name:                swiss-ephemeris
-version:             0.1.0.1
+version:             0.1.0.2
 github:              "lfborjas/swiss-ephemeris"
 license:             GPL-2
 author:              "Luis Borjas Reyes"
@@ -46,8 +46,17 @@ library:
     - csrc/swephlib.c
   include-dirs: csrc
   install-includes:
-    - csrc/swephexp.h
+    - csrc/swedate.h
+    - csrc/swedll.h
+    - csrc/swehouse.h
+    - csrc/swejpl.h
+    - csrc/swemptab.h
+    - csrc/swenut2000a.h
     - csrc/sweodef.h
+    - csrc/swepcalc.h
+    - csrc/sweph.h
+    - csrc/swephexp.h
+    - csrc/swephlib.h
 
 tests:
   swiss-ephemeris-test:
