@@ -3,8 +3,7 @@ version:             0.1.0.0
 github:              "lfborjas/swiss-ephemeris"
 license:             GPL-2
 author:              "Luis Borjas Reyes"
-maintainer:          "luis@lfborjas.com"
-copyright:           "2020 Luis Borjas Reyes"
+maintainer:          "swiss-ephemeris@lfborjas.com"
 
 extra-source-files:
 - README.md
@@ -20,7 +19,7 @@ category:            Data, Astrology
 description:         Please see the README on GitHub at <https://github.com/lfborjas/swiss-ephemeris#readme>
 
 dependencies:
-- base >= 4.7 && < 5
+- base >= 4.7 && < 4.14
 
 ghc-options:
 - -Wall
@@ -57,7 +56,7 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - swiss-ephemeris
-    - hspec
-    - directory
+    - hspec >= 2.7 && < 2.8
+    - directory >= 1.3 && < 1.4
     build-tools:
-    - hspec-discover
+    - hspec-discover >= 2.7 && < 2.8
