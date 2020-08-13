@@ -16,7 +16,7 @@ main = do
   setEphemeridesPath "/Users/luis/code/swiss-ephemeris/swedist/sweph_18"
 
   let time = julianDay 1989 1 6 0.0
-  let place = defaultCoords{lat = 14.0839053, lng = -87.2750137}
+  let place = defaultCoordinates{lat = 14.0839053, lng = -87.2750137}
   -- locate all bodies between the Sun and Chiron (further asteroids currently not supported, but they're an enum entry away)
   let planetPositions = map (\p -> (p, (calculateCoordinates time p))) [Sun .. Chiron]
   -- use the Placidus house system, which is the most traditional.
