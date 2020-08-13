@@ -140,12 +140,6 @@ planetNumber p = PlanetNumber $ CInt y
   where
     y = fromIntegral $ fromEnum p :: Int32
 
--- | Combine @CalcFlag@ as bitwise options. 
--- For example, can use it to obtain the equatorial,
--- not eliptical (default,) positions of planetary bodies.
-calculationOptions :: [CalcFlag] -> CalcFlag
-calculationOptions = CalcFlag . foldr ((.|.) . unCalcFlag) 0
-
 -- | Given an *absolute* path, point the underlying ephemerides library to it.
 --  Takes a `String` for easy use with the `directory` package.
 -- You only need to call this function to provide an explicit ephemerides path,
@@ -183,7 +177,6 @@ calculateCoordinates time planet =
     unsafePerformIO $ allocaArray 6 $ \coords -> alloca $ \errorP -> do
         let iflgret = c_swe_calc (realToFrac time)
                                  (planetNumber planet)
-                                 --(calculationOptions [swissEph, speed, equatorialPositions ])
                                  speed
                                  coords
                                  errorP
