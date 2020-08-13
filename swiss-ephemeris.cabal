@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4fe783ce7042d9cb7c4402c6d38e6583f4a9c2a6a5681d1fb7e079279b0a3248
+-- hash: 1291a0b256404be1520ee1910ea146ca608421d2894b29474b638faa692d6fc9
 
 name:           swiss-ephemeris
 version:        0.1.0.0
@@ -37,6 +37,9 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints
   include-dirs:
       csrc
+  install-includes:
+      csrc/swephexp.h
+      csrc/sweodef.h
   c-sources:
       csrc/swecl.c
       csrc/swedate.c
