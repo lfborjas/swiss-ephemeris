@@ -12,7 +12,7 @@ import SwissEphemeris
 
 main :: IO
 main = do 
-  -- location of your ephemeris directory, must be absolute. We bundle a sample one in `swedist`.
+  -- location of your ephemeris directory. We bundle a sample one in `swedist`.
   setEphemeridesPath "./swedist/sweph_18"
 
   let time = julianDay 1989 1 6 0.0
