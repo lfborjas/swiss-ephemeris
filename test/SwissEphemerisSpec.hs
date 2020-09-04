@@ -9,6 +9,7 @@ import System.Directory (makeAbsolute)
 import System.IO.Unsafe (unsafePerformIO)
 import Test.QuickCheck
 import Data.Maybe (isNothing, isJust)
+import Test.Hspec.QuickCheck (prop)
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
 -- https://www.astro.com/swisseph/swetest.htm
@@ -105,21 +106,20 @@ spec = do
   around_ (withEphemerides ephePath) $ do
     describe "Properties of more general 'monadic' calculations, using the bundled ephemerides." $ do
       describe "calculateCoordinatesM" $ do
-        it "calculates coordinates for any of the planets in a wide range of time." $ do
+        prop "calculates coordinates for any of the planets in a wide range of time." $
           forAll genCoordinatesQuery $ \(time, planet) ->
             isJust $ calculateCoordinatesM time planet
 
-        it "is unable to calculate coordinates for times before or after the bundled ephemerides" $ do
+        prop "is unable to calculate coordinates for times before or after the bundled ephemerides" $ 
           forAll genBadCoordinatesQuery $ \(time, planet) ->
             isNothing $ calculateCoordinatesM time planet
 
       describe "calculateCuspsM" $ do
-        -- this works 100% of the time locally, never in CI :(
-        xit "calculates cusps and angles for a wide range of points in space and time (outside of the polar circles), in all supported house systems." $ do
+        prop "calculates cusps and angles for a wide range of points in space and time (outside of the polar circles), in all supported house systems." $
           forAll genCuspsQuery $ \((la, lo), time, houseSystem) ->
             isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
 
-        it "calculates cusps anywhere on the globe, when not using Placidus or Koch systems." $ do
+        prop "calculates cusps anywhere on the globe, when not using Placidus or Koch systems." $
           -- see: `House cusps beyond the polar circle` in https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
           forAll genPolarCuspsQuery $ \((la, lo), time, houseSystem) ->
               isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
