@@ -118,9 +118,13 @@ spec = do
           forAll genCuspsQuery $ \((la, lo), time, houseSystem) ->
             isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
 
-        it "is unable to calculate cusps for latitudes too close to the poles; using Placidus" $ do
+        it "is sometimes unable to calculate cusps to the poles using placidus or koch, able with others" $ do
+          -- see: `House cusps beyond the polar circle` in https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
           forAll genPolarCuspsQuery $ \((la, lo), time, houseSystem) ->
-            isNothing $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
+            if houseSystem `elem` [Placidus, Koch] then
+              isNothing $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
+            else
+              isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
 
 {- For reference, here's the official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
@@ -259,7 +263,8 @@ genBadJulian = oneof [choose (625673.5, 2378496.5), choose (2597641.4999884, 281
 genPolarCoords :: Gen (Double, Double)
 genPolarCoords = do
   -- choosing _very_ safe ranges because these, frustratingly, do pass in CI
-  -- sometimes
+  -- sometimes (due to the fact that "Placidus and Koch house cusps sometimes can, sometimes cannot be computed beyond the polar circles")
+  -- in: https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
   polarLat <- oneof [choose ((-90.0),(-80.0)), choose (80.0, 90.0)]
   polarLong <- choose (-180.0, 180.0)
   return (polarLat, polarLong)
@@ -277,6 +282,5 @@ genPolarCuspsQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
 genPolarCuspsQuery = do
   coords <- genPolarCoords
   time   <- genJulian
-  -- TODO: how does the library behave in other systems?
-  house  <- pure $ Placidus
+  house  <- genHouseSystem
   return (coords, time, house)
