@@ -114,16 +114,13 @@ spec = do
             isNothing $ calculateCoordinatesM time planet
 
       describe "calculateCuspsM" $ do
-        it "calculates cusps and angles for a wide range of points in space and time, in all supported house systems." $ do
+        it "calculates cusps and angles for a wide range of points in space and time (outside of the polar circles), in all supported house systems." $ do
           forAll genCuspsQuery $ \((la, lo), time, houseSystem) ->
             isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
 
-        it "is sometimes unable to calculate cusps to the poles using placidus or koch, able with others" $ do
+        it "calculates cusps anywhere on the globe, when not using Placidus or Koch systems." $ do
           -- see: `House cusps beyond the polar circle` in https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
           forAll genPolarCuspsQuery $ \((la, lo), time, houseSystem) ->
-            if houseSystem `elem` [Placidus, Koch] then
-              isNothing $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
-            else
               isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
 
 {- For reference, here's the official test output from swetest.c as retrieved from the swetest page:
@@ -282,5 +279,6 @@ genPolarCuspsQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
 genPolarCuspsQuery = do
   coords <- genPolarCoords
   time   <- genJulian
-  house  <- genHouseSystem
+  -- Placidus and Koch _sometimes_ succeed, for certain locations, but are more likely to fail.
+  house  <- elements [Porphyrius, Regiomontanus, Campanus, Equal, WholeSign]
   return (coords, time, house)
