@@ -258,7 +258,9 @@ genBadJulian = oneof [choose (625673.5, 2378496.5), choose (2597641.4999884, 281
 
 genPolarCoords :: Gen (Double, Double)
 genPolarCoords = do
-  polarLat <- oneof [choose ((-90.0),(-70.0)), choose (70.0, 90.0)]
+  -- choosing _very_ safe ranges because these, frustratingly, do pass in CI
+  -- sometimes
+  polarLat <- oneof [choose ((-90.0),(-80.0)), choose (80.0, 90.0)]
   polarLong <- choose (-180.0, 180.0)
   return (polarLat, polarLong)
 
