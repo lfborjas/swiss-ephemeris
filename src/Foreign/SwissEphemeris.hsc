@@ -86,4 +86,4 @@ foreign import ccall unsafe "swephexp.h swe_houses"
                  -> CInt -- house system (see .hs version of this file)
                  -> Ptr CDouble -- cusps, 13 doubles (or 37 in system G)
                  -> Ptr CDouble -- ascmc, 10 doubles
-                 -> IO ()
+                 -> CInt

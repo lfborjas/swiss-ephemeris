@@ -3,8 +3,12 @@
 module SwissEphemerisSpec (spec) where
 
 import SwissEphemeris
-import System.Directory (makeAbsolute)
 import Test.Hspec
+import Control.Monad (forM_)
+import System.Directory (makeAbsolute)
+import System.IO.Unsafe (unsafePerformIO)
+import Test.QuickCheck
+import Data.Maybe (isNothing, isJust)
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
 -- https://www.astro.com/swisseph/swetest.htm
@@ -12,17 +16,8 @@ import Test.Hspec
 -- https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
 -- note the `PlbRS` format, which outputs latitude and longitude as decimals, not degrees
 -- for easier comparison.
-
-setRelativeEphePath :: FilePath -> IO ()
-setRelativeEphePath relativePath = do
-  absolutePath <- makeAbsolute relativePath
-  setEphemeridesPath absolutePath
-
-withEphePath :: FilePath -> IO () -> IO ()
-withEphePath relativePath action = do
-    setRelativeEphePath relativePath
-    action
-    closeEphemerides
+ephePath :: FilePath
+ephePath = unsafePerformIO $ makeAbsolute  "./swedist/sweph_18"
 
 spec :: Spec
 spec = do
@@ -40,7 +35,7 @@ spec = do
                   latSpeed = 1.4550248863443192e-5,
                   distSpeed = 1.7364210462433863e-5
                 }
-      coords `shouldBe` expectedCoords
+      compareCoords coords expectedCoords
 
     it "calculates coordinates for all basic bodies" $ do
       let time = julianDay 1989 1 6 0.0
@@ -62,35 +57,16 @@ spec = do
               (OscuApog, Right (Coordinates {lat = -0.41908446181930853, lng = 160.77844211408353, distance = 2.7280173404211033e-3, lngSpeed = -3.209901508794726, latSpeed = 0.27200216400957794, distSpeed = 4.013939873418364e-6})),
               (Earth, Right (Coordinates {lat = 0.0, lng = 0.0, distance = 0.0, lngSpeed = 0.0, latSpeed = 0.0, distSpeed = 0.0}))
             ]
-      allCoords `shouldBe` expectedCoords
+      
+      forM_ (zip allCoords expectedCoords) $ \((planetA, actual), (planetB, expected)) -> do
+        planetA `shouldBe` planetB
+        actual `compareCoords` expected
+   
     it "fails to calculate coordinates for Chiron if no ephemeris file is set" $ do
       let time = julianDay 1989 1 6 0.0
       let coords = calculateCoordinates time Chiron
       let expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
       coords `shouldBe` expectedCoords
-
-  around_ (withEphePath "swedist/sweph_18") $ do
-    describe "setEphemeridesPath" $ do
-      it "calculates more precise coordinates for the Sun if an ephemeris file is set" $ do
-        let time = julianDay 1989 1 6 0.0
-        let coords = calculateCoordinates time Sun
-        let expectedCoords =
-              Right $
-                Coordinates
-                  { lng = 285.64724200024165,
-                    lat = -8.254238068673002e-5,
-                    distance = 0.983344884137739,
-                    lngSpeed = 1.0196526213625938,
-                    latSpeed = 1.4968387810319695e-5,
-                    distSpeed = 1.734078975098347e-5
-                  }
-        coords `shouldBe` expectedCoords
-
-      it "calculates coordinates for Chiron if an ephemeris file is set" $ do
-        let time = julianDay 1989 1 6 0.0
-        let coords = calculateCoordinates time Chiron
-        let expectedCoords = Right (Coordinates {lng = 93.53727572747667, lat = -6.849325566420532, distance = 11.045971701732345, lngSpeed = -6.391339610156536e-2, latSpeed = 8.213606290819226e-4, distSpeed = 1.6210560093203594e-3})
-        coords `shouldBe` expectedCoords
 
   describe "calculateCusps" $ do
     it "calculates cusps and angles for a given place and time" $ do
@@ -124,7 +100,27 @@ spec = do
                 }
 
       let calcs = calculateCusps time place Placidus
-      calcs `shouldBe` expectedCalculations
+      calcs `compareCalculations` (Right expectedCalculations)
+
+  around_ (withEphemerides ephePath) $ do
+    describe "Properties of more general 'monadic' calculations, using the bundled ephemerides." $ do
+      describe "calculateCoordinatesM" $ do
+        it "calculates coordinates for any of the planets in a wide range of time." $ do
+          forAll genCoordinatesQuery $ \(time, planet) ->
+            isJust $ calculateCoordinatesM time planet
+
+        it "is unable to calculate coordinates for times before or after the bundled ephemerides" $ do
+          forAll genBadCoordinatesQuery $ \(time, planet) ->
+            isNothing $ calculateCoordinatesM time planet
+
+      describe "calculateCuspsM" $ do
+        it "calculates cusps and angles for a wide range of points in space and time, in all supported house systems." $ do
+          forAll genCuspsQuery $ \((la, lo), time, houseSystem) ->
+            isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
+
+        it "is unable to calculate cusps for latitudes too close to the poles; using Placidus" $ do
+          forAll genPolarCuspsQuery $ \((la, lo), time, houseSystem) ->
+            isNothing $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
 
 {- For reference, here's the official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
@@ -158,3 +154,127 @@ Pallas           320.7627882  12.0659795    4.068428816    0°18'24.9563
 Juno             160.5478653  -9.1175408    1.718473253   -0° 1'22.3470
 Vesta            238.4983081   5.1734845    2.723062869    0°29'44.2131
 -}
+
+-- helpers for approximate equality:
+
+-- from: https://github.com/codewars/hspec-codewars/blob/476f6c0e85b8f0c060a12c8d573ee4b805589fe0/src/Test/Hspec/Codewars.hs
+
+shouldBeApprox :: (Fractional a, Ord a, Show a) => a -> a -> Expectation
+shouldBeApprox actual expected =
+  if abs (actual - expected) < abs margin * max 1 (abs expected) then
+    pure ()
+  else
+    expectationFailure msg
+  where
+    margin = 1e-5
+    msg = mconcat [
+      "Failure:\n expected: ", show expected,
+      "to be approximately equal to", (show actual)]
+
+infix 1 `shouldBeApprox`
+
+compareCoords :: Either String Coordinates -> Either String Coordinates -> Expectation
+compareCoords (Right a) (Right b) = do
+   lng a `shouldBeApprox` lng b
+   lat a `shouldBeApprox` lat b
+   distance a `shouldBeApprox` distance b
+   lngSpeed a `shouldBeApprox` lngSpeed b
+   latSpeed a `shouldBeApprox` latSpeed b
+   distSpeed a `shouldBeApprox` distSpeed b
+compareCoords (Left e) _ = expectationFailure $ "Expected coordinates, got: " ++ e
+compareCoords _ (Left e) = expectationFailure $ "Expected coordinates, got: " ++ e
+
+compareCalculations :: Either String CuspsCalculation -> Either String CuspsCalculation -> Expectation
+compareCalculations (Right (CuspsCalculation housesA anglesA)) (Right (CuspsCalculation housesB anglesB)) = do
+  i housesA `shouldBeApprox` i housesB
+  ii housesA `shouldBeApprox` ii housesB
+  iii housesA `shouldBeApprox` iii housesB
+  iv housesA `shouldBeApprox` iv housesB
+  v housesA `shouldBeApprox` v housesB
+  vi housesA `shouldBeApprox` vi housesB
+  vii housesA `shouldBeApprox` vii housesB
+  viii housesA `shouldBeApprox` viii housesB
+  ix housesA `shouldBeApprox` ix housesB
+  x housesA `shouldBeApprox` x housesB
+  xi housesA `shouldBeApprox` xi housesB
+  xii housesA `shouldBeApprox` xii housesB
+
+  -- angles:
+  ascendant anglesA `shouldBeApprox` ascendant anglesB
+  mc anglesA `shouldBeApprox` mc anglesB
+  armc anglesA `shouldBeApprox` armc anglesB
+  vertex anglesA `shouldBeApprox` vertex anglesB
+  equatorialAscendant anglesA `shouldBeApprox` equatorialAscendant anglesB
+  coAscendantKoch anglesA `shouldBeApprox` coAscendantKoch anglesB
+  coAscendantMunkasey anglesA `shouldBeApprox` coAscendantMunkasey anglesB
+  polarAscendant anglesA `shouldBeApprox` polarAscendant anglesB
+
+compareCalculations _ _ = expectationFailure "Unable to calculate"
+
+genCoords :: Gen (Double, Double)
+genCoords = do
+    -- you'd think we should be able to choose latitudes between -90 and 90,
+    -- but, as the Swiss Ephemeris authors document, common house systems like
+    -- Placidus will _not_ work near the poles!
+    -- note in the `genPolarCoords` case that we exclude between 60 and 70,
+    -- it seems that _some_ longitudes in polar coords _do_ work, but not
+    -- reliably.
+    latitude  <- choose (-60.0, 60.0)
+    longitude <- choose (-180.0, 180.0)
+    return (latitude, longitude)
+
+-- | As noted in the readme, the test ephemeris only covers from
+-- 1800-Jan-01 AD to 2399-Dec-31
+-- the Moshier ephemeris should cover a wider range of years, but
+-- they cannot compute Chiron. We're choosing a range for which
+-- we have Ephemeris for chiron.
+-- These numbers were calculated with:
+-- https://ssd.jpl.nasa.gov/tc.cgi
+-- read more in the manual:
+-- https://www.astro.com/swisseph/swephprg.htm
+genJulian :: Gen Double
+genJulian = choose (2378496.5, 2597641.4999884)
+
+genHouseSystem :: Gen HouseSystem
+genHouseSystem = elements [Placidus, Koch, Porphyrius, Regiomontanus, Campanus, Equal, WholeSign]
+
+genCuspsQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
+genCuspsQuery = do
+  coords <- genCoords
+  time   <- genJulian
+  house  <- genHouseSystem
+  return (coords, time, house)
+
+genCoordinatesQuery :: Gen (JulianTime, Planet)
+genCoordinatesQuery = do
+  time   <- genJulian
+  planet <- elements [Sun .. Chiron]
+  return (time, planet)
+
+-- bad ranges: 3000 BC to the beginning of our ephemeris,
+-- or from the end of our ephemeris to 3000 AD
+genBadJulian :: Gen Double
+genBadJulian = oneof [choose (625673.5, 2378496.5), choose (2597641.4999884, 2816787.5)]
+
+genPolarCoords :: Gen (Double, Double)
+genPolarCoords = do
+  polarLat <- oneof [choose ((-90.0),(-70.0)), choose (70.0, 90.0)]
+  polarLong <- choose (-180.0, 180.0)
+  return (polarLat, polarLong)
+
+-- only Chiron is reliably outside of our calculations,
+-- our ephemerides data does have some other bodies missing though.
+genBadCoordinatesQuery :: Gen (JulianTime, Planet)
+genBadCoordinatesQuery = do
+  time <- genBadJulian
+  -- TODO: does the library _really_ misbehave for all bodies, or just Chiron?
+  planet <- pure $ Chiron
+  return (time, planet)
+
+genPolarCuspsQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
+genPolarCuspsQuery = do
+  coords <- genPolarCoords
+  time   <- genJulian
+  -- TODO: how does the library behave in other systems?
+  house  <- pure $ Placidus
+  return (coords, time, house)
