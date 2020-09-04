@@ -3,7 +3,6 @@
 module SwissEphemerisSpec (spec) where
 
 import SwissEphemeris
-import System.Directory (makeAbsolute)
 import Test.Hspec
 import Control.Monad (forM_)
 
@@ -13,17 +12,6 @@ import Control.Monad (forM_)
 -- https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
 -- note the `PlbRS` format, which outputs latitude and longitude as decimals, not degrees
 -- for easier comparison.
-
-setRelativeEphePath :: FilePath -> IO ()
-setRelativeEphePath relativePath = do
-  absolutePath <- makeAbsolute relativePath
-  setEphemeridesPath absolutePath
-
-withEphePath :: FilePath -> IO () -> IO ()
-withEphePath relativePath action = do
-    setRelativeEphePath relativePath
-    action
-    closeEphemerides
 
 spec :: Spec
 spec = do
@@ -74,7 +62,7 @@ spec = do
       let expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
       coords `shouldBe` expectedCoords
 
-  around_ (withEphePath "swedist/sweph_18") $ do
+  around_ (withEphemerides "./swedist/sweph_18") $ do
     describe "setEphemeridesPath" $ do
       it "calculates more precise coordinates for the Sun if an ephemeris file is set" $ do
         let time = julianDay 1989 1 6 0.0
@@ -190,7 +178,8 @@ compareCoords (Right a) (Right b) = do
    lngSpeed a `shouldBeApprox` lngSpeed b
    latSpeed a `shouldBeApprox` latSpeed b
    distSpeed a `shouldBeApprox` distSpeed b
-compareCoords _ _ = expectationFailure "Expected coordinates, got a failure."
+compareCoords (Left e) _ = expectationFailure $ "Expected coordinates, got: " ++ e
+compareCoords _ (Left e) = expectationFailure $ "Expected coordinates, got: " ++ e
 
 compareCalculations :: CuspsCalculation -> CuspsCalculation -> Expectation
 compareCalculations (CuspsCalculation housesA anglesA) (CuspsCalculation housesB anglesB) = do

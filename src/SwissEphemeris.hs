@@ -11,6 +11,7 @@ module SwissEphemeris (
 ,   defaultCoordinates
 ,   setEphemeridesPath
 ,   closeEphemerides
+,   withEphemerides
 ,   julianDay
 ,   calculateCoordinates
 ,   calculateCusps
@@ -24,6 +25,7 @@ import           System.IO.Unsafe
 import           Foreign.C.Types
 import           Foreign.C.String
 import           Data.Char                      ( ord )
+import Control.Exception (bracket_)
 
 data Planet = Sun
             | Moon
@@ -155,6 +157,14 @@ setEphemeridesPath path =
 -- library.
 closeEphemerides :: IO ()
 closeEphemerides = c_swe_close
+
+-- | Run a computation with a given ephemerides path open, and then close it. 
+-- Note that the computation does _not_ receive the ephemerides, 
+-- in keeping with the underlying library's side-effectful conventions.
+withEphemerides :: FilePath -> (IO a) -> IO a
+withEphemerides ephemeridesPath =
+  bracket_ (setEphemeridesPath ephemeridesPath)
+           (closeEphemerides)
 
 -- | Given year, month and day as @Int@ and a time as @Double@, return
 -- a single floating point number representing absolute Julian Time.

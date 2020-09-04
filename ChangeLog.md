@@ -1,6 +1,14 @@
 # Changelog for swiss-ephemeris
 
-## v0.1.0.0 (2020-08-12)
+## v0.2.0.0
+
+* Introduces `withEphemerides` for bracketed access to the ephemeris file.
+* Introduces "prime" versions of the functions to work on a `MonadFail`.
+* Changes the signature of `calculateCusps` to fail if the underlying library
+  is unable to calculate the cusps.
+* Improves test coverage.
+
+## v0.1.0.0 - 0.1.0.2(2020-08-12)
 
 * Bundles the C code for v2.09.01 of [Swiss
   Ephemerides](https://www.astro.com/swisseph/swephinfo_e.htm) -- refer to that
