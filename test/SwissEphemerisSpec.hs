@@ -219,7 +219,7 @@ genCoords = do
     -- Placidus or Koch will _not_ work near the poles:
     -- > sometimes (due to the fact that "Placidus and Koch house cusps sometimes can, sometimes cannot be computed beyond the polar circles")
     -- in: https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
-    latitude  <- choose (-40.0, 40.0)
+    latitude  <- choose (-50.0, 50.0)
     longitude <- choose (-180.0, 180.0)
     return (latitude, longitude)
 
