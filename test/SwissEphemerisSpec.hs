@@ -216,10 +216,9 @@ genCoords :: Gen (Double, Double)
 genCoords = do
     -- you'd think we should be able to choose latitudes between -90 and 90,
     -- but, as the Swiss Ephemeris authors document, common house systems like
-    -- Placidus will _not_ work near the poles!
-    -- note in the `genPolarCoords` case that we exclude between 60 and 70,
-    -- it seems that _some_ longitudes in polar coords _do_ work, but not
-    -- reliably.
+    -- Placidus or Koch will _not_ work near the poles:
+    -- > sometimes (due to the fact that "Placidus and Koch house cusps sometimes can, sometimes cannot be computed beyond the polar circles")
+    -- in: https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
     latitude  <- choose (-50.0, 50.0)
     longitude <- choose (-180.0, 180.0)
     return (latitude, longitude)
@@ -257,14 +256,11 @@ genCoordinatesQuery = do
 genBadJulian :: Gen Double
 genBadJulian = oneof [choose (625673.5, 2378496.5), choose (2597641.4999884, 2816787.5)]
 
-genPolarCoords :: Gen (Double, Double)
-genPolarCoords = do
-  -- choosing _very_ safe ranges because these, frustratingly, do pass in CI
-  -- sometimes (due to the fact that "Placidus and Koch house cusps sometimes can, sometimes cannot be computed beyond the polar circles")
-  -- in: https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
-  polarLat <- oneof [choose ((-90.0),(-80.0)), choose (80.0, 90.0)]
-  polarLong <- choose (-180.0, 180.0)
-  return (polarLat, polarLong)
+genAnyCoords :: Gen (Double, Double)
+genAnyCoords = do
+  anyLat  <- choose (-90.0, 90.0)
+  anyLong <- choose (-180.0, 180.0)
+  return (anyLat, anyLong)
 
 -- only Chiron is reliably outside of our calculations,
 -- our ephemerides data does have some other bodies missing though.
@@ -277,7 +273,7 @@ genBadCoordinatesQuery = do
 
 genPolarCuspsQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
 genPolarCuspsQuery = do
-  coords <- genPolarCoords
+  coords <- genAnyCoords
   time   <- genJulian
   -- Placidus and Koch _sometimes_ succeed, for certain locations, but are more likely to fail.
   house  <- elements [Porphyrius, Regiomontanus, Campanus, Equal, WholeSign]
