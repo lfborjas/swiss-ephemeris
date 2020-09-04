@@ -253,11 +253,11 @@ compareCalculations _ _ = expectationFailure "Unable to calculate"
 -- read more in the manual:
 -- https://www.astro.com/swisseph/swephprg.htm
 genJulian :: Gen Double
-genJulian = choose (2378496.0, 2597641.0)
+genJulian = pure 2378496.0--choose (2378496.0, 2597641.0)
 
 -- bad range: 3000 BC to the beginning of our ephemeris,
 genBadJulian :: Gen Double
-genBadJulian = choose (625673.0, 2378496.0)
+genBadJulian = pure 625673.0--choose (625673.0, 2378496.0)
 
 genHouseSystem :: Gen HouseSystem
 genHouseSystem = elements [Placidus, Koch, Porphyrius, Regiomontanus, Campanus, Equal, WholeSign]
