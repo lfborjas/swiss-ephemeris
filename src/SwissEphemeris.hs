@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric     #-}
 
 module SwissEphemeris (
@@ -239,8 +240,8 @@ calculateCusps time loc sys = unsafePerformIO $ allocaArray 13 $ \cusps ->
                              (fromAnglesList $ map realToFrac $ anglesL)
                              (sys)
         else do
-          cuspsL  <- peekArray 13 cusps
-          anglesL <- peekArray 10 ascmc
+          !cuspsL  <- peekArray 13 cusps
+          !anglesL <- peekArray 10 ascmc
           if (null cuspsL || null anglesL) then do
             return $ Left "Unexpected error: calculations didn't populate cusps or angles"
           else do
