@@ -191,11 +191,11 @@ julianDay year month day hour = realToFrac $ c_swe_julday y m d h gregorian
 calculateCoordinates :: JulianTime -> Planet -> Either String Coordinates
 calculateCoordinates time planet =
     unsafePerformIO $ allocaArray 6 $ \coords -> alloca $ \errorP -> do
-        let iflgret = c_swe_calc (realToFrac time)
-                                 (planetNumber planet)
-                                 speed
-                                 coords
-                                 errorP
+        iflgret <- c_swe_calc (realToFrac time)
+                              (planetNumber planet)
+                              speed
+                              coords
+                              errorP
 
         if unCalcFlag iflgret < 0
             then do
@@ -224,28 +224,18 @@ calculateCoordinatesM time planet = do
 calculateCuspsLenient :: JulianTime -> Coordinates -> HouseSystem -> CuspsCalculation
 calculateCuspsLenient time loc sys = unsafePerformIO $ allocaArray 13 $ \cusps ->
     allocaArray 10 $ \ascmc -> do
-        let rval = c_swe_houses (realToFrac time)
-                                (realToFrac $ lat loc)
-                                (realToFrac $ lng loc)
-                                (fromIntegral $ toHouseSystemFlag sys)
-                                cusps
-                                ascmc
-        if rval >= 0 then do
-          cuspsL  <- peekArray 13 cusps
-          anglesL <- peekArray 10 ascmc
-          return $ CuspsCalculation
-                    (fromCuspsList $ map realToFrac $ cuspsL) 
-                    (fromAnglesList $ map realToFrac $ anglesL)
-                    (sys)
-        else do
-          -- calculation with the requested system failed, it fell back
-          -- to Porphyry.
-          cuspsL  <- peekArray 13 cusps
-          anglesL <- peekArray 10 ascmc
-          return $ CuspsCalculation
-                    (fromCuspsList $ map realToFrac $ cuspsL) 
-                    (fromAnglesList $ map realToFrac $ anglesL)
-                    Porphyrius
+        rval <- c_swe_houses (realToFrac time)
+                             (realToFrac $ lat loc)
+                             (realToFrac $ lng loc)
+                             (fromIntegral $ toHouseSystemFlag sys)
+                             cusps
+                             ascmc
+        cuspsL  <- peekArray 13 cusps
+        anglesL <- peekArray 10 ascmc
+        return $ CuspsCalculation
+                  (fromCuspsList $ map realToFrac $ cuspsL) 
+                  (fromAnglesList $ map realToFrac $ anglesL)
+                  (if rval < 0 then Porphyrius else sys)
 
 -- | 'MonadFail' version of `calculateCuspsStrict`, in case you don't particularly care about
 -- the error message (there's only one error scenario currently: inability to 
@@ -261,6 +251,6 @@ calculateCuspsStrict :: JulianTime -> Coordinates -> HouseSystem -> Either Strin
 calculateCuspsStrict time loc sys = do
   let calcs@(CuspsCalculation _ _ sys') = calculateCuspsLenient time loc sys
   if sys' /= sys then
-    Left "Unable to calculate cusps in the requested house system"
+    Left "Unable to calculate cusps in the requested house system."
   else
     Right calcs
