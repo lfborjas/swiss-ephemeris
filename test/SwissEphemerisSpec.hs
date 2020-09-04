@@ -5,7 +5,7 @@ module SwissEphemerisSpec (spec) where
 import SwissEphemeris
 import Test.Hspec
 import Control.Monad (forM_)
-import System.Directory (makeAbsolute)
+import System.Directory (doesDirectoryExist, makeAbsolute)
 import System.IO.Unsafe (unsafePerformIO)
 import Test.QuickCheck
 import Data.Maybe (isJust)
@@ -70,42 +70,6 @@ spec = do
       let expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
       coords `shouldBe` expectedCoords
 
-  around_ (withEphemerides ephePath) $ do
-    describe "Properties of more general 'monadic' calculations" $ do
-      describe "calculateCoordinatesM" $ do
-        it "calculates coordinates for any of the planets in a wide range of time." $ do
-          forAll genCoordinatesQuery $ \(time, planet) ->
-            isJust $ calculateCoordinatesM time planet
-
-      describe "calculateCuspsM" $ do
-        -- TODO: check that it works for other house systems?
-        it "calculates cusps and angles for a wide range of points in space and time" $ do
-          forAll genCuspsQuery $ \((la, lo), time) ->
-            isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) Placidus
-
-
-  around_ (withEphemerides ephePath) $ do
-      it "calculates more precise coordinates for the Sun if an ephemeris file is set" $ do
-        let time = julianDay 1989 1 6 0.0
-        let coords = calculateCoordinates time Sun
-        let expectedCoords =
-              Right $
-                Coordinates
-                  { lng = 285.64724200024165,
-                    lat = -8.254238068673002e-5,
-                    distance = 0.983344884137739,
-                    lngSpeed = 1.0196526213625938,
-                    latSpeed = 1.4968387810319695e-5,
-                    distSpeed = 1.734078975098347e-5
-                  }
-        coords `compareCoords` expectedCoords
-
-      it "calculates coordinates for Chiron if an ephemeris file is set" $ do
-        let time = julianDay 1989 1 6 0.0
-        let coords = calculateCoordinates time Chiron
-        let expectedCoords = Right (Coordinates {lng = 93.53727572747667, lat = -6.849325566420532, distance = 11.045971701732345, lngSpeed = -6.391339610156536e-2, latSpeed = 8.213606290819226e-4, distSpeed = 1.6210560093203594e-3})
-        coords `compareCoords` expectedCoords
-
   describe "calculateCusps" $ do
     it "calculates cusps and angles for a given place and time" $ do
       let time = julianDay 1989 1 6 0.0
@@ -139,6 +103,50 @@ spec = do
 
       let calcs = calculateCusps time place Placidus
       calcs `compareCalculations` (Right expectedCalculations)
+
+  around_ (withEphemerides ephePath) $ do
+    describe "Properties of more general 'monadic' calculations" $ do
+      describe "calculateCoordinatesM" $ do
+        it "calculates coordinates for any of the planets in a wide range of time." $ do
+          forAll genCoordinatesQuery $ \(time, planet) ->
+            isJust $ calculateCoordinatesM time planet
+
+      describe "calculateCuspsM" $ do
+        -- TODO: check that it works for other house systems?
+        it "calculates cusps and angles for a wide range of points in space and time" $ do
+          forAll genCuspsQuery $ \((la, lo), time) ->
+            isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) Placidus
+
+
+  around_ (withEphemerides ephePath) $ do
+    describe "Operations with an ephemerides directory set" $ do
+      it "does find the ephemeris directory" $ do
+        -- sanity test for CI
+        dirExists <- doesDirectoryExist ephePath
+        dirExists `shouldBe` True
+
+      it "calculates more precise coordinates for the Sun if an ephemeris file is set" $ do
+        let time = julianDay 1989 1 6 0.0
+        let coords = calculateCoordinates time Sun
+        let expectedCoords =
+              Right $
+                Coordinates
+                  { lng = 285.64724200024165,
+                    lat = -8.254238068673002e-5,
+                    distance = 0.983344884137739,
+                    lngSpeed = 1.0196526213625938,
+                    latSpeed = 1.4968387810319695e-5,
+                    distSpeed = 1.734078975098347e-5
+                  }
+        coords `compareCoords` expectedCoords
+      
+      it "calculates coordinates for Chiron if an ephemeris file is set" $ do
+        let time = julianDay 1989 1 6 0.0
+        let coords = calculateCoordinates time Chiron
+        let expectedCoords = Right (Coordinates {lng = 93.53727572747667, lat = -6.849325566420532, distance = 11.045971701732345, lngSpeed = -6.391339610156536e-2, latSpeed = 8.213606290819226e-4, distSpeed = 1.6210560093203594e-3})
+        coords `compareCoords` expectedCoords
+
+  
 
 {- For reference, here's the official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
