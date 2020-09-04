@@ -231,20 +231,19 @@ calculateCusps time loc sys = unsafePerformIO $ allocaArray 13 $ \cusps ->
                                 (fromIntegral $ toHouseSystemFlag sys)
                                 cusps
                                 ascmc
-
-        if (cusps == nullPtr || ascmc == nullPtr) then do
-          pure $ Left $ "Unexpected calculation error: no cusps or angles were returned."
+        if rval >= 0 then do
+          cuspsL  <- peekArray 13 cusps
+          anglesL <- peekArray 10 ascmc
+          return $ Right $ CuspsCalculation
+                             (fromCuspsList $ map realToFrac $ cuspsL) 
+                             (fromAnglesList $ map realToFrac $ anglesL)
+                             (sys)
         else do
-          if rval >= 0 then do
-            cuspsL  <- peekArray 13 cusps
-            anglesL <- peekArray 10 ascmc
-            return $ Right $ CuspsCalculation
-                               (fromCuspsList $ map realToFrac $ cuspsL) 
-                               (fromAnglesList $ map realToFrac $ anglesL)
-                               (sys)
+          cuspsL  <- peekArray 13 cusps
+          anglesL <- peekArray 10 ascmc
+          if (null cuspsL || null anglesL) then do
+            return $ Left "Unexpected error: calculations didn't populate cusps or angles"
           else do
-            cuspsL  <- peekArray 13 cusps
-            anglesL <- peekArray 10 ascmc
             return $ Right $ CuspsCalculation
                                (fromCuspsList $ map realToFrac $ cuspsL) 
                                (fromAnglesList $ map realToFrac $ anglesL)
