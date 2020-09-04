@@ -7,6 +7,9 @@ import Test.Hspec
 import Control.Monad (forM_)
 import System.Directory (makeAbsolute)
 import System.IO.Unsafe (unsafePerformIO)
+import Test.QuickCheck
+import Data.Maybe (isJust)
+import Data.Either (isRight)
 
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
@@ -15,6 +18,8 @@ import System.IO.Unsafe (unsafePerformIO)
 -- https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
 -- note the `PlbRS` format, which outputs latitude and longitude as decimals, not degrees
 -- for easier comparison.
+ephePath :: FilePath
+ephePath = unsafePerformIO $ makeAbsolute  "./swedist/sweph_18"
 
 spec :: Spec
 spec = do
@@ -65,8 +70,21 @@ spec = do
       let expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
       coords `shouldBe` expectedCoords
 
-  around_ (withEphemerides (unsafePerformIO $ makeAbsolute  "./swedist/sweph_18" )) $ do
-    describe "setEphemeridesPath" $ do
+  around_ (withEphemerides ephePath) $ do
+    describe "Properties of more general 'monadic' calculations" $ do
+      describe "calculateCoordinatesM" $ do
+        it "calculates coordinates for any of the planets in a wide range of time." $ do
+          forAll genCoordinatesQuery $ \(time, planet) ->
+            isJust $ calculateCoordinatesM time planet
+
+      describe "calculateCuspsM" $ do
+        -- TODO: check that it works for other house systems?
+        it "calculates cusps and angles for a wide range of points in space and time" $ do
+          forAll genCuspsQuery $ \((la, lo), time) ->
+            isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) Placidus
+
+
+  around_ (withEphemerides ephePath) $ do
       it "calculates more precise coordinates for the Sun if an ephemeris file is set" $ do
         let time = julianDay 1989 1 6 0.0
         let coords = calculateCoordinates time Sun
@@ -210,3 +228,33 @@ compareCalculations (Right (CuspsCalculation housesA anglesA)) (Right (CuspsCalc
   polarAscendant anglesA `shouldBeApprox` polarAscendant anglesB
 
 compareCalculations _ _ = expectationFailure "Unable to calculate"
+
+genCoords :: Gen (Double, Double)
+genCoords = do
+    -- you'd think we should be able to choose latitudes between -90 and 90,
+    -- but, as the Swiss Ephemeris authors document, common house systems like
+    -- Placidus will _not_ work near the poles!
+    latitude  <- choose (-60.0, 60.0)
+    longitude <- choose (-180.0, 180.0)
+    return (latitude, longitude)
+
+-- jan 1st 3000 BC - jan 1st 3000 AD
+-- as per the manual:
+-- https://www.astro.com/swisseph/swephprg.htm
+-- > In the JPL mode and the Moshier mode the time range remains unchanged at 3000 BC to 3000 AD.
+genJulian :: Gen Double
+--genJulian = abs <$> (arbitrary :: Gen JulianTime) `suchThat` (\j -> j >= 625673.5 && j <= 2816787.5)
+--genJulian = abs <$> (arbitrary :: Gen JulianTime) `suchThat` (\j -> j >= 1721423.5 && j <= 2597276.5)
+genJulian = (arbitrary :: Gen Double) `suchThat` (\j -> j >= 2458848.5 && j <= 2458849.5)
+
+genCuspsQuery :: Gen ((Double, Double), JulianTime)
+genCuspsQuery = do
+  coords <- genCoords
+  time   <- pure $ 2458848.5
+  return (coords, time)
+
+genCoordinatesQuery :: Gen (JulianTime, Planet)
+genCoordinatesQuery = do
+  time   <- pure $ 2458848.5
+  planet <- elements [Sun .. Chiron]
+  return (time, planet)
