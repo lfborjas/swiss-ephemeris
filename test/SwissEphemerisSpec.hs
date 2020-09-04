@@ -5,6 +5,9 @@ module SwissEphemerisSpec (spec) where
 import SwissEphemeris
 import Test.Hspec
 import Control.Monad (forM_)
+import System.Directory (makeAbsolute)
+import System.IO.Unsafe (unsafePerformIO)
+
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
 -- https://www.astro.com/swisseph/swetest.htm
@@ -62,7 +65,7 @@ spec = do
       let expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
       coords `shouldBe` expectedCoords
 
-  around_ (withEphemerides "./swedist/sweph_18/") $ do
+  around_ (withEphemerides (unsafePerformIO $ makeAbsolute  "./swedist/sweph_18/" )) $ do
     describe "setEphemeridesPath" $ do
       it "calculates more precise coordinates for the Sun if an ephemeris file is set" $ do
         let time = julianDay 1989 1 6 0.0
@@ -117,7 +120,7 @@ spec = do
                 }
 
       let calcs = calculateCusps time place Placidus
-      calcs `compareCalculations` expectedCalculations
+      calcs `compareCalculations` (Right expectedCalculations)
 
 {- For reference, here's the official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
@@ -181,8 +184,8 @@ compareCoords (Right a) (Right b) = do
 compareCoords (Left e) _ = expectationFailure $ "Expected coordinates, got: " ++ e
 compareCoords _ (Left e) = expectationFailure $ "Expected coordinates, got: " ++ e
 
-compareCalculations :: CuspsCalculation -> CuspsCalculation -> Expectation
-compareCalculations (CuspsCalculation housesA anglesA) (CuspsCalculation housesB anglesB) = do
+compareCalculations :: Either String CuspsCalculation -> Either String CuspsCalculation -> Expectation
+compareCalculations (Right (CuspsCalculation housesA anglesA)) (Right (CuspsCalculation housesB anglesB)) = do
   i housesA `shouldBeApprox` i housesB
   ii housesA `shouldBeApprox` ii housesB
   iii housesA `shouldBeApprox` iii housesB
@@ -205,3 +208,5 @@ compareCalculations (CuspsCalculation housesA anglesA) (CuspsCalculation housesB
   coAscendantKoch anglesA `shouldBeApprox` coAscendantKoch anglesB
   coAscendantMunkasey anglesA `shouldBeApprox` coAscendantMunkasey anglesB
   polarAscendant anglesA `shouldBeApprox` polarAscendant anglesB
+
+compareCalculations _ _ = expectationFailure "Unable to calculate"

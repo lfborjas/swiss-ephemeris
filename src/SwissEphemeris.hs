@@ -15,6 +15,9 @@ module SwissEphemeris (
 ,   julianDay
 ,   calculateCoordinates
 ,   calculateCusps
+-- MonadFail versions of calculations.
+,   calculateCoordinatesM
+,   calculateCuspsM
 )where
 
 import           Foreign.SwissEphemeris
@@ -26,6 +29,8 @@ import           Foreign.C.Types
 import           Foreign.C.String
 import           Data.Char                      ( ord )
 import Control.Exception (bracket_)
+import Control.Monad.Fail (MonadFail, fail)
+import Prelude hiding (fail)
 
 data Planet = Sun
             | Moon
@@ -199,22 +204,44 @@ calculateCoordinates time planet =
                 result <- peekArray 6 coords
                 return $ Right $ fromList $ map realToFrac result
 
+-- | MonadFail version of `calculateCoordinates`, in case you don't particularly care
+-- about the error message (since it's likely to be due to misconfigured ephe files)
+-- and want it to play nice with other `MonadFail` computations.
+calculateCoordinatesM :: MonadFail m => JulianTime -> Planet -> m Coordinates
+calculateCoordinatesM time planet = do
+  let coords = calculateCoordinates time planet
+  case coords of
+    Left e -> fail e
+    Right c -> return c
+
 -- | Given a decimal representation of Julian Time (see @julianDay@),
 -- and a set of @Coordinates@ (see @calculateCoordinates@,) and a @HouseSystem@
--- (most applications use @Placidus@,) return a @CuspsCalculation@ with all 12
--- house cusps in that system, and other relevant @Angles@.
-calculateCusps :: JulianTime -> Coordinates -> HouseSystem -> CuspsCalculation
+-- (most applications use @Placidus@,) return either @CuspsCalculation@ with all 12
+-- house cusps in that system, and other relevant @Angles@, or an error.
+calculateCusps :: JulianTime -> Coordinates -> HouseSystem -> Either String CuspsCalculation
 calculateCusps time loc sys = unsafePerformIO $ allocaArray 13 $ \cusps ->
     allocaArray 10 $ \ascmc -> do
-        c_swe_houses (realToFrac time)
-                     (realToFrac $ lat loc)
-                     (realToFrac $ lng loc)
-                     (fromIntegral $ toHouseSystemFlag sys)
-                     cusps
-                     ascmc
+        let rval = c_swe_houses (realToFrac time)
+                                (realToFrac $ lat loc)
+                                (realToFrac $ lng loc)
+                                (fromIntegral $ toHouseSystemFlag sys)
+                                cusps
+                                ascmc
+        if rval < 0 then do
+          return $ Left "Unable to calculate cusps for the given point and house system."
+        else do
+          cuspsL  <- peekArray 13 cusps
+          anglesL <- peekArray 10 ascmc
+          return $ Right $ CuspsCalculation
+                             (fromCuspsList $ map realToFrac $ cuspsL) 
+                             (fromAnglesList $ map realToFrac $ anglesL)
 
-        cuspsL  <- peekArray 13 cusps
-        anglesL <- peekArray 10 ascmc
-        return $ CuspsCalculation
-                 (fromCuspsList $ map realToFrac $ cuspsL) 
-                 (fromAnglesList $ map realToFrac $ anglesL)
+-- | MonadFail version of `calculateCusps`, in case you don't particularly care about
+-- the error message (there's only one error scenario currently: inability to 
+-- determine cusps, in coordinates not contemplated by the given house system.
+calculateCuspsM :: MonadFail m => JulianTime -> Coordinates -> HouseSystem -> m CuspsCalculation
+calculateCuspsM time loc sys = do
+  let calcs = calculateCusps time loc sys
+  case calcs of
+    Left e -> fail e
+    Right c -> return c
