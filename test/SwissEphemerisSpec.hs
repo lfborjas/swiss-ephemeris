@@ -129,7 +129,7 @@ spec = do
                 }
 
       let calcs = calculateCusps time place Placidus
-      calcs `shouldBe` expectedCalculations
+      calcs `compareCalculations` expectedCalculations
 
 {- For reference, here's the official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
@@ -191,3 +191,28 @@ compareCoords (Right a) (Right b) = do
    latSpeed a `shouldBeApprox` latSpeed b
    distSpeed a `shouldBeApprox` distSpeed b
 compareCoords _ _ = expectationFailure "Expected coordinates, got a failure."
+
+compareCalculations :: CuspsCalculation -> CuspsCalculation -> Expectation
+compareCalculations (CuspsCalculation housesA anglesA) (CuspsCalculation housesB anglesB) = do
+  i housesA `shouldBeApprox` i housesB
+  ii housesA `shouldBeApprox` ii housesB
+  iii housesA `shouldBeApprox` iii housesB
+  iv housesA `shouldBeApprox` iv housesB
+  v housesA `shouldBeApprox` v housesB
+  vi housesA `shouldBeApprox` vi housesB
+  vii housesA `shouldBeApprox` vii housesB
+  viii housesA `shouldBeApprox` viii housesB
+  ix housesA `shouldBeApprox` ix housesB
+  x housesA `shouldBeApprox` x housesB
+  xi housesA `shouldBeApprox` xi housesB
+  xii housesA `shouldBeApprox` xii housesB
+
+  -- angles:
+  ascendant anglesA `shouldBeApprox` ascendant anglesB
+  mc anglesA `shouldBeApprox` mc anglesB
+  armc anglesA `shouldBeApprox` armc anglesB
+  vertex anglesA `shouldBeApprox` vertex anglesB
+  equatorialAscendant anglesA `shouldBeApprox` equatorialAscendant anglesB
+  coAscendantKoch anglesA `shouldBeApprox` coAscendantKoch anglesB
+  coAscendantMunkasey anglesA `shouldBeApprox` coAscendantMunkasey anglesB
+  polarAscendant anglesA `shouldBeApprox` polarAscendant anglesB
