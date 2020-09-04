@@ -5,12 +5,10 @@ module SwissEphemerisSpec (spec) where
 import SwissEphemeris
 import Test.Hspec
 import Control.Monad (forM_)
-import System.Directory (doesDirectoryExist, makeAbsolute)
+import System.Directory (makeAbsolute)
 import System.IO.Unsafe (unsafePerformIO)
 import Test.QuickCheck
-import Data.Maybe (isJust)
-import Data.Either (isRight)
-
+import Data.Maybe (isNothing, isJust)
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
 -- https://www.astro.com/swisseph/swetest.htm
@@ -105,48 +103,24 @@ spec = do
       calcs `compareCalculations` (Right expectedCalculations)
 
   around_ (withEphemerides ephePath) $ do
-    describe "Properties of more general 'monadic' calculations" $ do
+    describe "Properties of more general 'monadic' calculations, using the bundled ephemerides." $ do
       describe "calculateCoordinatesM" $ do
         it "calculates coordinates for any of the planets in a wide range of time." $ do
           forAll genCoordinatesQuery $ \(time, planet) ->
             isJust $ calculateCoordinatesM time planet
 
+        it "is unable to calculate coordinates for times before or after the bundled ephemerides" $ do
+          forAll genBadCoordinatesQuery $ \(time, planet) ->
+            isNothing $ calculateCoordinatesM time planet
+
       describe "calculateCuspsM" $ do
-        -- TODO: check that it works for other house systems?
-        it "calculates cusps and angles for a wide range of points in space and time" $ do
-          forAll genCuspsQuery $ \((la, lo), time) ->
-            isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) Placidus
+        it "calculates cusps and angles for a wide range of points in space and time, in all supported house systems." $ do
+          forAll genCuspsQuery $ \((la, lo), time, houseSystem) ->
+            isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
 
-
-  around_ (withEphemerides ephePath) $ do
-    describe "Operations with an ephemerides directory set" $ do
-      it "does find the ephemeris directory" $ do
-        -- sanity test for CI
-        dirExists <- doesDirectoryExist ephePath
-        dirExists `shouldBe` True
-
-      it "calculates more precise coordinates for the Sun if an ephemeris file is set" $ do
-        let time = julianDay 1989 1 6 0.0
-        let coords = calculateCoordinates time Sun
-        let expectedCoords =
-              Right $
-                Coordinates
-                  { lng = 285.64724200024165,
-                    lat = -8.254238068673002e-5,
-                    distance = 0.983344884137739,
-                    lngSpeed = 1.0196526213625938,
-                    latSpeed = 1.4968387810319695e-5,
-                    distSpeed = 1.734078975098347e-5
-                  }
-        coords `compareCoords` expectedCoords
-      
-      it "calculates coordinates for Chiron if an ephemeris file is set" $ do
-        let time = julianDay 1989 1 6 0.0
-        let coords = calculateCoordinates time Chiron
-        let expectedCoords = Right (Coordinates {lng = 93.53727572747667, lat = -6.849325566420532, distance = 11.045971701732345, lngSpeed = -6.391339610156536e-2, latSpeed = 8.213606290819226e-4, distSpeed = 1.6210560093203594e-3})
-        coords `compareCoords` expectedCoords
-
-  
+        it "is unable to calculate cusps for latitudes too close to the poles; using Placidus" $ do
+          forAll genPolarCuspsQuery $ \((la, lo), time, houseSystem) ->
+            isNothing $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
 
 {- For reference, here's the official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
@@ -242,27 +216,65 @@ genCoords = do
     -- you'd think we should be able to choose latitudes between -90 and 90,
     -- but, as the Swiss Ephemeris authors document, common house systems like
     -- Placidus will _not_ work near the poles!
+    -- note in the `genPolarCoords` case that we exclude between 60 and 70,
+    -- it seems that _some_ longitudes in polar coords _do_ work, but not
+    -- reliably.
     latitude  <- choose (-60.0, 60.0)
     longitude <- choose (-180.0, 180.0)
     return (latitude, longitude)
 
--- jan 1st 3000 BC - jan 1st 3000 AD
--- as per the manual:
+-- | As noted in the readme, the test ephemeris only covers from
+-- 1800-Jan-01 AD to 2399-Dec-31
+-- the Moshier ephemeris should cover a wider range of years, but
+-- they cannot compute Chiron. We're choosing a range for which
+-- we have Ephemeris for chiron.
+-- These numbers were calculated with:
+-- https://ssd.jpl.nasa.gov/tc.cgi
+-- read more in the manual:
 -- https://www.astro.com/swisseph/swephprg.htm
--- > In the JPL mode and the Moshier mode the time range remains unchanged at 3000 BC to 3000 AD.
 genJulian :: Gen Double
---genJulian = abs <$> (arbitrary :: Gen JulianTime) `suchThat` (\j -> j >= 625673.5 && j <= 2816787.5)
---genJulian = abs <$> (arbitrary :: Gen JulianTime) `suchThat` (\j -> j >= 1721423.5 && j <= 2597276.5)
-genJulian = (arbitrary :: Gen Double) `suchThat` (\j -> j >= 2458848.5 && j <= 2458849.5)
+genJulian = choose (2378496.5, 2597641.4999884)
 
-genCuspsQuery :: Gen ((Double, Double), JulianTime)
+genHouseSystem :: Gen HouseSystem
+genHouseSystem = elements [Placidus, Koch, Porphyrius, Regiomontanus, Campanus, Equal, WholeSign]
+
+genCuspsQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
 genCuspsQuery = do
   coords <- genCoords
-  time   <- pure $ 2458848.5
-  return (coords, time)
+  time   <- genJulian
+  house  <- genHouseSystem
+  return (coords, time, house)
 
 genCoordinatesQuery :: Gen (JulianTime, Planet)
 genCoordinatesQuery = do
-  time   <- pure $ 2458848.5
+  time   <- genJulian
   planet <- elements [Sun .. Chiron]
   return (time, planet)
+
+-- bad ranges: 3000 BC to the beginning of our ephemeris,
+-- or from the end of our ephemeris to 3000 AD
+genBadJulian :: Gen Double
+genBadJulian = oneof [choose (625673.5, 2378496.5), choose (2597641.4999884, 2816787.5)]
+
+genPolarCoords :: Gen (Double, Double)
+genPolarCoords = do
+  polarLat <- oneof [choose ((-90.0),(-70.0)), choose (70.0, 90.0)]
+  polarLong <- choose (-180.0, 180.0)
+  return (polarLat, polarLong)
+
+-- only Chiron is reliably outside of our calculations,
+-- our ephemerides data does have some other bodies missing though.
+genBadCoordinatesQuery :: Gen (JulianTime, Planet)
+genBadCoordinatesQuery = do
+  time <- genBadJulian
+  -- TODO: does the library _really_ misbehave for all bodies, or just Chiron?
+  planet <- pure $ Chiron
+  return (time, planet)
+
+genPolarCuspsQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
+genPolarCuspsQuery = do
+  coords <- genPolarCoords
+  time   <- genJulian
+  -- TODO: how does the library behave in other systems?
+  house  <- pure $ Placidus
+  return (coords, time, house)

@@ -57,7 +57,7 @@ data HouseSystem = Placidus
                  | Campanus
                  | Equal
                  | WholeSign
-                 deriving (Show, Eq, Ord, Generic)
+                 deriving (Show, Eq, Ord, Enum, Generic)
 
 type JulianTime = Double
 
@@ -201,7 +201,7 @@ calculateCoordinates time planet =
                 result <- peekArray 6 coords
                 return $ Right $ fromList $ map realToFrac result
 
--- | MonadFail version of `calculateCoordinates`, in case you don't particularly care
+-- | 'MonadFail' version of `calculateCoordinates`, in case you don't particularly care
 -- about the error message (since it's likely to be due to misconfigured ephe files)
 -- and want it to play nice with other `MonadFail` computations.
 calculateCoordinatesM :: MonadFail m => JulianTime -> Planet -> m Coordinates
@@ -233,9 +233,9 @@ calculateCusps time loc sys = unsafePerformIO $ allocaArray 13 $ \cusps ->
                              (fromCuspsList $ map realToFrac $ cuspsL) 
                              (fromAnglesList $ map realToFrac $ anglesL)
 
--- | MonadFail version of `calculateCusps`, in case you don't particularly care about
+-- | 'MonadFail' version of `calculateCusps`, in case you don't particularly care about
 -- the error message (there's only one error scenario currently: inability to 
--- determine cusps, in coordinates not contemplated by the given house system.
+-- determine cusps, in coordinates not contemplated by the given house system.)
 calculateCuspsM :: MonadFail m => JulianTime -> Coordinates -> HouseSystem -> m CuspsCalculation
 calculateCuspsM time loc sys = do
   let calcs = calculateCusps time loc sys

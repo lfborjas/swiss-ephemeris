@@ -2,10 +2,12 @@
 
 ## v0.2.0.0
 
-* Introduces `withEphemerides` for bracketed access to the ephemeris file.
+* Introduces `withEphemerides` for bracketed access to the ephemeris directory.
 * Changes the signature of `calculateCusps` to return a `Left` value if the underlying library
   is unable to calculate the cusps.
-* Improves test coverage.
+* Introduces "monadic" versions of the calculations that work with instances of `MonadFail`:
+  `calculateCuspsM` and `calculateCoordinatesM`
+* Improves test coverage with property testing.
 
 ## v0.1.0.0 - 0.1.0.2(2020-08-12)
 

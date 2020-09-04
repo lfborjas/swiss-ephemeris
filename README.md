@@ -13,7 +13,7 @@ import SwissEphemeris
 main :: IO
 main = do 
   -- location of your ephemeris directory, must be absolute. We bundle a sample one in `swedist`.
-  setEphemeridesPath "/Users/luis/code/swiss-ephemeris/swedist/sweph_18"
+  setEphemeridesPath "./swedist/sweph_18"
 
   let time = julianDay 1989 1 6 0.0
   let place = defaultCoords{lat = 14.0839053, lng = -87.2750137}
@@ -29,8 +29,11 @@ main = do
 
 Should print the latitude and longitude (plus some velocities) for all planets, and the cusps and other major angles.
 
-To see actual results, check out the tests. For some more advanced examples, see `swetest.c` and `swemini.c` in the `csrc` directory: they're the test/example 
+To see actual results and more advanced usage, check out the tests. For some more advanced examples, see `swetest.c` and `swemini.c` in the `csrc` directory: they're the test/example 
 programs provided by the original authors.
+
+Both calculation functions will return `Either String a` (with `a` being the actual calculation,) in case an error is raised
+by the underlying library. If you'd prefer a `MonadFail` version, check out `calculateCuspsM` and `calculateCoordinatesM`.
 
 ## Notes
 
@@ -64,19 +67,7 @@ For a full explanation of the files available, see the [Description of the Ephem
 interest is the [comparison between the Swiss Ephemeris and the raw NASA JPL
 data](https://www.astro.com/swisseph/swisseph.htm#_Toc46391741).
 
-### CI Build
-
-You'll notice that I build against Github's [`macos-latest`](https://docs.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners#supported-runners-and-hardware-resources) VM. This mirrors my development machine -- I noticed that the tests suffer a precision degradation when run on ubuntu, e.g.:
-
-```haskell
- expected: Right (Coordinates {lng = 285.64724200024165, lat = -8.254238068673002e-5, distance = 0.983344884137739, lngSpeed = 1.0196526213625938, latSpeed = 1.4968387810319695e-5, distSpeed = 1.734078975098347e-5})
-  but got: Right (Coordinates {lng = 285.6472420002416, lat = -8.254238068996486e-5, distance = 0.9833448841377388, lngSpeed = 1.0196526213625938, latSpeed = 1.496838781028185e-5, distSpeed = 1.7340789750982604e-5})
-```
-
-Not sure if it's due to the C compiler in the GH environment, or if it's something on the actual software; however, caveat emptor!
-
 ## Contributing
 
 I've only made available the types and functions that are useful for my own, traditional, horoscope calculations.
 Feel free to add more! See the [astro.com documentation](https://www.astro.com/swisseph/swisseph.htm) for ideas.
-
