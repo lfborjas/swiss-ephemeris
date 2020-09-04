@@ -119,7 +119,7 @@ spec = do
           forAll genCuspsQuery $ \((la, lo), time, houseSystem) ->
             isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
 
-        prop "calculates cusps anywhere on the globe, when not using Placidus or Koch systems." $
+        prop "calculates cusps anywhere on the globe, when using simpler systems (Porphyry, Equal, Whole)" $
           -- see: `House cusps beyond the polar circle` in https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
           forAll genPolarCuspsQuery $ \((la, lo), time, houseSystem) ->
               isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
@@ -259,7 +259,7 @@ genBadJulian = oneof [choose (625673.5, 2378496.5), choose (2597641.4999884, 281
 
 genAnyCoords :: Gen (Double, Double)
 genAnyCoords = do
-  anyLat  <- choose (-89.0, 89.0)
+  anyLat  <- choose (-90.0, 90.0)
   anyLong <- choose (-180.0, 180.0)
   return (anyLat, anyLong)
 
@@ -277,5 +277,6 @@ genPolarCuspsQuery = do
   coords <- genAnyCoords
   time   <- genJulian
   -- Placidus and Koch _sometimes_ succeed, for certain locations, but are more likely to fail.
-  house  <- elements [Porphyrius, Regiomontanus, Campanus, Equal, WholeSign]
+  -- Regiomontanus and Campanus also struggle to calculate some angles.
+  house  <- elements [Porphyrius, Equal, WholeSign]
   return (coords, time, house)
