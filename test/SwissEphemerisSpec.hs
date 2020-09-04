@@ -9,6 +9,7 @@ import System.Directory (makeAbsolute)
 import System.IO.Unsafe (unsafePerformIO)
 import Test.QuickCheck
 import Data.Maybe (isNothing, isJust)
+import Data.Either (isLeft)
 import Test.Hspec.QuickCheck (prop)
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
@@ -69,7 +70,7 @@ spec = do
       let expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
       coords `shouldBe` expectedCoords
 
-  describe "calculateCusps" $ do
+  describe "calculateCuspsStrict" $ do
     it "calculates cusps and angles for a given place and time, keeping the same house system (not near the poles)" $ do
       let time = julianDay 1989 1 6 0.0
       let place = defaultCoordinates {lat = 14.0839053, lng = -87.2750137}
@@ -101,11 +102,40 @@ spec = do
                 }
               Placidus
 
-      let calcs = calculateCusps time place Placidus
+      let calcs = calculateCuspsStrict time place Placidus
       calcs `compareCalculations` (Right expectedCalculations) 
 
+    it "fails when using a house system that is unable to calculate cusps near the poles" $ do
+      let time = julianDay 1989 1 6 0.0
+          -- Longyearbyen:
+          place = defaultCoordinates {lat = 78.2232, lng = 15.6267}
+          calcs = calculateCuspsStrict time place Placidus
+
+      calcs `shouldSatisfy` isLeft
+
+  describe "calculateCuspsLenient" $ do
+        it "falls back to Porphyry when calculating cusps for a place near the poles" $ do
+          let time = julianDay 1989 1 6 0.0
+          -- Longyearbyen:
+              place = defaultCoordinates {lat = 78.2232, lng = 15.6267}
+              calcs = calculateCuspsLenient time place Placidus
+              expected = CuspsCalculation {houseCusps = HouseCusps {i = 190.88156009524067, ii = 226.9336677703179, iii = 262.9857754453951, iv = 299.0378831204723, v = 322.9857754453951, vi = 346.9336677703179, vii = 10.881560095240673, viii = 46.933667770317925, ix = 82.98577544539512, x = 119.03788312047234, xi = 142.98577544539512, xii = 166.9336677703179}, angles = Angles {ascendant = 190.88156009524067, mc = 119.03788312047234, armc = 121.17906552074543, vertex = 36.408617337292114, equatorialAscendant = 213.4074315205484, coAscendantKoch = 335.2547300150891, coAscendantMunkasey = 210.81731854391526, polarAscendant = 155.2547300150891}, systemUsed = Porphyrius} 
+          (systemUsed calcs) `shouldBe` Porphyrius
+          (Right calcs) `compareCalculations` (Right expected)
+            
+        prop "calculates cusps and angles for a wide range of points in space and time, in all supported house systems. Note that it may fall back to Porphyrius for some exotic (or polar) points." $
+          -- see: `House cusps beyond the polar circle` in https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
+          -- and:
+          -- > Placidus and Koch house cusps as well as Gauquelin sectors cannot be computed beyond the polar circle. 
+          -- > In such cases, swe_houses() switches to Porphyry houses (each quadrant is divided into three equal parts) and returns the error code ERR. 
+          -- > In addition, Sunshine houses may fail, e.g. when required for a date which is outside the time range of our solar ephemeris. Here, also, Porphyry houses will be provided.
+          -- from: https://www.astro.com/swisseph/swephprg.htm
+          forAll genCuspsQuery $ \((la, lo), time, houseSystem) ->
+            let calcs = calculateCuspsLenient time (defaultCoordinates{lat = la, lng = lo}) houseSystem
+            in ((systemUsed calcs) `elem` [houseSystem, Porphyrius])
+
   around_ (withEphemerides ephePath) $ do
-    describe "Properties of more general 'monadic' calculations, using the bundled ephemerides." $ do
+    describe "Coordinate calculations using the bundled ephemerides." $ do
       describe "calculateCoordinatesM" $ do
         prop "calculates coordinates for any of the planets in a wide range of time." $
           forAll genCoordinatesQuery $ \(time, planet) ->
@@ -114,23 +144,6 @@ spec = do
         prop "is unable to calculate coordinates for times before or after the bundled ephemerides" $ 
           forAll genBadCoordinatesQuery $ \(time, planet) ->
             isNothing $ calculateCoordinatesM time planet
-
-      describe "calculateCuspsM" $ do
-        prop "calculates cusps and angles for a wide range of points in space and time (outside of the polar circles), in all supported house systems. Note that it may fall back to Porphyrius" $
-          forAll genCuspsQuery $ \((la, lo), time, houseSystem) ->
-            let calcs = calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
-            -- note that, despite best efforts, it may _still_ fall back to Porphyrius.
-            in isJust calcs && ((systemUsed <$> calcs) `elem` [Just houseSystem, Just Porphyrius])
-            
-        prop "calculates cusps anywhere on the globe, when using the Porphyrius system" $
-          -- see: `House cusps beyond the polar circle` in https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
-          -- and:
-          -- > Placidus and Koch house cusps as well as Gauquelin sectors cannot be computed beyond the polar circle. 
-          -- > In such cases, swe_houses() switches to Porphyry houses (each quadrant is divided into three equal parts) and returns the error code ERR. 
-          -- > In addition, Sunshine houses may fail, e.g. when required for a date which is outside the time range of our solar ephemeris. Here, also, Porphyry houses will be provided.
-          -- from: https://www.astro.com/swisseph/swephprg.htm
-          forAll genPolarCuspsQuery $ \((la, lo), time) ->
-              isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) Porphyrius
 
 {- For reference, here's the official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
@@ -225,17 +238,6 @@ compareCalculations (Right (CuspsCalculation housesA anglesA sysA)) (Right (Cusp
 
 compareCalculations _ _ = expectationFailure "Unable to calculate"
 
-genCoords :: Gen (Double, Double)
-genCoords = do
-    -- you'd think we should be able to choose latitudes between -90 and 90,
-    -- but, as the Swiss Ephemeris authors document, common house systems like
-    -- Placidus or Koch will _not_ work near the poles:
-    -- > sometimes (due to the fact that "Placidus and Koch house cusps sometimes can, sometimes cannot be computed beyond the polar circles")
-    -- in: https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
-    latitude  <- choose (-50.0, 50.0)
-    longitude <- choose (-180.0, 180.0)
-    return (latitude, longitude)
-
 -- | As noted in the readme, the test ephemeris only covers from
 -- 1800-Jan-01 AD to 2399-Dec-31
 -- the Moshier ephemeris should cover a wider range of years, but
@@ -248,34 +250,19 @@ genCoords = do
 genJulian :: Gen Double
 genJulian = choose (2378496.5, 2597641.4999884)
 
+-- bad ranges: 3000 BC to the beginning of our ephemeris,
+-- or from the end of our ephemeris to 3000 AD
+genBadJulian :: Gen Double
+genBadJulian = oneof [choose (625673.5, 2378496.5), choose (2597641.4999884, 2816787.5)]
+
 genHouseSystem :: Gen HouseSystem
 genHouseSystem = elements [Placidus, Koch, Porphyrius, Regiomontanus, Campanus, Equal, WholeSign]
-
-genCuspsQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
-genCuspsQuery = do
-  coords <- genCoords
-  time   <- genJulian
-  house  <- genHouseSystem
-  return (coords, time, house)
 
 genCoordinatesQuery :: Gen (JulianTime, Planet)
 genCoordinatesQuery = do
   time   <- genJulian
   planet <- elements [Sun .. Chiron]
   return (time, planet)
-
--- bad ranges: 3000 BC to the beginning of our ephemeris,
--- or from the end of our ephemeris to 3000 AD
-genBadJulian :: Gen Double
-genBadJulian = oneof [choose (625673.5, 2378496.5), choose (2597641.4999884, 2816787.5)]
-
-genAnyCoords :: Gen (Double, Double)
-genAnyCoords = do
-  -- see swehouse.c: for many systems, being _on_ the pole will fail,
-  -- even if the system works in the polar circle, nominally.
-  anyLat  <- choose (-89.0, 89.0)
-  anyLong <- choose (-179.0, 179.0)
-  return (anyLat, anyLong)
 
 -- only Chiron is reliably outside of our calculations,
 -- our ephemerides data does have some other bodies missing though.
@@ -286,12 +273,19 @@ genBadCoordinatesQuery = do
   planet <- pure $ Chiron
   return (time, planet)
 
-genPolarCuspsQuery :: Gen ((Double, Double), JulianTime)
-genPolarCuspsQuery = do
+genAnyCoords :: Gen (Double, Double)
+genAnyCoords = do
+  -- see swehouse.c: for many systems, being _on_ the pole will fail,
+  -- even if the system works in the polar circle, nominally.
+  anyLat  <- choose (-89.0, 89.0)
+  anyLong <- choose (-179.0, 179.0)
+  return (anyLat, anyLong)
+
+genCuspsQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
+genCuspsQuery = do
   coords <- genAnyCoords
   time   <- genJulian
   -- Placidus and Koch _sometimes_ succeed, for certain locations, but are more likely to fail.
   -- Regiomontanus and Campanus also struggle to calculate some angles.
-  -- For the equal and whole systems, I saw them fail consistently in CI, but never locally,
-  -- so I don't know how the property was falsified :(
-  return (coords, time)
+  house  <- genHouseSystem
+  return (coords, time, house)

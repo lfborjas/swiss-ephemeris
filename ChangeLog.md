@@ -5,8 +5,13 @@
 ** Breaking fixes to `calculateCusps` **
 
 * More closely reflects the underlying behavior for the underlying library: it _may_ return
-  a cusps in the `Porphyrius` system if given a point for which the chosen system fails.
-* Error conditions are now limited to null pointers.
+  a cusps in the `Porphyrius` system if given a point for which the chosen system fails. To
+  more explicitly reflect this, we now have `calculateCuspsStrict` which returns a `Left` value
+  if the requested house system couldn't be used (and a `calculateCuspsStrictM` version that
+  uses a `MonadFail`); and `calculateCuspsLenient` which always returns a calculation.
+* Since the calculation may have changed the house system, we now return a `systemUsed` entry
+  in the `CuspsCalculation` record.
+
 
 ## v0.2.0.0
 

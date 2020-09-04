@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric     #-}
 
 module SwissEphemeris (
@@ -15,10 +14,11 @@ module SwissEphemeris (
 ,   withEphemerides
 ,   julianDay
 ,   calculateCoordinates
-,   calculateCusps
+,   calculateCuspsLenient
+,   calculateCuspsStrict
 -- MonadFail versions of calculations.
 ,   calculateCoordinatesM
-,   calculateCuspsM
+,   calculateCuspsStrictM
 )where
 
 import           Foreign.SwissEphemeris
@@ -217,14 +217,12 @@ calculateCoordinatesM time planet = do
 
 -- | Given a decimal representation of Julian Time (see @julianDay@),
 -- and a set of @Coordinates@ (see @calculateCoordinates@,) and a @HouseSystem@
--- (most applications use @Placidus@,) return either @CuspsCalculation@ with all 12
--- house cusps in that system, and other relevant @Angles@, or an error.
--- NOTE: the only error condition is very rare, when the underlying library
--- fails to populate the result arrays. The more common "failure" scenario
--- is it defaulting to the `Porphyry` house system if the given system fails,
--- which is why we include it in the returned record.
-calculateCusps :: JulianTime -> Coordinates -> HouseSystem -> Either String CuspsCalculation
-calculateCusps time loc sys = unsafePerformIO $ allocaArray 13 $ \cusps ->
+-- (most applications use @Placidus@,) return the @CuspsCalculation@ with all 12
+-- house cusps in that system, and other relevant @Angles@. Notice that certain systems,
+-- like Placidus and Koch, are very likely to fail close to the polar circles; in this
+-- and other edge cases, the calculation returns cusps in the `Porphyrius` system.
+calculateCuspsLenient :: JulianTime -> Coordinates -> HouseSystem -> CuspsCalculation
+calculateCuspsLenient time loc sys = unsafePerformIO $ allocaArray 13 $ \cusps ->
     allocaArray 10 $ \ascmc -> do
         let rval = c_swe_houses (realToFrac time)
                                 (realToFrac $ lat loc)
@@ -235,27 +233,34 @@ calculateCusps time loc sys = unsafePerformIO $ allocaArray 13 $ \cusps ->
         if rval >= 0 then do
           cuspsL  <- peekArray 13 cusps
           anglesL <- peekArray 10 ascmc
-          return $ Right $ CuspsCalculation
-                             (fromCuspsList $ map realToFrac $ cuspsL) 
-                             (fromAnglesList $ map realToFrac $ anglesL)
-                             (sys)
+          return $ CuspsCalculation
+                    (fromCuspsList $ map realToFrac $ cuspsL) 
+                    (fromAnglesList $ map realToFrac $ anglesL)
+                    (sys)
         else do
-          !cuspsL  <- peekArray 13 cusps
-          !anglesL <- peekArray 10 ascmc
-          if (null cuspsL || null anglesL) then do
-            return $ Left "Unexpected error: calculations didn't populate cusps or angles"
-          else do
-            return $ Right $ CuspsCalculation
-                               (fromCuspsList $ map realToFrac $ cuspsL) 
-                               (fromAnglesList $ map realToFrac $ anglesL)
-                               Porphyrius
+          -- calculation with the requested system failed, it fell back
+          -- to Porphyry.
+          cuspsL  <- peekArray 13 cusps
+          anglesL <- peekArray 10 ascmc
+          return $ CuspsCalculation
+                    (fromCuspsList $ map realToFrac $ cuspsL) 
+                    (fromAnglesList $ map realToFrac $ anglesL)
+                    Porphyrius
 
--- | 'MonadFail' version of `calculateCusps`, in case you don't particularly care about
+-- | 'MonadFail' version of `calculateCuspsStrict`, in case you don't particularly care about
 -- the error message (there's only one error scenario currently: inability to 
--- determine cusps, in coordinates not contemplated by the given house system.)
-calculateCuspsM :: MonadFail m => JulianTime -> Coordinates -> HouseSystem -> m CuspsCalculation
-calculateCuspsM time loc sys = do
-  let calcs = calculateCusps time loc sys
+-- determine cusps in coordinates not supported by the requested house system.)
+calculateCuspsStrictM :: MonadFail m => JulianTime -> Coordinates -> HouseSystem -> m CuspsCalculation
+calculateCuspsStrictM time loc sys = do
+  let calcs = calculateCuspsStrict time loc sys
   case calcs of
     Left e -> fail e
     Right c -> return c
+
+calculateCuspsStrict :: JulianTime -> Coordinates -> HouseSystem -> Either String CuspsCalculation
+calculateCuspsStrict time loc sys = do
+  let calcs@(CuspsCalculation _ _ sys') = calculateCuspsLenient time loc sys
+  if sys' /= sys then
+    Left "Unable to calculate cusps in the requested house system"
+  else
+    Right calcs
