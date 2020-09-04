@@ -9,7 +9,7 @@ import System.Directory (makeAbsolute)
 import System.IO.Unsafe (unsafePerformIO)
 import Test.QuickCheck
 import Data.Maybe (isNothing, isJust)
-import Test.Hspec.QuickCheck (modifyMaxSuccess, prop)
+import Test.Hspec.QuickCheck (prop)
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
 -- https://www.astro.com/swisseph/swetest.htm
@@ -119,7 +119,8 @@ spec = do
         prop "calculates cusps and angles for a wide range of points in space and time (outside of the polar circles), in all supported house systems. Note that it may fall back to Porphyrius" $
           forAll genCuspsQuery $ \((la, lo), time, houseSystem) ->
             let calcs = calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
-            in isJust calcs && ((systemUsed <$> calcs) == Just houseSystem)
+            -- note that, despite best efforts, it may _still_ fall back to Porphyrius.
+            in isJust calcs && ((systemUsed <$> calcs) `elem` [Just houseSystem, Just Porphyrius])
             
         prop "calculates cusps anywhere on the globe, when using the Porphyrius system" $
           -- see: `House cusps beyond the polar circle` in https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
