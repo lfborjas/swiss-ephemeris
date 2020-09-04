@@ -5,6 +5,7 @@ module SwissEphemerisSpec (spec) where
 import SwissEphemeris
 import System.Directory (makeAbsolute)
 import Test.Hspec
+import Control.Monad (forM_)
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
 -- https://www.astro.com/swisseph/swetest.htm
@@ -40,7 +41,7 @@ spec = do
                   latSpeed = 1.4550248863443192e-5,
                   distSpeed = 1.7364210462433863e-5
                 }
-      coords `shouldBe` expectedCoords
+      compareCoords coords expectedCoords
 
     it "calculates coordinates for all basic bodies" $ do
       let time = julianDay 1989 1 6 0.0
@@ -62,7 +63,11 @@ spec = do
               (OscuApog, Right (Coordinates {lat = -0.41908446181930853, lng = 160.77844211408353, distance = 2.7280173404211033e-3, lngSpeed = -3.209901508794726, latSpeed = 0.27200216400957794, distSpeed = 4.013939873418364e-6})),
               (Earth, Right (Coordinates {lat = 0.0, lng = 0.0, distance = 0.0, lngSpeed = 0.0, latSpeed = 0.0, distSpeed = 0.0}))
             ]
-      allCoords `shouldBe` expectedCoords
+      
+      forM_ (zip allCoords expectedCoords) $ \((planetA, actual), (planetB, expected)) -> do
+        planetA `shouldBe` planetB
+        actual `compareCoords` expected
+   
     it "fails to calculate coordinates for Chiron if no ephemeris file is set" $ do
       let time = julianDay 1989 1 6 0.0
       let coords = calculateCoordinates time Chiron
@@ -84,13 +89,13 @@ spec = do
                     latSpeed = 1.4968387810319695e-5,
                     distSpeed = 1.734078975098347e-5
                   }
-        coords `shouldBe` expectedCoords
+        coords `compareCoords` expectedCoords
 
       it "calculates coordinates for Chiron if an ephemeris file is set" $ do
         let time = julianDay 1989 1 6 0.0
         let coords = calculateCoordinates time Chiron
         let expectedCoords = Right (Coordinates {lng = 93.53727572747667, lat = -6.849325566420532, distance = 11.045971701732345, lngSpeed = -6.391339610156536e-2, latSpeed = 8.213606290819226e-4, distSpeed = 1.6210560093203594e-3})
-        coords `shouldBe` expectedCoords
+        coords `compareCoords` expectedCoords
 
   describe "calculateCusps" $ do
     it "calculates cusps and angles for a given place and time" $ do
@@ -158,3 +163,31 @@ Pallas           320.7627882  12.0659795    4.068428816    0°18'24.9563
 Juno             160.5478653  -9.1175408    1.718473253   -0° 1'22.3470
 Vesta            238.4983081   5.1734845    2.723062869    0°29'44.2131
 -}
+
+-- helpers for approximate equality:
+
+-- from: https://github.com/codewars/hspec-codewars/blob/476f6c0e85b8f0c060a12c8d573ee4b805589fe0/src/Test/Hspec/Codewars.hs
+
+shouldBeApprox :: (Fractional a, Ord a, Show a) => a -> a -> Expectation
+shouldBeApprox actual expected =
+  if abs (actual - expected) < abs margin * max 1 (abs expected) then
+    pure ()
+  else
+    expectationFailure msg
+  where
+    margin = 1e-5
+    msg = mconcat [
+      "Failure:\n expected: ", show expected,
+      "to be approximately equal to", (show actual)]
+
+infix 1 `shouldBeApprox`
+
+compareCoords :: Either String Coordinates -> Either String Coordinates -> Expectation
+compareCoords (Right a) (Right b) = do
+   lng a `shouldBeApprox` lng b
+   lat a `shouldBeApprox` lat b
+   distance a `shouldBeApprox` distance b
+   lngSpeed a `shouldBeApprox` lngSpeed b
+   latSpeed a `shouldBeApprox` latSpeed b
+   distSpeed a `shouldBeApprox` distSpeed b
+compareCoords _ _ = expectationFailure "Expected coordinates, got a failure."
