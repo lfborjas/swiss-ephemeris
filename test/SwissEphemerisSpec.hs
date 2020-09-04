@@ -259,7 +259,7 @@ genBadJulian = oneof [choose (625673.5, 2378496.5), choose (2597641.4999884, 281
 
 genAnyCoords :: Gen (Double, Double)
 genAnyCoords = do
-  anyLat  <- choose (-90.0, 90.0)
+  anyLat  <- choose (-89.0, 89.0)
   anyLong <- choose (-180.0, 180.0)
   return (anyLat, anyLong)
 
