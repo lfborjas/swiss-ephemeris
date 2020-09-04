@@ -153,10 +153,7 @@ planetNumber p = PlanetNumber $ CInt y
 -- if the environment variable `SE_EPHE_PATH` is set, it overrides this function.
 setEphemeridesPath :: String -> IO ()
 setEphemeridesPath path =
-    -- note, using the *CA* variants of String functions, since the swe
-    -- code seems to be ignorant of UTF8:
-    -- http://hackage.haskell.org/package/base-4.14.0.0/docs/Foreign-C-String.html#g:3
-    withCAString path $ \ephePath -> c_swe_set_ephe_path ephePath
+    withCString path $ \ephePath -> c_swe_set_ephe_path ephePath
 
 -- | Explicitly release all "cache" pointers and open files obtained by the C
 -- library.

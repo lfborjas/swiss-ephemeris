@@ -65,7 +65,7 @@ spec = do
       let expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
       coords `shouldBe` expectedCoords
 
-  around_ (withEphemerides (unsafePerformIO $ makeAbsolute  "./swedist/sweph_18/" )) $ do
+  around_ (withEphemerides (unsafePerformIO $ makeAbsolute  "./swedist/sweph_18" )) $ do
     describe "setEphemeridesPath" $ do
       it "calculates more precise coordinates for the Sun if an ephemeris file is set" $ do
         let time = julianDay 1989 1 6 0.0
