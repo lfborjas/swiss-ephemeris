@@ -220,7 +220,7 @@ genCoords = do
     -- note in the `genPolarCoords` case that we exclude between 60 and 70,
     -- it seems that _some_ longitudes in polar coords _do_ work, but not
     -- reliably.
-    latitude  <- choose (-60.0, 60.0)
+    latitude  <- choose (-50.0, 50.0)
     longitude <- choose (-180.0, 180.0)
     return (latitude, longitude)
 
