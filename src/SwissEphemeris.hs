@@ -110,6 +110,9 @@ data CuspsCalculation = CuspsCalculation
   {
     houseCusps :: HouseCusps
   , angles :: Angles
+  -- the underlying library may switch to Porphyrius
+  -- if it's unable to determine a cusp.
+  , systemUsed :: HouseSystem
   } deriving (Show, Eq, Generic)
 
 -- in the C lib, house systems are expected as ASCII
@@ -215,6 +218,10 @@ calculateCoordinatesM time planet = do
 -- and a set of @Coordinates@ (see @calculateCoordinates@,) and a @HouseSystem@
 -- (most applications use @Placidus@,) return either @CuspsCalculation@ with all 12
 -- house cusps in that system, and other relevant @Angles@, or an error.
+-- NOTE: the only error condition is very rare, when the underlying library
+-- fails to populate the result arrays. The more common "failure" scenario
+-- is it defaulting to the `Porphyry` house system if the given system fails,
+-- which is why we include it in the returned record.
 calculateCusps :: JulianTime -> Coordinates -> HouseSystem -> Either String CuspsCalculation
 calculateCusps time loc sys = unsafePerformIO $ allocaArray 13 $ \cusps ->
     allocaArray 10 $ \ascmc -> do
@@ -224,14 +231,24 @@ calculateCusps time loc sys = unsafePerformIO $ allocaArray 13 $ \cusps ->
                                 (fromIntegral $ toHouseSystemFlag sys)
                                 cusps
                                 ascmc
-        if rval < 0 then do
-          return $ Left "Unable to calculate cusps for the given point and house system."
+
+        if (cusps == nullPtr || ascmc == nullPtr) then do
+          pure $ Left $ "Unexpected calculation error: no cusps or angles were returned."
         else do
-          cuspsL  <- peekArray 13 cusps
-          anglesL <- peekArray 10 ascmc
-          return $ Right $ CuspsCalculation
-                             (fromCuspsList $ map realToFrac $ cuspsL) 
-                             (fromAnglesList $ map realToFrac $ anglesL)
+          if rval >= 0 then do
+            cuspsL  <- peekArray 13 cusps
+            anglesL <- peekArray 10 ascmc
+            return $ Right $ CuspsCalculation
+                               (fromCuspsList $ map realToFrac $ cuspsL) 
+                               (fromAnglesList $ map realToFrac $ anglesL)
+                               (sys)
+          else do
+            cuspsL  <- peekArray 13 cusps
+            anglesL <- peekArray 10 ascmc
+            return $ Right $ CuspsCalculation
+                               (fromCuspsList $ map realToFrac $ cuspsL) 
+                               (fromAnglesList $ map realToFrac $ anglesL)
+                               Porphyrius
 
 -- | 'MonadFail' version of `calculateCusps`, in case you don't particularly care about
 -- the error message (there's only one error scenario currently: inability to 

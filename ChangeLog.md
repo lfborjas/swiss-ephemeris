@@ -1,5 +1,13 @@
 # Changelog for swiss-ephemeris
 
+## v0.3.0.0
+
+** Breaking fixes to `calculateCusps` **
+
+* More closely reflects the underlying behavior for the underlying library: it _may_ return
+  a cusps in the `Porphyrius` system if given a point for which the chosen system fails.
+* Error conditions are now limited to null pointers.
+
 ## v0.2.0.0
 
 * Introduces `withEphemerides` for bracketed access to the ephemeris directory.

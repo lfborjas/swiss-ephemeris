@@ -9,7 +9,7 @@ import System.Directory (makeAbsolute)
 import System.IO.Unsafe (unsafePerformIO)
 import Test.QuickCheck
 import Data.Maybe (isNothing, isJust)
-import Test.Hspec.QuickCheck (prop)
+import Test.Hspec.QuickCheck (modifyMaxSuccess, prop)
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
 -- https://www.astro.com/swisseph/swetest.htm
@@ -36,7 +36,7 @@ spec = do
                   latSpeed = 1.4550248863443192e-5,
                   distSpeed = 1.7364210462433863e-5
                 }
-      compareCoords coords expectedCoords
+      coords `compareCoords` expectedCoords
 
     it "calculates coordinates for all basic bodies" $ do
       let time = julianDay 1989 1 6 0.0
@@ -70,7 +70,7 @@ spec = do
       coords `shouldBe` expectedCoords
 
   describe "calculateCusps" $ do
-    it "calculates cusps and angles for a given place and time" $ do
+    it "calculates cusps and angles for a given place and time, keeping the same house system (not near the poles)" $ do
       let time = julianDay 1989 1 6 0.0
       let place = defaultCoordinates {lat = 14.0839053, lng = -87.2750137}
       let expectedCalculations =
@@ -99,9 +99,10 @@ spec = do
                   coAscendantMunkasey = 153.1221838791593,
                   polarAscendant = 281.19442735316477
                 }
+              Placidus
 
       let calcs = calculateCusps time place Placidus
-      calcs `compareCalculations` (Right expectedCalculations)
+      calcs `compareCalculations` (Right expectedCalculations) 
 
   around_ (withEphemerides ephePath) $ do
     describe "Properties of more general 'monadic' calculations, using the bundled ephemerides." $ do
@@ -115,19 +116,20 @@ spec = do
             isNothing $ calculateCoordinatesM time planet
 
       describe "calculateCuspsM" $ do
-        prop "calculates cusps and angles for a wide range of points in space and time (outside of the polar circles), in all supported house systems." $
+        prop "calculates cusps and angles for a wide range of points in space and time (outside of the polar circles), in all supported house systems. Note that it may fall back to Porphyrius" $
           forAll genCuspsQuery $ \((la, lo), time, houseSystem) ->
-            isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
-
-        prop "calculates cusps anywhere on the globe, when using the Porphyrius system" $
+            let calcs = calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
+            in isJust calcs && ((systemUsed <$> calcs) == Just houseSystem)
+            
+        modifyMaxSuccess (const 1000) $ prop "calculates cusps anywhere on the globe, when using the Porphyrius system" $
           -- see: `House cusps beyond the polar circle` in https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
           -- and:
           -- > Placidus and Koch house cusps as well as Gauquelin sectors cannot be computed beyond the polar circle. 
           -- > In such cases, swe_houses() switches to Porphyry houses (each quadrant is divided into three equal parts) and returns the error code ERR. 
           -- > In addition, Sunshine houses may fail, e.g. when required for a date which is outside the time range of our solar ephemeris. Here, also, Porphyry houses will be provided.
           -- from: https://www.astro.com/swisseph/swephprg.htm
-          forAll genPolarCuspsQuery $ \((la, lo), time, houseSystem) ->
-              isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
+          forAll genPolarCuspsQuery $ \((la, lo), time) ->
+              isJust $ calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) Porphyrius
 
 {- For reference, here's the official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
@@ -167,7 +169,7 @@ Vesta            238.4983081   5.1734845    2.723062869    0°29'44.2131
 -- from: https://github.com/codewars/hspec-codewars/blob/476f6c0e85b8f0c060a12c8d573ee4b805589fe0/src/Test/Hspec/Codewars.hs
 
 shouldBeApprox :: (Fractional a, Ord a, Show a) => a -> a -> Expectation
-shouldBeApprox actual expected =
+shouldBeApprox expected actual =
   if abs (actual - expected) < abs margin * max 1 (abs expected) then
     pure ()
   else
@@ -175,8 +177,8 @@ shouldBeApprox actual expected =
   where
     margin = 1e-5
     msg = mconcat [
-      "Failure:\n expected: ", show expected,
-      "to be approximately equal to", (show actual)]
+      "Failure:\n expected: ", show actual,
+      " to be approximately equal to ", (show expected)]
 
 infix 1 `shouldBeApprox`
 
@@ -192,7 +194,10 @@ compareCoords (Left e) _ = expectationFailure $ "Expected coordinates, got: " ++
 compareCoords _ (Left e) = expectationFailure $ "Expected coordinates, got: " ++ e
 
 compareCalculations :: Either String CuspsCalculation -> Either String CuspsCalculation -> Expectation
-compareCalculations (Right (CuspsCalculation housesA anglesA)) (Right (CuspsCalculation housesB anglesB)) = do
+compareCalculations (Right (CuspsCalculation housesA anglesA sysA)) (Right (CuspsCalculation housesB anglesB sysB)) = do
+  -- compare systems: note that for polar coordinates, it may be switched to Porphyry
+  sysA `shouldBe` sysB
+
   i housesA `shouldBeApprox` i housesB
   ii housesA `shouldBeApprox` ii housesB
   iii housesA `shouldBeApprox` iii housesB
@@ -215,6 +220,7 @@ compareCalculations (Right (CuspsCalculation housesA anglesA)) (Right (CuspsCalc
   coAscendantKoch anglesA `shouldBeApprox` coAscendantKoch anglesB
   coAscendantMunkasey anglesA `shouldBeApprox` coAscendantMunkasey anglesB
   polarAscendant anglesA `shouldBeApprox` polarAscendant anglesB
+
 
 compareCalculations _ _ = expectationFailure "Unable to calculate"
 
@@ -264,8 +270,10 @@ genBadJulian = oneof [choose (625673.5, 2378496.5), choose (2597641.4999884, 281
 
 genAnyCoords :: Gen (Double, Double)
 genAnyCoords = do
+  -- see swehouse.c: for many systems, being _on_ the pole will fail,
+  -- even if the system works in the polar circle, nominally.
   anyLat  <- choose (-89.0, 89.0)
-  anyLong <- choose (-180.0, 180.0)
+  anyLong <- choose (-179.0, 179.0)
   return (anyLat, anyLong)
 
 -- only Chiron is reliably outside of our calculations,
@@ -277,7 +285,7 @@ genBadCoordinatesQuery = do
   planet <- pure $ Chiron
   return (time, planet)
 
-genPolarCuspsQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
+genPolarCuspsQuery :: Gen ((Double, Double), JulianTime)
 genPolarCuspsQuery = do
   coords <- genAnyCoords
   time   <- genJulian
@@ -285,5 +293,4 @@ genPolarCuspsQuery = do
   -- Regiomontanus and Campanus also struggle to calculate some angles.
   -- For the equal and whole systems, I saw them fail consistently in CI, but never locally,
   -- so I don't know how the property was falsified :(
-  house  <- elements [Porphyrius]
-  return (coords, time, house)
+  return (coords, time)
