@@ -121,7 +121,7 @@ spec = do
             let calcs = calculateCuspsM time (defaultCoordinates{lat = la, lng = lo}) houseSystem
             in isJust calcs && ((systemUsed <$> calcs) == Just houseSystem)
             
-        modifyMaxSuccess (const 1000) $ prop "calculates cusps anywhere on the globe, when using the Porphyrius system" $
+        prop "calculates cusps anywhere on the globe, when using the Porphyrius system" $
           -- see: `House cusps beyond the polar circle` in https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
           -- and:
           -- > Placidus and Koch house cusps as well as Gauquelin sectors cannot be computed beyond the polar circle. 
