@@ -252,13 +252,12 @@ compareCalculations _ _ = expectationFailure "Unable to calculate"
 -- https://ssd.jpl.nasa.gov/tc.cgi
 -- read more in the manual:
 -- https://www.astro.com/swisseph/swephprg.htm
-genJulian :: Gen Integer
-genJulian =  choose (2378496, 2597641)
+genJulian :: Gen Double
+genJulian =  choose (2378496.0, 2597641.0)
 
--- bad ranges: 3000 BC to the beginning of our ephemeris,
--- or from the end of our ephemeris to 3000 AD
-genBadJulian :: Gen Integer
-genBadJulian = oneof [choose (625673, 2378496), choose (2597641, 2816787)]
+-- bad range: 3000 BC to the beginning of our ephemeris,
+genBadJulian :: Gen Double
+genBadJulian = choose (625673.0, 2378496.0)
 
 genHouseSystem :: Gen HouseSystem
 genHouseSystem = elements [Placidus, Koch, Porphyrius, Regiomontanus, Campanus, Equal, WholeSign]
@@ -267,7 +266,7 @@ genCoordinatesQuery :: Gen (JulianTime, Planet)
 genCoordinatesQuery = do
   time   <- genJulian
   planet <- elements [Sun .. Chiron]
-  return ((fromIntegral time), planet)
+  return (time, planet)
 
 -- only Chiron is reliably outside of our calculations,
 -- our ephemerides data does have some other bodies missing though.
@@ -276,7 +275,7 @@ genBadCoordinatesQuery = do
   time <- genBadJulian
   -- TODO: does the library _really_ misbehave for all bodies, or just Chiron?
   planet <- pure $ Chiron
-  return ((fromIntegral time), planet)
+  return (time, planet)
 
 genAnyCoords :: Gen (Double, Double)
 genAnyCoords = do
@@ -293,4 +292,4 @@ genCuspsQuery = do
   -- Placidus and Koch _sometimes_ succeed, for certain locations, but are more likely to fail.
   -- Regiomontanus and Campanus also struggle to calculate some angles.
   house  <- genHouseSystem
-  return (coords, (fromIntegral time), house)
+  return (coords, time, house)
