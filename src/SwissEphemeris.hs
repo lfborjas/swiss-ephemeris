@@ -20,6 +20,7 @@ module SwissEphemeris (
 ,   withoutEphemerides
 -- core calculations
 ,   calculateCoordinates
+,   calculateCusps
 ,   calculateCuspsLenient
 ,   calculateCuspsStrict
 )where
@@ -155,7 +156,7 @@ planetNumber p = PlanetNumber $ CInt y
   where
     y = fromIntegral $ fromEnum p :: Int32
 
--- | Given an *absolute* path, point the underlying ephemerides library to it.
+-- | Given a path to a directory, point the underlying ephemerides library to it.
 -- You only need to call this function to provide an explicit ephemerides path,
 -- if the environment variable SE_EPHE_PATH is set, it overrides this function.
 setEphemeridesPath :: FilePath -> IO ()
@@ -209,8 +210,8 @@ julianDay year month day hour = realToFrac $ c_swe_julday y m d h gregorian
 -- This function is in IO because it _may_ allocate memory/read data beyond
 -- its scope, when using ephemeris data. 
 -- Call it with `withEphemerides` or `withoutEphemerides`.
--- Failing to at least call `closeEphemerides` after calling this function
--- will likely result in a segmentation fault!!
+-- Failing to call `closeEphemerides` at some point after calling this function
+-- will likely result in a segmentation fault down the line!!
 calculateCoordinates :: JulianTime -> Planet -> IO (Either String Coordinates)
 calculateCoordinates time planet =
     allocaArray 6 $ \coords -> alloca $ \errorP -> do
@@ -228,16 +229,20 @@ calculateCoordinates time planet =
                 result <- peekArray 6 coords
                 return $ Right $ fromList $ map realToFrac result
 
--- | Given a decimal representation of Julian Time (see @julianDay@),
--- and a set of @Coordinates@ (see @calculateCoordinates@,) and a @HouseSystem@
--- (most applications use @Placidus@,) return the @CuspsCalculation@ with all 12
--- house cusps in that system, and other relevant @Angles@. Notice that certain systems,
--- like Placidus and Koch, are very likely to fail close to the polar circles; in this
+-- | Alias for `calculateCuspsLenient`
+calculateCusps :: JulianTime -> Coordinates -> HouseSystem -> IO CuspsCalculation
+calculateCusps = calculateCuspsLenient
+
+-- | Given a decimal representation of Julian Time (see `julianDay`),
+-- a set of `Coordinates` (see `mkCoordinates`,) and a `HouseSystem`
+-- (most applications use `Placidus`,) return a `CuspsCalculation` with all 12
+-- house cusps in that system, and other relevant `Angles`. Notice that certain systems,
+-- like `Placidus` and `Koch`, are very likely to fail close to the polar circles; in this
 -- and other edge cases, the calculation returns cusps in the `Porphyrius` system.
 -- This function is in IO because it _may_ allocate memory/read data beyond
 -- its scope, when using ephemeris data. 
 -- Call it with `withEphemerides` or `withoutEphemerides`.
--- Failing to at least call `closeEphemerides` after calling this function
+-- Failing to call `closeEphemerides` at some point after calling this function
 -- will likely result in a segmentation fault!!
 calculateCuspsLenient :: JulianTime -> Coordinates -> HouseSystem -> IO CuspsCalculation
 calculateCuspsLenient time loc sys = allocaArray 13 $ \cusps ->

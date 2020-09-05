@@ -2,13 +2,19 @@
 
 ## v0.3.0.0
 
-** Breaking fixes to `calculateCusps` **
+**Breaking fixes to `calculateCusps` and `calculateCoordinates`**
 
-* More closely reflects the underlying behavior for the underlying library: it _may_ return
-  a cusps in the `Porphyrius` system if given a point for which the chosen system fails. To
+* Introduces `withoutEphemerides` which sets the ephe path to `NULL` (via the also new `setNoEphemeridesPath`)
+  and takes care of calling `closeEphemerides`. Use this or `withEphemerides` for memory safety,
+  only call the functions directly if you _really_ know what you're doing (i.e setting/closing ephemerides
+  in some other manner.)
+* Both calculation functions are now `IO` computations, to reflect the fact that they may interact
+  with ephemeris data and allocate memory that `closeEphemerides` _has_ to free.
+* More closely reflects the underlying behavior for calculating cusps: it _may_ return
+  cusps in the `Porphyrius` system if given a point for which the chosen system fails. To
   more explicitly reflect this, we now have `calculateCuspsStrict` which returns a `Left` value
-  if the requested house system couldn't be used (and a `calculateCuspsStrictM` version that
-  uses a `MonadFail`); and `calculateCuspsLenient` which always returns a calculation.
+  if the requested house system couldn't be used. `calculateCuspsLenient`  always returns a calculation,
+  and is aliased to `calculateCusps` as the "default" method.
 * Since the calculation may have changed the house system, we now return a `systemUsed` entry
   in the `CuspsCalculation` record.
 

@@ -90,7 +90,7 @@ spec = do
     describe "calculateCuspsLenient" $ do
       it "falls back to Porphyry when calculating cusps for a place near the poles" $ do
         let time = julianDay 1989 1 6 0.0
-        -- Longyearbyen:
+            -- Longyearbyen:
             place = defaultCoordinates {lat = 78.2232, lng = 15.6267}
             expected = CuspsCalculation {houseCusps = HouseCusps {i = 190.88156009524067, ii = 226.9336677703179, iii = 262.9857754453951, iv = 299.0378831204723, v = 322.9857754453951, vi = 346.9336677703179, vii = 10.881560095240673, viii = 46.933667770317925, ix = 82.98577544539512, x = 119.03788312047234, xi = 142.98577544539512, xii = 166.9336677703179}, angles = Angles {ascendant = 190.88156009524067, mc = 119.03788312047234, armc = 121.17906552074543, vertex = 36.408617337292114, equatorialAscendant = 213.4074315205484, coAscendantKoch = 335.2547300150891, coAscendantMunkasey = 210.81731854391526, polarAscendant = 155.2547300150891}, systemUsed = Porphyrius} 
         calcs <- calculateCuspsLenient time place Placidus
@@ -105,20 +105,19 @@ spec = do
         -- > In addition, Sunshine houses may fail, e.g. when required for a date which is outside the time range of our solar ephemeris. Here, also, Porphyry houses will be provided.
         -- from: https://www.astro.com/swisseph/swephprg.htm
         forAll genCuspsQuery $ \((la, lo), time, houseSystem) -> monadicIO $ do
-          calcs <- run $ calculateCuspsLenient time (defaultCoordinates{lat = la, lng = lo}) houseSystem
+          calcs <- run $ calculateCusps time (defaultCoordinates{lat = la, lng = lo}) houseSystem
           assert $ (systemUsed calcs) `elem` [houseSystem, Porphyrius]
 
-
-  around_ (withEphemerides ephePath) $ do
-    describe "calculateCoordinates with bundled ephemeris" $ do
-      prop "calculates coordinates for any of the planets in a wide range of time." $
-        forAll genCoordinatesQuery $ \(time, planet) -> monadicIO $ do
-          coords <- run $ calculateCoordinates time planet
-          assert $ isRight coords
-      prop "is unable to calculate coordinates for times before or after the bundled ephemerides" $ 
-        forAll genBadCoordinatesQuery $ \(time, planet) -> monadicIO $ do
-          coords <- run $ calculateCoordinates time planet
-          assert $ isLeft coords
+  
+  describe "calculateCoordinates with bundled ephemeris" $ do
+    prop "calculates coordinates for any of the planets in a wide range of time." $
+      forAll genCoordinatesQuery $ \(time, planet) -> monadicIO $ do
+        coords <- run $ withEphemerides ephePath $ calculateCoordinates time planet
+        assert $ isRight coords
+    prop "is unable to calculate coordinates for times before or after the bundled ephemerides" $ 
+      forAll genBadCoordinatesQuery $ \(time, planet) -> monadicIO $ do
+        coords <- run $ withEphemerides ephePath $ calculateCoordinates time planet
+        assert $ isLeft coords
 
 {- For reference, here's an official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
