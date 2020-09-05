@@ -227,6 +227,7 @@ calculateCoordinates time planet =
                           pure $ "Unable to calculate position; NULL error from swiss ephemeris."
                         else
                           peekCAString errorP
+                putStrLn $ "The error was: " ++ msg
                 return $ Left msg
             else do
                 result <- peekArray 6 coords
