@@ -20,8 +20,9 @@ ephePath :: FilePath
 ephePath = "./swedist/sweph_18"
 
 debug :: Applicative f => String -> f ()
---debug = traceM
-debug _ = pure ()
+debug = traceM
+--debug _ = pure ()
+--debug _ = traceM "Exercising stdout"
 
 spec :: Spec
 spec = do
@@ -116,6 +117,12 @@ spec = do
           calcs <- run $ calculateCusps time (defaultCoordinates{lat = la, lng = lo}) houseSystem
           debug $ "prop testing cusps" ++ (show calcs)
           assert $ (systemUsed calcs) `elem` [houseSystem, Porphyrius]
+
+      prop "calculates cusps and angles for points outside of the polar circles in the requested house system, no fallback." $
+        forAll genCuspsNonPolarQuery $ \((la, lo), time, houseSystem) -> monadicIO $ do
+          calcs <- run $ calculateCusps time (defaultCoordinates{lat = la, lng = lo}) houseSystem
+          debug $ "prop testing cusps (non-polar)" ++ (show calcs)
+          assert $ (systemUsed calcs) == houseSystem
 
   around_ ( withEphemerides ephePath ) $ do
     describe "calculateCoordinates with bundled ephemeris" $ do
@@ -273,3 +280,11 @@ genCuspsQuery = do
   -- Regiomontanus and Campanus also struggle to calculate some angles.
   house  <- genHouseSystem
   return (coords, time, house)
+
+genCuspsNonPolarQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
+genCuspsNonPolarQuery = do
+  nonPolarLat <- choose (-40.0, 40.0)
+  anyLong     <- choose (-180.0, 180.0)
+  time        <- genJulian
+  house       <- genHouseSystem
+  return      ((nonPolarLat, anyLong), time, house)
