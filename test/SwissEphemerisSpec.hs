@@ -39,7 +39,7 @@ spec = do
         coords <- calculateCoordinates time Sun
         coords `compareCoords` expectedCoords
 
-      xit "fails to calculate coordinates for Chiron if no ephemeris file is set" $ do
+      it "fails to calculate coordinates for Chiron if no ephemeris file is set" $ do
         let time = julianDay 1989 1 6 0.0
             expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
         coords <- calculateCoordinates time Chiron

@@ -223,7 +223,10 @@ calculateCoordinates time planet =
 
         if unCalcFlag iflgret < 0
             then do
-                msg <- peekCAString errorP
+                msg <- if errorP == nullPtr then 
+                          pure $ "Unable to calculate position; NULL error from swiss ephemeris."
+                        else
+                          peekCAString errorP
                 return $ Left msg
             else do
                 result <- peekArray 6 coords
