@@ -15,7 +15,7 @@ jobs:
         cabal: ['3.2']
         os: [ubuntu-latest, macos-latest]
     env:
-      CONFIG: "--enable-tests --enable-benchmarks --test-show-details=always"
+      CONFIG: "--enable-tests --enable-benchmarks --test-show-details=direct"
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-haskell@v1.1.2
