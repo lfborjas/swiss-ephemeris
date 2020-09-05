@@ -61,8 +61,6 @@
 
 /* attention: Microsoft Compiler does not accept strings > 2048 char */
 
-// NOTE: commented out by Luis Borjas Reyes, for the Haskell library
-
 static char *infocmd0 = "\n\
   Swetest computes a complete set of geocentric planetary positions,\n\
   for a given date or a sequence of dates.\n\
@@ -651,6 +649,7 @@ static char *infoexamp = "\n\
 #define BIT_TIME_LZEROES     8
 #define BIT_TIME_LMT     16
 #define BIT_TIME_LAT     32
+#define BIT_ALLOW_361    64
 
 #define PLSEL_D  "0123456789mtA"
 #define PLSEL_P  "0123456789mtABCcgDEFGHI"
@@ -1798,12 +1797,14 @@ int main(int argc, char *argv[])
       }
       if (do_houses) {
 	double cusp[37];
+	double cusp_speed[37];
 	double ascmc[10];
+	double ascmc_speed[10];
 	int iofs; 
 	if (toupper(ihsy) == 'G') // Gauquelin has 36 cusps
 	  nhouses = 36;
 	iofs = nhouses + 1;
-	iflgret = swe_houses_ex(t,iflag, top_lat, top_long, ihsy, cusp, ascmc);
+	iflgret = swe_houses_ex2(t,iflag, top_lat, top_long, ihsy, cusp, ascmc, cusp_speed, ascmc_speed, serr);
 	// when swe_houses_ex() fails (e.g. with Placidus, Gauquelin, Makranski),
 	// it always returns Porphyry cusps instead
         if (iflgret < 0) { 
@@ -1822,8 +1823,12 @@ int main(int argc, char *argv[])
 	is_first = TRUE;
 	for (ipl = 1; ipl < iofs+8; ipl++) {
 	  x[0] = cusp[ipl];
-	  if (ipl >= iofs)
+	  if (ipl >= iofs) {
 	    x[0] =  ascmc[ipl - iofs];
+	    x[3] =  ascmc_speed[ipl - iofs];
+	  } else {
+	    x[3] =  cusp_speed[ipl];
+	  }
 	  x[1] = 0;	/* latitude */
 	  x[2] = 1.0;	/* pseudo radius vector */
 	  if (ipl == iofs+2) { /* armc is already equatorial! */
@@ -1962,7 +1967,8 @@ static int print_line(int mode, AS_BOOL is_first, int sid_mode)
     sprintf(slon, "%-14s", "long.");
   }
   for (sp = fmt; *sp != '\0'; sp++) {
-    if (is_house && strchr("bBsSrRxXuUQnNfFj+-*/=", *sp) != NULL) continue;
+    // if (is_house && ipl <= nhouses && strchr("bBsSrRxXuUQnNfFj+-*/=", *sp) != NULL) continue;
+    if (is_house && strchr("bBrRxXuUQnNfFj+-*/=", *sp) != NULL) continue;
     if (is_ayana && strchr("bBsSrRxXuUQnNfFj+-*/=", *sp) != NULL) continue;
     if (sp != fmt)
       fputs(gap,stdout);
@@ -2191,8 +2197,10 @@ static int print_line(int mode, AS_BOOL is_first, int sid_mode)
 	  if (*(sp+1) == 'S' || *(sp+1) == 's')
 	    sp++;
 	} else if (*sp == 'S') {
+	  int flag = round_flag;
+	  if (is_house) flag |= BIT_ALLOW_361;	// speed of houses can be > 360
 	  if (is_label) { printf("deg/day"); break; }
-	  fputs(dms(x[3], round_flag),stdout);
+	  fputs(dms(x[3], flag),stdout);
 	} else {
 	  if (is_label) { printf("deg/day"); break; }
 	  if (output_extra_prec)
@@ -2457,7 +2465,7 @@ static char *dms(double xv, int32 iflg)
   if (isnan(xv))
     return "nan";
 #endif
-  if (xv >= 360)
+  if (xv >= 360 && !(iflg & BIT_ALLOW_361))
     xv = 0;
   *s = '\0';
   if (iflg & SEFLG_EQUATORIAL)
@@ -2469,9 +2477,11 @@ static char *dms(double xv, int32 iflg)
     sgn = 1;
   }
   if (iflg & BIT_ROUND_MIN) {
-    xv = swe_degnorm(xv + 0.5/60);
+    if (!(iflg & BIT_ALLOW_361))
+      xv = swe_degnorm(xv + 0.5/60);
   } else if (iflg & BIT_ROUND_SEC) {
-    xv = swe_degnorm(xv + 0.5/3600);
+    if (!(iflg & BIT_ALLOW_361))
+      xv = swe_degnorm(xv + 0.5/3600);
   } else {
   /* rounding 0.9999999999 to 1 */
     if (output_extra_prec)
