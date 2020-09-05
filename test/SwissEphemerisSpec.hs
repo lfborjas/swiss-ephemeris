@@ -8,7 +8,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import Data.Either (isLeft, isRight)
 import Test.Hspec.QuickCheck (prop)
-import Debug.Trace (trace)
+import Debug.Trace (trace, traceM)
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
 -- https://www.astro.com/swisseph/swetest.htm
@@ -35,13 +35,15 @@ spec = do
                     latSpeed = 1.4550248863443192e-5,
                     distSpeed = 1.7364210462433863e-5
                   }
-        coords <- trace "Getting coordinates for the sun" $ calculateCoordinates time Sun
+        coords <- calculateCoordinates time Sun
+        traceM $ "Getting coordinates for the sun" ++ (show coords)
         coords `compareCoords` expectedCoords
 
       it "fails to calculate coordinates for Chiron if no ephemeris file is set" $ do
         let time = julianDay 1989 1 6 0.0
             expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
-        coords <- trace "Getting chiron" $ calculateCoordinates time Chiron
+        coords <- calculateCoordinates time Chiron
+        traceM $ "Getting chiron" ++ (show coords)
         coords `shouldBe` expectedCoords
 
     describe "calculateCuspsStrict" $ do
@@ -76,14 +78,16 @@ spec = do
                   }
                 Placidus
 
-        calcs <- trace "strict cusps succeeds" $ calculateCuspsStrict time place Placidus
+        calcs <- calculateCuspsStrict time place Placidus
+        traceM $ "strict cusps succeeds" ++ (show calcs)
         calcs `compareCalculations` (Right expectedCalculations) 
 
       it "fails when using a house system that is unable to calculate cusps near the poles" $ do
         let time = julianDay 1989 1 6 0.0
             -- Longyearbyen:
             place = defaultCoordinates {lat = 78.2232, lng = 15.6267}
-        calcs <- trace "strict cusps fails" $ calculateCuspsStrict time place Placidus
+        calcs <- calculateCuspsStrict time place Placidus
+        traceM $ "strict cusps fails" ++ (show calcs)
         calcs `shouldSatisfy` isLeft
 
     describe "calculateCuspsLenient" $ do
@@ -92,7 +96,8 @@ spec = do
             -- Longyearbyen:
             place = defaultCoordinates {lat = 78.2232, lng = 15.6267}
             expected = CuspsCalculation {houseCusps = HouseCusps {i = 190.88156009524067, ii = 226.9336677703179, iii = 262.9857754453951, iv = 299.0378831204723, v = 322.9857754453951, vi = 346.9336677703179, vii = 10.881560095240673, viii = 46.933667770317925, ix = 82.98577544539512, x = 119.03788312047234, xi = 142.98577544539512, xii = 166.9336677703179}, angles = Angles {ascendant = 190.88156009524067, mc = 119.03788312047234, armc = 121.17906552074543, vertex = 36.408617337292114, equatorialAscendant = 213.4074315205484, coAscendantKoch = 335.2547300150891, coAscendantMunkasey = 210.81731854391526, polarAscendant = 155.2547300150891}, systemUsed = Porphyrius} 
-        calcs <- trace "lenient cusps succeeds" $ calculateCuspsLenient time place Placidus
+        calcs <- calculateCuspsLenient time place Placidus
+        traceM $ "lenient cusps succeeds" ++ show calcs
         (systemUsed calcs) `shouldBe` Porphyrius
         (Right calcs) `compareCalculations` (Right expected)
 
@@ -104,18 +109,21 @@ spec = do
         -- > In addition, Sunshine houses may fail, e.g. when required for a date which is outside the time range of our solar ephemeris. Here, also, Porphyry houses will be provided.
         -- from: https://www.astro.com/swisseph/swephprg.htm
         forAll genCuspsQuery $ \((la, lo), time, houseSystem) -> monadicIO $ do
-          calcs <- trace "prop testing cusps" $ run $ calculateCusps time (defaultCoordinates{lat = la, lng = lo}) houseSystem
+          calcs <- run $ calculateCusps time (defaultCoordinates{lat = la, lng = lo}) houseSystem
+          traceM $ "prop testing cusps" ++ (show calcs)
           assert $ (systemUsed calcs) `elem` [houseSystem, Porphyrius]
 
   around_ ( withEphemerides ephePath ) $ do
     describe "calculateCoordinates with bundled ephemeris" $ do
       prop "calculates coordinates for any of the planets in a wide range of time." $
         forAll genCoordinatesQuery $ \(time, planet) -> monadicIO $ do
-          coords <- trace "prop testing good coords" $ run $ calculateCoordinates time planet
+          coords <- run $ calculateCoordinates time planet
+          traceM $ "prop testing good coords" ++ (show coords)
           assert $ isRight coords
       prop "is unable to calculate coordinates for times before or after the bundled ephemerides" $ 
         forAll genBadCoordinatesQuery $ \(time, planet) -> monadicIO $ do
-          coords <- trace "prop testing bad coords" $ run $ calculateCoordinates time planet
+          coords <- run $ calculateCoordinates time planet
+          traceM $ "prop testing bad coords" ++ (show coords)
           assert $ isLeft coords
 
 {- For reference, here's an official test output from swetest.c as retrieved from the swetest page:
