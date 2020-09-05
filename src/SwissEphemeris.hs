@@ -270,6 +270,6 @@ calculateCuspsStrict :: JulianTime -> Coordinates -> HouseSystem -> IO (Either S
 calculateCuspsStrict time loc sys = do
   calcs@(CuspsCalculation _ _ sys') <- calculateCuspsLenient time loc sys
   if sys' /= sys then
-    pure $ Left $ "Unable to calculate cusps in the requested house system (used " ++ (show sys') ++ "instead.)"
+    pure $ Left $ "Unable to calculate cusps in the requested house system (used " ++ (show sys') ++ " instead.)"
   else
     pure $ Right calcs
