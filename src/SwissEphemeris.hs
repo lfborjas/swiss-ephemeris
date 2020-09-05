@@ -8,30 +8,30 @@ module SwissEphemeris (
 ,   HouseCusps(..)
 ,   Angles(..)
 ,   CuspsCalculation(..)
+-- constructors
 ,   defaultCoordinates
+,   mkCoordinates
+,   julianDay
+-- management of data files
 ,   setEphemeridesPath
+,   setNoEphemeridesPath
 ,   closeEphemerides
 ,   withEphemerides
-,   julianDay
+,   withoutEphemerides
+-- core calculations
 ,   calculateCoordinates
 ,   calculateCuspsLenient
 ,   calculateCuspsStrict
--- MonadFail versions of calculations.
-,   calculateCoordinatesM
-,   calculateCuspsStrictM
 )where
 
 import           Foreign.SwissEphemeris
 
 import           Foreign
 import           GHC.Generics
-import           System.IO.Unsafe
 import           Foreign.C.Types
 import           Foreign.C.String
 import           Data.Char                      ( ord )
 import Control.Exception (bracket_)
-import Control.Monad.Fail (MonadFail, fail)
-import Prelude hiding (fail)
 
 data Planet = Sun
             | Moon
@@ -78,6 +78,10 @@ data Coordinates = Coordinates
 -- when using it as an input for another function.
 defaultCoordinates :: Coordinates
 defaultCoordinates = Coordinates 0 0 0 0 0 0
+
+-- | Constructor alias of `defaultCoordinates`, since it's used a lot in that role.
+mkCoordinates :: Coordinates
+mkCoordinates = defaultCoordinates
 
 data HouseCusps = HouseCusps
   {
@@ -152,12 +156,17 @@ planetNumber p = PlanetNumber $ CInt y
     y = fromIntegral $ fromEnum p :: Int32
 
 -- | Given an *absolute* path, point the underlying ephemerides library to it.
---  Takes a `String` for easy use with the `directory` package.
 -- You only need to call this function to provide an explicit ephemerides path,
--- if the environment variable `SE_EPHE_PATH` is set, it overrides this function.
-setEphemeridesPath :: String -> IO ()
+-- if the environment variable SE_EPHE_PATH is set, it overrides this function.
+setEphemeridesPath :: FilePath -> IO ()
 setEphemeridesPath path =
     withCString path $ \ephePath -> c_swe_set_ephe_path ephePath
+
+-- | Explicitly state that we don't want to set an ephemeris path,
+-- which will default to the built-in ephemeris, or use the directory
+-- in the SE_EPHE_PATH environment variable, if set.
+setNoEphemeridesPath :: IO ()
+setNoEphemeridesPath = c_swe_set_ephe_path nullPtr
 
 -- | Explicitly release all "cache" pointers and open files obtained by the C
 -- library.
@@ -170,6 +179,15 @@ closeEphemerides = c_swe_close
 withEphemerides :: FilePath -> (IO a) -> IO a
 withEphemerides ephemeridesPath =
   bracket_ (setEphemeridesPath ephemeridesPath)
+           (closeEphemerides)
+
+
+-- | Run a computation with no explicit ephemerides set, if the SE_EPHE_PATH
+-- environment variable is set, that will be used. If not, it'll fall back to
+-- in-memory data.
+withoutEphemerides :: (IO a) -> IO a
+withoutEphemerides =
+  bracket_ (setNoEphemeridesPath)
            (closeEphemerides)
 
 -- | Given year, month and day as @Int@ and a time as @Double@, return
@@ -188,9 +206,14 @@ julianDay year month day hour = realToFrac $ c_swe_julday y m d h gregorian
 -- | Given a decimal representation of Julian Time (see @julianDay@),
 -- and a @Planet@, returns either the position of that planet at the given time,
 -- if available in the ephemeris, or an error.
-calculateCoordinates :: JulianTime -> Planet -> Either String Coordinates
+-- This function is in IO because it _may_ allocate memory/read data beyond
+-- its scope, when using ephemeris data. 
+-- Call it with `withEphemerides` or `withoutEphemerides`.
+-- Failing to at least call `closeEphemerides` after calling this function
+-- will likely result in a segmentation fault!!
+calculateCoordinates :: JulianTime -> Planet -> IO (Either String Coordinates)
 calculateCoordinates time planet =
-    unsafePerformIO $ allocaArray 6 $ \coords -> alloca $ \errorP -> do
+    allocaArray 6 $ \coords -> alloca $ \errorP -> do
         iflgret <- c_swe_calc (realToFrac time)
                               (planetNumber planet)
                               speed
@@ -205,24 +228,19 @@ calculateCoordinates time planet =
                 result <- peekArray 6 coords
                 return $ Right $ fromList $ map realToFrac result
 
--- | 'MonadFail' version of `calculateCoordinates`, in case you don't particularly care
--- about the error message (since it's likely to be due to misconfigured ephe files)
--- and want it to play nice with other `MonadFail` computations.
-calculateCoordinatesM :: MonadFail m => JulianTime -> Planet -> m Coordinates
-calculateCoordinatesM time planet = do
-  let coords = calculateCoordinates time planet
-  case coords of
-    Left e -> fail e
-    Right c -> return c
-
 -- | Given a decimal representation of Julian Time (see @julianDay@),
 -- and a set of @Coordinates@ (see @calculateCoordinates@,) and a @HouseSystem@
 -- (most applications use @Placidus@,) return the @CuspsCalculation@ with all 12
 -- house cusps in that system, and other relevant @Angles@. Notice that certain systems,
 -- like Placidus and Koch, are very likely to fail close to the polar circles; in this
 -- and other edge cases, the calculation returns cusps in the `Porphyrius` system.
-calculateCuspsLenient :: JulianTime -> Coordinates -> HouseSystem -> CuspsCalculation
-calculateCuspsLenient time loc sys = unsafePerformIO $ allocaArray 13 $ \cusps ->
+-- This function is in IO because it _may_ allocate memory/read data beyond
+-- its scope, when using ephemeris data. 
+-- Call it with `withEphemerides` or `withoutEphemerides`.
+-- Failing to at least call `closeEphemerides` after calling this function
+-- will likely result in a segmentation fault!!
+calculateCuspsLenient :: JulianTime -> Coordinates -> HouseSystem -> IO CuspsCalculation
+calculateCuspsLenient time loc sys = allocaArray 13 $ \cusps ->
     allocaArray 10 $ \ascmc -> do
         rval <- c_swe_houses (realToFrac time)
                              (realToFrac $ lat loc)
@@ -237,20 +255,12 @@ calculateCuspsLenient time loc sys = unsafePerformIO $ allocaArray 13 $ \cusps -
                   (fromAnglesList $ map realToFrac $ anglesL)
                   (if rval < 0 then Porphyrius else sys)
 
--- | 'MonadFail' version of `calculateCuspsStrict`, in case you don't particularly care about
--- the error message (there's only one error scenario currently: inability to 
--- determine cusps in coordinates not supported by the requested house system.)
-calculateCuspsStrictM :: MonadFail m => JulianTime -> Coordinates -> HouseSystem -> m CuspsCalculation
-calculateCuspsStrictM time loc sys = do
-  let calcs = calculateCuspsStrict time loc sys
-  case calcs of
-    Left e -> fail e
-    Right c -> return c
-
-calculateCuspsStrict :: JulianTime -> Coordinates -> HouseSystem -> Either String CuspsCalculation
+-- | Unlike `calculateCuspsLenient`, return a `Left` value if the required house system
+-- couldn't be used to perform the calculations.
+calculateCuspsStrict :: JulianTime -> Coordinates -> HouseSystem -> IO (Either String CuspsCalculation)
 calculateCuspsStrict time loc sys = do
-  let calcs@(CuspsCalculation _ _ sys') = calculateCuspsLenient time loc sys
+  calcs@(CuspsCalculation _ _ sys') <- calculateCuspsLenient time loc sys
   if sys' /= sys then
-    Left "Unable to calculate cusps in the requested house system."
+    pure $ Left $ "Unable to calculate cusps in the requested house system (used " ++ (show sys') ++ "instead.)"
   else
-    Right calcs
+    pure $ Right calcs
