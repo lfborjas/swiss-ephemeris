@@ -33,7 +33,6 @@ import           Foreign.C.Types
 import           Foreign.C.String
 import           Data.Char                      ( ord )
 import Control.Exception (bracket_)
-import Debug.Trace (trace)
 
 data Planet = Sun
             | Moon
@@ -225,11 +224,11 @@ calculateCoordinates time planet =
         if unCalcFlag iflgret < 0
             then do
                 msg <- if errorP == nullPtr then 
-                          trace ("No error here") $ pure $ "Unable to calculate position; NULL error from swiss ephemeris."
+                          pure $ "Unable to calculate position; NULL error from swiss ephemeris."
                         else
                           peekCAString errorP
                  
-                trace ("The error was:" ++ msg ) $return $ Left msg
+                return $ Left msg
             else do
                 result <- peekArray 6 coords
                 return $ Right $ fromList $ map realToFrac result

@@ -108,16 +108,16 @@ spec = do
           calcs <- run $ calculateCusps time (defaultCoordinates{lat = la, lng = lo}) houseSystem
           assert $ (systemUsed calcs) `elem` [houseSystem, Porphyrius]
 
-  
-  describe "calculateCoordinates with bundled ephemeris" $ do
-    prop "calculates coordinates for any of the planets in a wide range of time." $
-      forAll genCoordinatesQuery $ \(time, planet) -> monadicIO $ do
-        coords <- run $ withEphemerides ephePath $ calculateCoordinates time planet
-        assert $ isRight coords
-    prop "is unable to calculate coordinates for times before or after the bundled ephemerides" $ 
-      forAll genBadCoordinatesQuery $ \(time, planet) -> monadicIO $ do
-        coords <- run $ withEphemerides ephePath $ calculateCoordinates time planet
-        assert $ isLeft coords
+  around_ ( withEphemerides ephePath ) $ do
+    describe "calculateCoordinates with bundled ephemeris" $ do
+      prop "calculates coordinates for any of the planets in a wide range of time." $
+        forAll genCoordinatesQuery $ \(time, planet) -> monadicIO $ do
+          coords <- run $ calculateCoordinates time planet
+          assert $ isRight coords
+      prop "is unable to calculate coordinates for times before or after the bundled ephemerides" $ 
+        forAll genBadCoordinatesQuery $ \(time, planet) -> monadicIO $ do
+          coords <- run $ calculateCoordinates time planet
+          assert $ isLeft coords
 
 {- For reference, here's an official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
