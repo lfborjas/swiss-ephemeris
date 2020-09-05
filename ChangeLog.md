@@ -4,6 +4,8 @@
 
 **Breaking fixes to `calculateCusps` and `calculateCoordinates`**
 
+* Upgrades to v2.09.03 of the C library, to incorporate some bug fixes that seem marginally related
+  to random breakage I've seen; read more at: https://www.astro.com/swisseph/swephprg.htm#_Toc49847971
 * Introduces `withoutEphemerides` which sets the ephe path to `NULL` (via the also new `setNoEphemeridesPath`)
   and takes care of calling `closeEphemerides`. Use this or `withEphemerides` for memory safety,
   only call the functions directly if you _really_ know what you're doing (i.e setting/closing ephemerides
