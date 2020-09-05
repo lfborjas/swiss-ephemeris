@@ -19,6 +19,7 @@ import Test.Hspec.QuickCheck (prop)
 -- for easier comparison.
 ephePath :: FilePath
 ephePath = unsafePerformIO $ makeAbsolute  "./swedist/sweph_18"
+{-# NOINLINE ephePath #-}
 
 spec :: Spec
 spec = do
