@@ -4,8 +4,6 @@ module SwissEphemerisSpec (spec) where
 
 import SwissEphemeris
 import Test.Hspec
-import System.Directory (makeAbsolute)
-import System.IO.Unsafe (unsafePerformIO)
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import Data.Either (isLeft, isRight)
@@ -18,8 +16,7 @@ import Test.Hspec.QuickCheck (prop)
 -- note the `PlbRS` format, which outputs latitude and longitude as decimals, not degrees
 -- for easier comparison.
 ephePath :: FilePath
-ephePath = unsafePerformIO $ makeAbsolute  "./swedist/sweph_18"
-{-# NOINLINE ephePath #-}
+ephePath = "./swedist/sweph_18"
 
 spec :: Spec
 spec = do
