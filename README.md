@@ -5,7 +5,7 @@
 
 Haskell bindings for the [Swiss Ephemeris](https://www.astro.com/swisseph/swephinfo_e.htm) library.
 
-See the tests in the `spec` folder for example usage, but here's a simple "main" that demonstrates the current abilities, inspired by the [sample program in the official library](https://www.astro.com/swisseph/swephprg.htm#_Toc46406771):
+See the tests in the `spec` folder for thorough example usage, but here's a simple "main" that demonstrates the current abilities, inspired by the [sample program in the official library](https://www.astro.com/swisseph/swephprg.htm#_Toc46406771):
 
 ```haskell
 import SwissEphemeris
@@ -16,28 +16,33 @@ main = do
   setEphemeridesPath "./swedist/sweph_18"
 
   let time = julianDay 1989 1 6 0.0
-  let place = defaultCoordinates{lat = 14.0839053, lng = -87.2750137}
+      place = mkCoordinates{lat = 14.0839053, lng = -87.2750137}
+
   -- locate all bodies between the Sun and Chiron (further asteroids currently not supported, but they're an enum entry away)
-  let planetPositions = map (\p -> (p, (calculateCoordinates time p))) [Sun .. Chiron]
   -- use the Placidus house system, which is the most traditional.
-  let cusps  = calculateCusps time place Placidus
-
-  forM_ planetPositions $ \(planet, coord)->
+  forM_ [Sun .. Chiron] $ \planet -> do
+    -- if no ephemerides data is available for the given planetary body, a `Left` value
+    -- will be returned.
+    coord <- calculateCoordinates time planet
     putStrLn $ show planet <> ": " <> show coord
+  -- Calculate cusps for the given time and place, preferring the `Placidus` system.
+  -- note that the underlying library may decide to use a different system if it can't
+  -- calculate cusps (happens for the Placidus and Koch systems in locations near the poles.)
+  cusps <- calculateCusps time place Placidus
   putStrLn $ "Cusps: " <> show cusps
+  -- the underlying library, sadly, allocates some memory/file descriptors, you can free it with:
+  closeEphemerides
 ```
+The above should print the latitude and longitude (plus some velocities) for all planets, and the cusps and other major angles.
 
-Should print the latitude and longitude (plus some velocities) for all planets, and the cusps and other major angles.
+There's also `withEphemerides` and `withoutEphemerides` bracket-style functions that take care of closing the files for you.
 
-To see actual results and more advanced usage, check out the tests. For some more advanced examples, see `swetest.c` and `swemini.c` in the `csrc` directory: they're the test/example 
-programs provided by the original authors.
+To see actual results and more advanced usage, check out the tests. For some more advanced examples, see `swetest.c` and `swemini.c` in the `csrc` directory: they're the test/example programs provided by the original authors.
 
-Both calculation functions will return `Either String a` (with `a` being the actual calculation,) in case an error is raised
-by the underlying library. If you'd prefer a `MonadFail` version, check out `calculateCuspsM` and `calculateCoordinatesM`.
 
 ## Notes
 
-All the code in the `csrc` folder comes directly from the [latest official tarball, v2.09.01](https://www.astro.com/ftp/swisseph/). 
+All the code in the `csrc` folder comes directly from the [latest official tarball, v2.09.03](https://www.astro.com/ftp/swisseph/). 
 
 The `swedist` folder includes the original documentation from the tarball in PDF (see the `doc`) folder, and a copy of ephemeris data files.
 

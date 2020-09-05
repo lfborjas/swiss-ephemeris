@@ -72,12 +72,7 @@ foreign import ccall unsafe "swephexp.h swe_calc_ut"
                -> CalcFlag
                -> Ptr CDouble
                -> CString
-               -> CalcFlag
-
-foreign import ccall unsafe "swephexp.h swe_get_planet_name"
-    c_swe_get_planet_name :: CInt
-                          -> CString
-                          -> CString
+               -> (IO CalcFlag)
 
 foreign import ccall unsafe "swephexp.h swe_houses"
     c_swe_houses :: CDouble -- in fact, a Julian day "Number"
@@ -86,4 +81,4 @@ foreign import ccall unsafe "swephexp.h swe_houses"
                  -> CInt -- house system (see .hs version of this file)
                  -> Ptr CDouble -- cusps, 13 doubles (or 37 in system G)
                  -> Ptr CDouble -- ascmc, 10 doubles
-                 -> CInt
+                 -> (IO CInt)
