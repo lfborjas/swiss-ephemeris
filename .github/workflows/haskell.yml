@@ -14,8 +14,6 @@ jobs:
         ghc: ['8.6.5', '8.8.3']
         cabal: ['3.2']
         os: [ubuntu-latest]
-
-    steps:
     env:
       CONFIG: "--enable-tests --enable-benchmarks"
     steps:
