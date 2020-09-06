@@ -20,36 +20,36 @@ ephePath :: FilePath
 ephePath = "./swedist/sweph_18"
 
 debug :: Applicative f => String -> f ()
-debug = traceM
---debug _ = pure ()
+--debug = traceM
+debug _ = pure ()
 --debug _ = traceM "Exercising stdout"
 
 spec :: Spec
 spec = do
   around_ ( withoutEphemerides ) $ do
-    describe "calculateCoordinates" $ do
-      it "calculates coordinates for the Sun for a specific day" $ do
-        let time = julianDay 1989 1 6 0.0
-            expectedCoords =
-              Right $
-                Coordinates
-                  { lng = 285.64723120365153,
-                    lat = -8.664716530514133e-5,
-                    distance = 0.9833448914987339,
-                    lngSpeed = 1.0196505771457982,
-                    latSpeed = 1.4550248863443192e-5,
-                    distSpeed = 1.7364210462433863e-5
-                  }
-        coords <- calculateCoordinates time Sun
-        debug $ "Getting coordinates for the sun: " ++ (show coords)
-        coords `compareCoords` expectedCoords
+    -- describe "calculateCoordinates" $ do
+    --   it "calculates coordinates for the Sun for a specific day" $ do
+    --     let time = julianDay 1989 1 6 0.0
+    --         expectedCoords =
+    --           Right $
+    --             Coordinates
+    --               { lng = 285.64723120365153,
+    --                 lat = -8.664716530514133e-5,
+    --                 distance = 0.9833448914987339,
+    --                 lngSpeed = 1.0196505771457982,
+    --                 latSpeed = 1.4550248863443192e-5,
+    --                 distSpeed = 1.7364210462433863e-5
+    --               }
+    --     coords <- calculateCoordinates time Sun
+    --     debug $ "Getting coordinates for the sun: " ++ (show coords)
+    --     coords `compareCoords` expectedCoords
 
-      it "fails to calculate coordinates for Chiron if no ephemeris file is set" $ do
-        let time = julianDay 1989 1 6 0.0
-            expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
-        coords <- calculateCoordinates time Chiron
-        debug $ "Getting chiron: " ++ (show coords)
-        coords `shouldBe` expectedCoords
+    --   it "fails to calculate coordinates for Chiron if no ephemeris file is set" $ do
+    --     let time = julianDay 1989 1 6 0.0
+    --         expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
+    --     coords <- calculateCoordinates time Chiron
+    --     debug $ "Getting chiron: " ++ (show coords)
+    --     coords `shouldBe` expectedCoords
 
     describe "calculateCuspsStrict" $ do
       it "calculates cusps and angles for a given place and time, keeping the same house system (not near the poles)" $ do
@@ -124,18 +124,18 @@ spec = do
           debug $ "prop testing cusps (non-polar): " ++ (show calcs)
           assert $ (systemUsed calcs) == houseSystem
 
-  around_ ( withEphemerides ephePath ) $ do
-    describe "calculateCoordinates with bundled ephemeris" $ do
-      prop "calculates coordinates for any of the planets in a wide range of time." $
-        forAll genCoordinatesQuery $ \(time, planet) -> monadicIO $ do
-          coords <- run $ calculateCoordinates time planet
-          debug $ "prop testing good coords: " ++ (show coords)
-          assert $ isRight coords
-      prop "is unable to calculate coordinates for times before or after the bundled ephemerides" $ 
-        forAll genBadCoordinatesQuery $ \(time, planet) -> monadicIO $ do
-          coords <- run $ calculateCoordinates time planet
-          debug $ "prop testing bad coords: " ++ (show coords)
-          assert $ isLeft coords
+  -- around_ ( withEphemerides ephePath ) $ do
+  --   describe "calculateCoordinates with bundled ephemeris" $ do
+  --     prop "calculates coordinates for any of the planets in a wide range of time." $
+  --       forAll genCoordinatesQuery $ \(time, planet) -> monadicIO $ do
+  --         coords <- run $ calculateCoordinates time planet
+  --         debug $ "prop testing good coords: " ++ (show coords)
+  --         assert $ isRight coords
+  --     prop "is unable to calculate coordinates for times before or after the bundled ephemerides" $ 
+  --       forAll genBadCoordinatesQuery $ \(time, planet) -> monadicIO $ do
+  --         coords <- run $ calculateCoordinates time planet
+  --         debug $ "prop testing bad coords: " ++ (show coords)
+  --         assert $ isLeft coords
 
 {- For reference, here's an official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
