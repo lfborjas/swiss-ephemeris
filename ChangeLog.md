@@ -1,5 +1,12 @@
 # Changelog for swiss-ephemeris
 
+## v0.3.1.0
+
+* Fixes occasional segmentation fault (caught most often in the more memory-strapped CI server than in my computer,)
+  caused by using [`alloca`](https://hackage.haskell.org/package/base-4.14.0.0/docs/Foreign-Marshal-Alloc.html#v:alloca) for the error string and, when no error string was populated, ending with undefined
+  behavior. Now we explicitly allocate the 256 `char`s that the documentation and C sources recommend, which seems to be always
+  freed by Haskell, vs. leaving a hole somewhere when the underlying library fails to terminate the string.
+
 ## v0.3.0.0
 
 **Breaking fixes to `calculateCusps` and `calculateCoordinates`**
