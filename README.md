@@ -20,7 +20,7 @@ main = do
 
   -- locate all bodies between the Sun and Chiron (further asteroids currently not supported, but they're an enum entry away)
   -- use the Placidus house system, which is the most traditional.
-  forM_ [Sun .. Chiron] $ \planet -> do
+  forM_ [Sun .. Chiron] $ \planet ->
     -- if no ephemerides data is available for the given planetary body, a `Left` value
     -- will be returned.
     coord <- calculateCoordinates time planet
@@ -28,12 +28,13 @@ main = do
   -- Calculate cusps for the given time and place, preferring the `Placidus` system.
   -- note that the underlying library may decide to use a different system if it can't
   -- calculate cusps (happens for the Placidus and Koch systems in locations near the poles.)
-  cusps <- calculateCusps time place Placidus
+  cusps <- calculateCusps Placidus time place
   putStrLn $ "Cusps: " <> show cusps
-  -- the underlying library, sadly, allocates some memory/file descriptors, you can free it with:
+
+  -- the underlying library, sadly, allocates some in-memory "cache" and file descriptors, you can free it with:
   closeEphemerides
 ```
-The above should print the latitude and longitude (plus some velocities) for all planets, and the cusps and other major angles.
+The above should print the latitude and longitude (plus some velocities) for all planets, and then the cusps and other major angles.
 
 There's also `withEphemerides` and `withoutEphemerides` bracket-style functions that take care of closing the files for you.
 

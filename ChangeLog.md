@@ -1,5 +1,15 @@
 # Changelog for swiss-ephemeris
 
+## v1.0.0.0 (2020-09-07)
+
+* Refactor the `calculateCusps` function:
+  - Return a simple list of cusps. This allows for future implementations of exotic systems
+    that have more (or fewer?) cusps, and hews closer to regular usage (which iterates over the cusps.)
+  - The house system comes first, to allow for more ergonomic partial application for uses where one system is
+    the "default" (e.g. `traditionalCusps = calculateCusps Placidus`.)
+* Cleans up haddocks, adds many links to the original docs (and notes the headings, since updates to those
+  seem to break hyperlinking?)
+
 ## v0.3.1.0
 
 * Fixes occasional segmentation fault (caught most often in the more memory-strapped CI server than in my computer,)
