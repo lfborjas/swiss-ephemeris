@@ -8,6 +8,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import Data.Either (isLeft, isRight)
 import Test.Hspec.QuickCheck (prop)
+import Control.Monad (forM_)
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
 -- https://www.astro.com/swisseph/swetest.htm
@@ -49,20 +50,20 @@ spec = do
         let place = mkCoordinates {lat = 14.0839053, lng = -87.2750137}
         let expectedCalculations =
               CuspsCalculation
-                HouseCusps
-                  { i = 112.20189657163523,
-                    ii = 138.4658382335878,
-                    iii = 167.69682489058204,
-                    iv = 199.79861981778183,
-                    v = 232.2797046698429,
-                    vi = 263.0249102802477,
-                    vii = 292.20189657163525,
-                    viii = 318.46583823358776,
-                    ix = 347.69682489058204,
-                    x = 19.798619817781823,
-                    xi = 52.27970466984291,
-                    xii = 83.02491028024768
-                  }
+                [
+                  112.20189657163523,
+                  138.4658382335878,
+                  167.69682489058204,
+                  199.79861981778183,
+                  232.2797046698429,
+                  263.0249102802477,
+                  292.20189657163525,
+                  318.46583823358776,
+                  347.69682489058204,
+                  19.798619817781823,
+                  52.27970466984291,
+                  83.02491028024768
+                ]
                 Angles
                   { ascendant = 112.20189657163523,
                     mc = 19.798619817781823,
@@ -90,7 +91,7 @@ spec = do
         let time = julianDay 1989 1 6 0.0
             -- Longyearbyen:
             place = defaultCoordinates {lat = 78.2232, lng = 15.6267}
-            expected = CuspsCalculation {houseCusps = HouseCusps {i = 190.88156009524067, ii = 226.9336677703179, iii = 262.9857754453951, iv = 299.0378831204723, v = 322.9857754453951, vi = 346.9336677703179, vii = 10.881560095240673, viii = 46.933667770317925, ix = 82.98577544539512, x = 119.03788312047234, xi = 142.98577544539512, xii = 166.9336677703179}, angles = Angles {ascendant = 190.88156009524067, mc = 119.03788312047234, armc = 121.17906552074543, vertex = 36.408617337292114, equatorialAscendant = 213.4074315205484, coAscendantKoch = 335.2547300150891, coAscendantMunkasey = 210.81731854391526, polarAscendant = 155.2547300150891}, systemUsed = Porphyrius} 
+            expected = CuspsCalculation {houseCusps = [190.88156009524067,226.9336677703179,262.9857754453951,299.0378831204723,322.9857754453951,346.9336677703179,10.881560095240673,46.933667770317925,82.98577544539512,119.03788312047234,142.98577544539512,166.9336677703179], angles = Angles {ascendant = 190.88156009524067, mc = 119.03788312047234, armc = 121.17906552074543, vertex = 36.408617337292114, equatorialAscendant = 213.4074315205484, coAscendantKoch = 335.2547300150891, coAscendantMunkasey = 210.81731854391526, polarAscendant = 155.2547300150891}, systemUsed = Porphyrius}
         calcs <- calculateCuspsLenient time place Placidus
         (systemUsed calcs) `shouldBe` Porphyrius
         (Right calcs) `compareCalculations` (Right expected)
@@ -105,11 +106,14 @@ spec = do
         forAll genCuspsQuery $ \((la, lo), time, houseSystem) -> monadicIO $ do
           calcs <- run $ calculateCusps time (defaultCoordinates{lat = la, lng = lo}) houseSystem
           assert $ (systemUsed calcs) `elem` [houseSystem, Porphyrius]
+          assert $ (length $ houseCusps calcs) == 12
 
       prop "calculates cusps and angles for points outside of the polar circles in the requested house system, no fallback." $
         forAll genCuspsNonPolarQuery $ \((la, lo), time, houseSystem) -> monadicIO $ do
           calcs <- run $ calculateCusps time (defaultCoordinates{lat = la, lng = lo}) houseSystem
           assert $ (systemUsed calcs) == houseSystem
+          assert $ (length $ houseCusps calcs) == 12
+
 
   around_ ( withEphemerides ephePath ) $ do
     describe "calculateCoordinates with bundled ephemeris" $ do
@@ -189,18 +193,8 @@ compareCalculations (Right (CuspsCalculation housesA anglesA sysA)) (Right (Cusp
   -- compare systems: note that for polar coordinates, it may be switched to Porphyry
   sysA `shouldBe` sysB
 
-  i housesA `shouldBeApprox` i housesB
-  ii housesA `shouldBeApprox` ii housesB
-  iii housesA `shouldBeApprox` iii housesB
-  iv housesA `shouldBeApprox` iv housesB
-  v housesA `shouldBeApprox` v housesB
-  vi housesA `shouldBeApprox` vi housesB
-  vii housesA `shouldBeApprox` vii housesB
-  viii housesA `shouldBeApprox` viii housesB
-  ix housesA `shouldBeApprox` ix housesB
-  x housesA `shouldBeApprox` x housesB
-  xi housesA `shouldBeApprox` xi housesB
-  xii housesA `shouldBeApprox` xii housesB
+  forM_ (zip housesA housesB) $ \(a, b) ->
+    a `shouldBeApprox` b
 
   -- angles:
   ascendant anglesA `shouldBeApprox` ascendant anglesB
