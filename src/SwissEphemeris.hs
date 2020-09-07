@@ -65,12 +65,12 @@ type JulianTime = Double
 
 data Coordinates = Coordinates
   {
-    lng :: Double
-  , lat :: Double
-  , distance :: Double
-  , lngSpeed :: Double
-  , latSpeed :: Double
-  , distSpeed :: Double
+    lng :: !Double
+  , lat :: !Double
+  , distance :: !Double
+  , lngSpeed :: !Double
+  , latSpeed :: !Double
+  , distSpeed :: !Double
   } deriving (Show, Eq, Ord, Generic)
 
 -- | Default coordinates with all zeros -- when you don't care about/know the velocities,
@@ -214,7 +214,7 @@ julianDay year month day hour = realToFrac $ c_swe_julday y m d h gregorian
 -- will likely result in a segmentation fault down the line!!
 calculateCoordinates :: JulianTime -> Planet -> IO (Either String Coordinates)
 calculateCoordinates time planet =
-    allocaArray 6 $ \coords -> alloca $ \errorP -> do
+    allocaArray 6 $ \coords -> allocaArray 256 $ \errorP -> do
         iflgret <- c_swe_calc (realToFrac time)
                               (planetNumber planet)
                               speed
@@ -227,7 +227,6 @@ calculateCoordinates time planet =
                           pure $ "Unable to calculate position; NULL error from swiss ephemeris."
                         else
                           peekCAString errorP
-                 
                 return $ Left msg
             else do
                 result <- peekArray 6 coords
