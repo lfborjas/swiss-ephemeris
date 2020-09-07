@@ -1,19 +1,24 @@
 {-# LANGUAGE DeriveGeneric  #-}
 
-{-
+{-|
 Module: SwissEphemeris
 Description: Bindings to the swisseph C library.
 License: GPL-2
 Maintainer: swiss-ephemeris@lfborjas.com
 Portability: POSIX
 
-Exposes types and functions that mirror the rich functionality of <https://www.astro.com/swisseph/swephinfo_e.htmSwiss Ephemeris>.
+Exposes types and functions that mirror the rich functionality of <https://www.astro.com/swisseph/swephinfo_e.htm Swiss Ephemeris>.
 Currently only certain bodies are exposed as data constructors, same for the major house systems. This is for the sake of simplicity
 only, if you need more, please refer to the bundled header files in @csrc@.
 
 You'll need to procure ephemeris files (see the official site, linked above) if you wish to obtain positions for planets outside of the main planetary
 bodies in the solar system, or before 3000 B.C or after 3000 A.D. For example, the test suite uses a small ephemeris
 that includes data for the asteroid Chiron, which is astrologically relevant in most modern practices.
+
+Currently, only `calculateCoordinates` (to calculate the geocentric position of a given celestial body at a given Julian time,)
+and `calculateCusps` (to calculate house cusps and relevant angles in various house systems/traditions) are provided; plus a
+small `julianDay` function to translate between gregorian and julian times. There's a wealth of other calculations possible with
+the underlying library, please refer to their documentation and the bundled sources for ideas!
 -}
 
 module SwissEphemeris (
@@ -213,7 +218,7 @@ calculateCoordinates time planet =
                 return $ Right $ coordinatesFromList $ map realToFrac result
 
 -- | Alias for `calculateCuspsLenient`
-calculateCusps :: JulianTime -> Coordinates -> HouseSystem -> IO CuspsCalculation
+calculateCusps :: HouseSystem -> JulianTime -> Coordinates -> IO CuspsCalculation
 calculateCusps = calculateCuspsLenient
 
 -- | Given a decimal representation of Julian Time (see `julianDay`),
@@ -224,8 +229,8 @@ calculateCusps = calculateCuspsLenient
 -- like `Placidus` and `Koch`, are very likely to fail close to the polar circles; in this
 -- and other edge cases, the calculation returns cusps in the `Porphyrius` system.
 -- The underlying library may do IO when consulting ephemerides data.
-calculateCuspsLenient :: JulianTime -> Coordinates -> HouseSystem -> IO CuspsCalculation
-calculateCuspsLenient time loc sys = 
+calculateCuspsLenient :: HouseSystem -> JulianTime -> Coordinates -> IO CuspsCalculation
+calculateCuspsLenient sys time loc = 
     allocaArray 13 $ \cusps -> allocaArray 10 $ \ascmc -> do
         rval <- c_swe_houses (realToFrac time)
                              (realToFrac $ lat loc)
@@ -249,9 +254,9 @@ calculateCuspsLenient time loc sys =
 
 -- | Unlike `calculateCuspsLenient`, return a `Left` value if the required house system
 -- couldn't be used to perform the calculations.
-calculateCuspsStrict :: JulianTime -> Coordinates -> HouseSystem -> IO (Either String CuspsCalculation)
-calculateCuspsStrict time loc sys = do
-  calcs@(CuspsCalculation _ _ sys') <- calculateCuspsLenient time loc sys
+calculateCuspsStrict :: HouseSystem -> JulianTime -> Coordinates -> IO (Either String CuspsCalculation)
+calculateCuspsStrict sys time loc = do
+  calcs@(CuspsCalculation _ _ sys') <- calculateCuspsLenient sys time loc
   if sys' /= sys then
     pure $ Left $ "Unable to calculate cusps in the requested house system (used " ++ (show sys') ++ " instead.)"
   else
