@@ -4,8 +4,6 @@ module SwissEphemerisSpec (spec) where
 
 import SwissEphemeris
 import Test.Hspec
-import System.Directory (makeAbsolute)
-import System.IO.Unsafe (unsafePerformIO)
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import Data.Either (isLeft, isRight)
@@ -18,8 +16,7 @@ import Test.Hspec.QuickCheck (prop)
 -- note the `PlbRS` format, which outputs latitude and longitude as decimals, not degrees
 -- for easier comparison.
 ephePath :: FilePath
-ephePath = unsafePerformIO $ makeAbsolute  "./swedist/sweph_18"
-{-# NOINLINE ephePath #-}
+ephePath = "./swedist/sweph_18"
 
 spec :: Spec
 spec = do
@@ -108,6 +105,11 @@ spec = do
         forAll genCuspsQuery $ \((la, lo), time, houseSystem) -> monadicIO $ do
           calcs <- run $ calculateCusps time (defaultCoordinates{lat = la, lng = lo}) houseSystem
           assert $ (systemUsed calcs) `elem` [houseSystem, Porphyrius]
+
+      prop "calculates cusps and angles for points outside of the polar circles in the requested house system, no fallback." $
+        forAll genCuspsNonPolarQuery $ \((la, lo), time, houseSystem) -> monadicIO $ do
+          calcs <- run $ calculateCusps time (defaultCoordinates{lat = la, lng = lo}) houseSystem
+          assert $ (systemUsed calcs) == houseSystem
 
   around_ ( withEphemerides ephePath ) $ do
     describe "calculateCoordinates with bundled ephemeris" $ do
@@ -263,3 +265,11 @@ genCuspsQuery = do
   -- Regiomontanus and Campanus also struggle to calculate some angles.
   house  <- genHouseSystem
   return (coords, time, house)
+
+genCuspsNonPolarQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
+genCuspsNonPolarQuery = do
+  nonPolarLat <- choose (-40.0, 40.0)
+  anyLong     <- choose (-180.0, 180.0)
+  time        <- genJulian
+  house       <- genHouseSystem
+  return      ((nonPolarLat, anyLong), time, house)

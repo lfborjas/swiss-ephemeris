@@ -10,12 +10,13 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        ghc: ['8.6.5', '8.8.3']
+        ghc: ['8.0.2', '8.2.2', '8.4.4', '8.6.5', '8.8.3']
         cabal: ['3.2']
         os: [ubuntu-latest, macos-latest]
     env:
-      CONFIG: "--enable-tests --enable-benchmarks --test-show-details=always"
+      CONFIG: "--enable-tests --enable-benchmarks --test-show-details=streaming"
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-haskell@v1.1.2

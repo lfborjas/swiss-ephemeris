@@ -209,12 +209,9 @@ julianDay year month day hour = realToFrac $ c_swe_julday y m d h gregorian
 -- if available in the ephemeris, or an error.
 -- This function is in IO because it _may_ allocate memory/read data beyond
 -- its scope, when using ephemeris data. 
--- Call it with `withEphemerides` or `withoutEphemerides`.
--- Failing to call `closeEphemerides` at some point after calling this function
--- will likely result in a segmentation fault down the line!!
 calculateCoordinates :: JulianTime -> Planet -> IO (Either String Coordinates)
 calculateCoordinates time planet =
-    allocaArray 6 $ \coords -> alloca $ \errorP -> do
+    allocaArray 6 $ \coords -> allocaArray 256 $ \errorP -> do
         iflgret <- c_swe_calc (realToFrac time)
                               (planetNumber planet)
                               speed
@@ -223,11 +220,7 @@ calculateCoordinates time planet =
 
         if unCalcFlag iflgret < 0
             then do
-                msg <- if errorP == nullPtr then 
-                          pure $ "Unable to calculate position; NULL error from swiss ephemeris."
-                        else
-                          peekCAString errorP
-                 
+                msg <- peekCAString errorP
                 return $ Left msg
             else do
                 result <- peekArray 6 coords
@@ -245,9 +238,6 @@ calculateCusps = calculateCuspsLenient
 -- and other edge cases, the calculation returns cusps in the `Porphyrius` system.
 -- This function is in IO because it _may_ allocate memory/read data beyond
 -- its scope, when using ephemeris data. 
--- Call it with `withEphemerides` or `withoutEphemerides`.
--- Failing to call `closeEphemerides` at some point after calling this function
--- will likely result in a segmentation fault!!
 calculateCuspsLenient :: JulianTime -> Coordinates -> HouseSystem -> IO CuspsCalculation
 calculateCuspsLenient time loc sys = allocaArray 13 $ \cusps ->
     allocaArray 10 $ \ascmc -> do
@@ -270,6 +260,6 @@ calculateCuspsStrict :: JulianTime -> Coordinates -> HouseSystem -> IO (Either S
 calculateCuspsStrict time loc sys = do
   calcs@(CuspsCalculation _ _ sys') <- calculateCuspsLenient time loc sys
   if sys' /= sys then
-    pure $ Left $ "Unable to calculate cusps in the requested house system (used " ++ (show sys') ++ "instead.)"
+    pure $ Left $ "Unable to calculate cusps in the requested house system (used " ++ (show sys') ++ " instead.)"
   else
     pure $ Right calcs
