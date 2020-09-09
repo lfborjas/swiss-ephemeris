@@ -114,14 +114,6 @@ foreign import ccall unsafe "swephexp.h swe_house_pos"
                     -> CString     -- char[256] for errors.
                     -> (IO CDouble)
 
--- | Convert between coordinate systems: positive obliquity for equ -> ecliptic,
--- negative obliquity for ecliptic -> equ
-foreign import ccall unsafe "swephexp.h swe_cotrans"
-    c_swe_cotrans :: Ptr CDouble -- double[3]: lng, lat, distance
-                  -> Ptr CDouble -- double[3]: ascension, declination, distance (or viceversa)
-                  -> CDouble     -- obliquity of the ecliptic.
-                  -> IO ()
-
 foreign import ccall unsafe "swephexp.h swe_cotrans_sp"
     c_swe_cotrans_sp :: Ptr CDouble -- double[6]: lng, lat, distance
                      -> Ptr CDouble -- double[6]: ascension, declination, distance (or viceversa)

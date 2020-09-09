@@ -177,7 +177,7 @@ equatorialToEcliptic oAndN equatorial =
 coordinateTransform' :: Double -> [Double] -> [Double]
 coordinateTransform' obliquity ins =
   unsafePerformIO $ do
-    withArray (map realToFrac ins) $ \xpo -> allocaArray 6 $ \xpn -> do
+    withArray (map realToFrac $ take 6 ins) $ \xpo -> allocaArray 6 $ \xpn -> do
       _ <- c_swe_cotrans_sp xpo xpn (realToFrac obliquity)
       result <- peekArray 6 xpn
       return $ map realToFrac result
