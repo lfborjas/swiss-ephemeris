@@ -77,6 +77,7 @@ newtype ARMC = ARMC {unArmc :: Double}
 -- and <https://www.astro.com/swisseph/swisseph.htm#_Toc46391705 6.2 Astrological house systems>
 type HouseCusp = Double
 
+
 -- | Position data for a celestial body, includes rotational speeds.
 -- see:
 -- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847837 3.4 Position and speed>

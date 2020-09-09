@@ -114,6 +114,12 @@ spec = do
           assert $ (systemUsed calcs) == houseSystem
           assert $ (length $ houseCusps calcs) == 12
 
+    describe "coordinate transformation" $ do
+      it "converts between ecliptic and equatorial" $ do
+        let e = eclipticToEquatorial (ObliquityAndNutation (23.2) 0 0 0) $ EclipticPosition 285.6465775 (-0.0000826) 1 0 0 0
+            equatorial = EquatorialPosition {rightAscension = 286.9471857576873, declination = -22.29312747773143, eqDistance = 1.0, ascensionSpeed = 0.0, declinationSpeed = 0.0, eqDistanceSpeed = 0.0}
+        e `shouldBe` equatorial
+
     describe "calculateHousePositionSimple" $ do
       it "calculates accurate house positions for some known planets" $ do
         let time = julianDay 1989 1 6 0.0

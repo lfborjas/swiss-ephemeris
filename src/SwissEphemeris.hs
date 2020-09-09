@@ -49,6 +49,9 @@ module SwissEphemeris (
 ,   calculateCuspsLenient
 ,   calculateCuspsStrict
 ,   calculateHousePositionSimple
+-- utility
+,   equatorialToEcliptic
+,   eclipticToEquatorial
 ) where
 
 import           Foreign.SwissEphemeris
@@ -58,6 +61,7 @@ import           Foreign.C.String
 import Control.Exception (bracket_)
 
 import SwissEphemeris.Internal
+import System.IO.Unsafe (unsafePerformIO)
 
 -- | Given a path to a directory, point the underlying ephemerides library to it.
 -- You only need to call this function to provide an explicit ephemerides path,
@@ -153,6 +157,30 @@ calculateCoordinates' options time planet =
                 result <- peekArray 6 coords
                 return $ Right $ map realToFrac result
 
+-- | Non-speed preserving transformation between 
+eclipticToEquatorial :: ObliquityAndNutation -> EclipticPosition -> EquatorialPosition
+eclipticToEquatorial oAndN ecliptic =
+  let obliquityLn = eclipticObliquity oAndN
+      eclipticPos = [lng ecliptic, lat ecliptic, distance ecliptic]
+      (asc:dec:dist:_)  = coordinateTransform' (negate obliquityLn) eclipticPos
+  in
+    EquatorialPosition asc dec dist 0 0 0
+
+equatorialToEcliptic :: ObliquityAndNutation -> EquatorialPosition -> EclipticPosition
+equatorialToEcliptic oAndN equatorial =
+  let obliquityLn   = eclipticObliquity oAndN
+      equatorialPos = [rightAscension equatorial, declination equatorial, eqDistance equatorial]
+      (ln:lt:dist:_)  = coordinateTransform' obliquityLn equatorialPos
+  in
+    EclipticPosition ln lt dist 0 0 0
+
+coordinateTransform' :: Double -> [Double] -> [Double]
+coordinateTransform' obliquity ins =
+  unsafePerformIO $ do
+    withArray (map realToFrac ins) $ \xpo -> allocaArray 3 $ \xpn -> do
+      _ <- c_swe_cotrans xpo xpn (realToFrac obliquity)
+      result <- peekArray 3 xpn
+      return $ map realToFrac result
 
 -- | Alias for `calculateCuspsLenient`
 calculateCusps :: HouseSystem -> JulianTime -> Coordinates -> IO CuspsCalculation
