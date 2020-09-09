@@ -25,14 +25,13 @@ module SwissEphemeris (
 ,   HouseSystem(..)
 ,   JulianTime
 ,   HouseCusp
-,   Coordinates(..)
-,   EclipticCoordinates
+,   Coordinates
+,   EclipticPosition(..)
 ,   EquatorialPosition(..)
 ,   ObliquityAndNutation(..)
 ,   Angles(..)
 ,   CuspsCalculation(..)
 -- constructors
-,   defaultCoordinates
 ,   mkCoordinates
 ,   julianDay
 -- management of data files
@@ -48,6 +47,7 @@ module SwissEphemeris (
 ,   calculateCusps
 ,   calculateCuspsLenient
 ,   calculateCuspsStrict
+,   calculateHousePositionSimple
 ) where
 
 import           Foreign.SwissEphemeris
@@ -197,3 +197,57 @@ calculateCuspsStrict sys time loc = do
     pure $ Left $ "Unable to calculate cusps in the requested house system (used " ++ (show sys') ++ " instead.)"
   else
     pure $ Right calcs
+
+-- | Calculates the house position of a planet in a house in the given system.
+-- requires the geographic coordinates and time of the birth/event, and the
+-- ecliptic coordinates of the planet/body.
+-- NOTE: for the Koch system, this is likely to fail, or return counterintuitive
+-- results.
+calculateHousePositionSimple :: HouseSystem -> JulianTime -> Coordinates -> EclipticPosition -> IO (Either String HousePosition)
+calculateHousePositionSimple sys time loc pos = do
+  obliquityAndNutation <- calculateObliquityAndNutation time
+  case obliquityAndNutation of
+    Left e -> return $ Left e
+    Right on -> do
+      siderealTime <- calculateSiderealTime time on
+      let armc' = sidToArmc siderealTime
+      calculateHousePosition sys armc' loc on pos
+
+---
+--- NOT EXPORTED (YET)
+--- 
+
+-- | If you happen to have the ARMC (obtained from calculateCusps, or by converting
+-- sidereal time, which is in hours, to degrees,) and obliquity and nutation,
+-- you can use this method to calculate a planet's house position.
+-- Usually, what you have is just the time and place of the event, and positions of a planet,
+-- in those cases, see `calculateHousePositionSimple`.
+calculateHousePosition :: HouseSystem -> ARMC -> Coordinates -> ObliquityAndNutation -> EclipticPosition -> IO (Either String HousePosition)
+calculateHousePosition sys armc' geoCoords obliq eclipticCoords =
+  withArray [realToFrac $ lng eclipticCoords, realToFrac $ lat eclipticCoords] $ \xpin -> allocaArray 256 $ \serr -> do
+    housePos <- c_swe_house_pos (realToFrac   $ unArmc armc')
+                                (realToFrac   $ lat geoCoords)
+                                (realToFrac   $ eclipticObliquity obliq)
+                                (fromIntegral $ toHouseSystemFlag sys)
+                                xpin
+                                serr
+    if housePos <= 0 then do
+      msg <- peekCAString serr
+      return $ Left msg
+    else do
+      let houseN = truncate housePos
+          cuspD  = housePos - (fromIntegral houseN)
+      return $ Right $ HousePosition houseN (realToFrac cuspD)
+
+-- TODO: consider CDouble vs. realtoFrac, for loss of information issues.
+calculateSiderealTimeSimple :: JulianTime -> IO SiderealTime
+calculateSiderealTimeSimple jt = do
+  sidTime <- c_swe_sidtime (realToFrac jt)
+  return $ SiderealTime $ realToFrac sidTime
+
+calculateSiderealTime :: JulianTime -> ObliquityAndNutation -> IO SiderealTime
+calculateSiderealTime jt on = do
+  let obliq = realToFrac $ eclipticObliquity on
+      nut   = realToFrac $ nutationLongitude on
+  sidTime <- c_swe_sidtime0 (realToFrac jt) obliq nut
+  return $ SiderealTime $ realToFrac sidTime

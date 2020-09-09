@@ -27,7 +27,7 @@ spec = do
         let time = julianDay 1989 1 6 0.0
             expectedCoords =
               Right $
-                Coordinates
+                EclipticPosition
                   { lng = 285.64723120365153,
                     lat = -8.664716530514133e-5,
                     distance = 0.9833448914987339,
@@ -82,7 +82,7 @@ spec = do
       it "fails when using a house system that is unable to calculate cusps near the poles" $ do
         let time = julianDay 1989 1 6 0.0
             -- Longyearbyen:
-            place = defaultCoordinates {lat = 78.2232, lng = 15.6267}
+            place = mkCoordinates {lat = 78.2232, lng = 15.6267}
         calcs <- calculateCuspsStrict Placidus time place
         calcs `shouldSatisfy` isLeft
 
@@ -90,7 +90,7 @@ spec = do
       it "falls back to Porphyry when calculating cusps for a place near the poles" $ do
         let time = julianDay 1989 1 6 0.0
             -- Longyearbyen:
-            place = defaultCoordinates {lat = 78.2232, lng = 15.6267}
+            place = mkCoordinates {lat = 78.2232, lng = 15.6267}
             expected = CuspsCalculation {houseCusps = [190.88156009524067,226.9336677703179,262.9857754453951,299.0378831204723,322.9857754453951,346.9336677703179,10.881560095240673,46.933667770317925,82.98577544539512,119.03788312047234,142.98577544539512,166.9336677703179], angles = Angles {ascendant = 190.88156009524067, mc = 119.03788312047234, armc = 121.17906552074543, vertex = 36.408617337292114, equatorialAscendant = 213.4074315205484, coAscendantKoch = 335.2547300150891, coAscendantMunkasey = 210.81731854391526, polarAscendant = 155.2547300150891}, systemUsed = Porphyrius}
         calcs <- calculateCuspsLenient Placidus time place
         (systemUsed calcs) `shouldBe` Porphyrius
@@ -104,13 +104,13 @@ spec = do
         -- > In addition, Sunshine houses may fail, e.g. when required for a date which is outside the time range of our solar ephemeris. Here, also, Porphyry houses will be provided.
         -- from: https://www.astro.com/swisseph/swephprg.htm
         forAll genCuspsQuery $ \((la, lo), time, houseSystem) -> monadicIO $ do
-          calcs <- run $ calculateCusps houseSystem time (defaultCoordinates{lat = la, lng = lo})
+          calcs <- run $ calculateCusps houseSystem time (mkCoordinates{lat = la, lng = lo})
           assert $ (systemUsed calcs) `elem` [houseSystem, Porphyrius]
           assert $ (length $ houseCusps calcs) == 12
 
       prop "calculates cusps and angles for points outside of the polar circles in the requested house system, no fallback." $
         forAll genCuspsNonPolarQuery $ \((la, lo), time, houseSystem) -> monadicIO $ do
-          calcs <- run $ calculateCusps houseSystem time (defaultCoordinates{lat = la, lng = lo})
+          calcs <- run $ calculateCusps houseSystem time (mkCoordinates{lat = la, lng = lo})
           assert $ (systemUsed calcs) == houseSystem
           assert $ (length $ houseCusps calcs) == 12
 
@@ -177,7 +177,7 @@ shouldBeApprox expected actual =
 
 infix 1 `shouldBeApprox`
 
-compareCoords :: Either String Coordinates -> Either String Coordinates -> Expectation
+compareCoords :: Either String EclipticPosition-> Either String EclipticPosition-> Expectation
 compareCoords (Right a) (Right b) = do
    lng a `shouldBeApprox` lng b
    lat a `shouldBeApprox` lat b

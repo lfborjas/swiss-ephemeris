@@ -58,6 +58,15 @@ data HouseSystem = Placidus
 -- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847871 8. Date and time conversion functions>
 -- also cf. `julianDay`
 type JulianTime = Double
+newtype SiderealTime = SiderealTime {unSidereal :: Double}
+    deriving (Show, Eq)
+sidToArmc :: SiderealTime -> ARMC
+sidToArmc s = ARMC $ (unSidereal s) * 15
+
+newtype ARMC = ARMC {unArmc :: Double}
+    deriving (Show, Eq)
+armcToSid :: ARMC -> SiderealTime
+armcToSid a = SiderealTime $ (unArmc a) / 15
 
 -- | The cusp of a given "house" or "sector"
 -- see:
@@ -68,7 +77,7 @@ type HouseCusp = Double
 -- | Position data for a celestial body, includes rotational speeds.
 -- see:
 -- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847837 3.4 Position and speed>
-data Coordinates = Coordinates
+data EclipticPosition = EclipticPosition
   {
     lng :: Double
   , lat :: Double
@@ -78,13 +87,13 @@ data Coordinates = Coordinates
   , distSpeed :: Double -- deg/day
   } deriving (Show, Eq, Generic)
 
-type EclipticCoordinates = Coordinates
+type Coordinates = EclipticPosition
 
 data EquatorialPosition = EquatorialPosition
   {
     rightAscension :: Double
   , declination :: Double
-  , eqDistance  :: Double -- same as distance in `Coordinates`, uses AU
+  , eqDistance  :: Double -- same as distance in `EclipticPosition`, uses AU
   , ascensionSpeed :: Double -- deg/day
   , declinationSpeed :: Double -- deg/day
   , eqDistanceSpeed :: Double -- deg/day
@@ -100,14 +109,18 @@ data ObliquityAndNutation = ObliquityAndNutation
 
 -- | Default coordinates with all zeros -- when you don't care about/know the velocities,
 -- which would be the case for most inputs (though most outputs /will/ include them.)
--- Usually you'll set only lat and lng (e.g. @defaultCoordinates{lat = 1.4, lng = 4.1}@)
+-- Usually you'll set only lat and lng (e.g. @defaultEclipticPosition{lat = 1.4, lng = 4.1}@)
 -- when using it as an input for another function.
-defaultCoordinates :: Coordinates
-defaultCoordinates = Coordinates 0 0 0 0 0 0
+defaultEclipticPosition :: EclipticPosition
+defaultEclipticPosition = EclipticPosition 0 0 0 0 0 0
 
--- | Constructor alias of `defaultCoordinates`, since it's used a lot in that role.
-mkCoordinates :: Coordinates
-mkCoordinates = defaultCoordinates
+-- | Constructor alias of `defaultEclipticPosition`, since it's used a lot in that role.
+mkEclipticPosition :: EclipticPosition
+mkEclipticPosition = defaultEclipticPosition
+
+-- TODO: need a new type: GeographicPosition, with only lat and lng.
+mkCoordinates :: EclipticPosition
+mkCoordinates = mkEclipticPosition
 
 -- | Relevant angles: ascendant and MC, plus other "exotic" ones:
 -- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847890 14. House cusp calculation>
@@ -132,6 +145,11 @@ data CuspsCalculation = CuspsCalculation
   , systemUsed :: HouseSystem
   } deriving (Show, Eq, Generic)
 
+data HousePosition = HousePosition
+    {
+        houseNumber :: Int
+    ,   houseCuspDistance :: Double
+    } deriving (Show, Eq, Generic)
 
 -- folders for bitwise flags, and some opinionated defaults.
 
@@ -168,13 +186,13 @@ toHouseSystemFlag Campanus      = ord 'C'
 toHouseSystemFlag Equal         = ord 'A'
 toHouseSystemFlag WholeSign     = ord 'W'
 
-coordinatesFromList :: [Double] -> Coordinates
+coordinatesFromList :: [Double] -> EclipticPosition
 -- N.B. note that for some reason the SWE guys really like lng,lat coordinates
 -- though only for this one function: https://www.astro.com/swisseph/swephprg.htm#_Toc19111235
-coordinatesFromList (sLng : sLat : c : d : e : f : _) = Coordinates sLng sLat c d e f
+coordinatesFromList (sLng : sLat : c : d : e : f : _) = EclipticPosition sLng sLat c d e f
 -- the underlying library goes to great lengths to not return fewer than 6 data,
 -- it instead uses zeroes for unavailable entries.
-coordinatesFromList _                           = Coordinates 0 0 0 0 0 0
+coordinatesFromList _                           = EclipticPosition 0 0 0 0 0 0
 
 equatorialFromList :: [Double] -> EquatorialPosition
 equatorialFromList (a:b:c:d:e:f:_) = EquatorialPosition a b c d e f

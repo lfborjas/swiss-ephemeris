@@ -102,6 +102,34 @@ foreign import ccall unsafe "swephexp.h swe_houses"
                  -> Ptr CDouble -- ascmc, 10 doubles
                  -> (IO CInt)
 
+-- | Calculate the house a planet is in. Takes into account
+-- obliquity of the ecliptic. Works for all house systems, 
+-- except Koch.
+foreign import ccall unsafe "swephexp.h swe_house_pos"
+    c_swe_house_pos :: CDouble -- ARMC
+                    -> CDouble -- Geographical latitude
+                    -> CDouble -- Obliquity
+                    -> CInt    -- house system
+                    -> Ptr CDouble -- double[2], long/lat of body.
+                    -> CString     -- char[256] for errors.
+                    -> (IO CDouble)
+
+-- | Split a given ecliptic longitude into sign (number)
+-- degrees, minutes and seconds.
+foreign import ccall unsafe "swephexp.h swe_split_deg"
+    c_swe_split_deg :: CDouble -- longitude
+                    -> SplitDegFlag -- behavior of rounding/assigning to signs
+                    -> Ptr CInt -- degrees
+                    -> Ptr CInt -- minutes
+                    -> Ptr CInt -- seconds
+                    -> Ptr CDouble -- seconds fraction
+                    -> Ptr CInt    -- sign/nakshatra
+                    -> IO ()       -- returns void.
+
+---
+--- NOT IMPLEMENTED IN THE PUBLIC API YET:
+--- 
+
 -- | Calculate the position of a planet, given a time
 -- in Ephemeris Time. swe_calc_ut calls it internally,
 -- so if you already have the delta time for other purposes,
@@ -128,27 +156,13 @@ foreign import ccall unsafe "swephexp.h swe_deltat"
 -- and nutation, this one computes them internally.
 foreign import ccall unsafe "swephexp.h swe_sidtime"
     c_swe_sidtime :: CDouble -- Julian time
-                  -> (IO CDouble)
+                   -> (IO CDouble)
 
--- | Calculate the house a planet is in. Takes into account
--- obliquity of the ecliptic. Works for all house systems, 
--- except Koch.
-foreign import ccall unsafe "swephexp.h swe_house_pos"
-    c_swe_house_pos :: CDouble -- ARMC
-                    -> CDouble -- Geographical latitude
-                    -> CDouble -- Obliquity
-                    -> CInt    -- house system
-                    -> Ptr CDouble -- double[2], long/lat of body.
-                    -> CString     -- char[256] for errors.
-
--- | Split a given ecliptic longitude into sign (number)
--- degrees, minutes and seconds.
-foreign import ccall unsafe "swephexp.h swe_split_deg"
-    c_swe_split_deg :: CDouble -- longitude
-                    -> SplitDegFlag -- behavior of rounding/assigning to signs
-                    -> Ptr CInt -- degrees
-                    -> Ptr CInt -- minutes
-                    -> Ptr CInt -- seconds
-                    -> Ptr CDouble -- seconds fraction
-                    -> Ptr CInt    -- sign/nakshatra
-                    -> IO ()       -- returns void.
+-- | Calculate the sidereal time for a given julian time.
+-- NOTE: there's also swe_sidtime0 which requires obliquity
+-- and nutation, this one computes them internally.
+foreign import ccall unsafe "swephexp.h swe_sidtime0"
+    c_swe_sidtime0 :: CDouble -- Julian time
+                   -> CDouble -- obliquity
+                   -> CDouble -- nutation
+                   -> (IO CDouble)
