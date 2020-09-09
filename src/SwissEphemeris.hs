@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric  #-}
 
 {-|
 Module: SwissEphemeris
@@ -45,6 +44,7 @@ module SwissEphemeris (
 -- core calculations
 ,   calculateCoordinates
 ,   calculateEquatorialPosition
+,   calculateObliquityAndNutation
 ,   calculateCusps
 ,   calculateCuspsLenient
 ,   calculateCuspsStrict
@@ -53,129 +53,10 @@ module SwissEphemeris (
 import           Foreign.SwissEphemeris
 
 import           Foreign
-import           GHC.Generics
-import           Foreign.C.Types
 import           Foreign.C.String
-import           Data.Char (ord)
 import Control.Exception (bracket_)
 
 import SwissEphemeris.Internal
-
--- | All bodies for which a position can be calculated. Covers planets
--- in the solar system, points between the Earth and the Moon, and
--- astrologically significant asteroids (currently, only Chiron, but
--- ephemerides data is available for others.)
--- More at <https://www.astro.com/swisseph/swisseph.htm#_Toc46391648 2.1 Planetary and lunar ephemerides>
--- and <https://www.astro.com/swisseph/swephprg.htm#_Toc49847827 3.2 bodies>
-data Planet = Sun
-            | Moon
-            | Mercury
-            | Venus
-            | Mars
-            | Jupiter
-            | Saturn
-            | Uranus
-            | Neptune
-            | Pluto
-            | MeanNode
-            | TrueNode
-            | MeanApog
-            | OscuApog
-            | Earth
-            | Chiron
-            deriving (Show, Eq, Ord, Enum, Generic)
-
--- | The major house systems. The underlying library supports many more, including the
--- 36-cusp outlier Gauquelin.
--- More info at <https://www.astro.com/swisseph/swisseph.htm#_Toc46391705 6.2 Astrological house systems>
--- and <https://www.astro.com/swisseph/swephprg.htm#_Toc49847888 14. House cusp calculation>
-data HouseSystem = Placidus
-                 | Koch
-                 | Porphyrius
-                 | Regiomontanus
-                 | Campanus
-                 | Equal
-                 | WholeSign
-                 deriving (Show, Eq, Ord, Enum, Generic)
-
--- | Represents an instant in Julian time.
--- see:
--- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847871 8. Date and time conversion functions>
--- also cf. `julianDay`
-type JulianTime = Double
-
--- | The cusp of a given "house" or "sector"
--- see:
--- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847888 14.1 House cusp calculation>
--- and <https://www.astro.com/swisseph/swisseph.htm#_Toc46391705 6.2 Astrological house systems>
-type HouseCusp = Double
-
--- | Position data for a celestial body, includes rotational speeds.
--- see:
--- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847837 3.4 Position and speed>
-data Coordinates = Coordinates
-  {
-    lng :: Double
-  , lat :: Double
-  , distance :: Double -- in AU
-  , lngSpeed :: Double -- deg/day
-  , latSpeed :: Double -- deg/day
-  , distSpeed :: Double -- deg/day
-  } deriving (Show, Eq, Generic)
-
-type EclipticCoordinates = Coordinates
-
-data EquatorialPosition = EquatorialPosition
-  {
-    rightAscension :: Double
-  , declination :: Double
-  , eqDistance  :: Double -- same as distance in `Coordinates`, uses AU
-  , ascensionSpeed :: Double -- deg/day
-  , declinationSpeed :: Double -- deg/day
-  , eqDistanceSpeed :: Double -- deg/day
-  } deriving (Show, Eq, Generic)
-
-data ObliquityAndNutation = ObliquityAndNutation
-  {
-    eclipticObliquity :: Double
-  , eclipticMeanObliquity :: Double
-  , nutationLongitude :: Double
-  , nutationObliquity :: Double
-  } 
-
--- | Default coordinates with all zeros -- when you don't care about/know the velocities,
--- which would be the case for most inputs (though most outputs /will/ include them.)
--- Usually you'll set only lat and lng (e.g. @defaultCoordinates{lat = 1.4, lng = 4.1}@)
--- when using it as an input for another function.
-defaultCoordinates :: Coordinates
-defaultCoordinates = Coordinates 0 0 0 0 0 0
-
--- | Constructor alias of `defaultCoordinates`, since it's used a lot in that role.
-mkCoordinates :: Coordinates
-mkCoordinates = defaultCoordinates
-
--- | Relevant angles: ascendant and MC, plus other "exotic" ones:
--- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847890 14. House cusp calculation>
-data Angles = Angles
-  {
-    ascendant :: Double
-  , mc :: Double
-  , armc :: Double
-  , vertex :: Double
-  , equatorialAscendant :: Double
-  , coAscendantKoch :: Double
-  , coAscendantMunkasey :: Double
-  , polarAscendant :: Double
-  } deriving (Show, Eq, Generic)
-
--- | Result of calculating the cusps for a given event; will include a list of
--- cusps (most systems use 12 cusps, Gauquelin uses 36.)
-data CuspsCalculation = CuspsCalculation
-  {
-    houseCusps :: [HouseCusp]
-  , angles :: Angles
-  , systemUsed :: HouseSystem
-  } deriving (Show, Eq, Generic)
 
 -- | Given a path to a directory, point the underlying ephemerides library to it.
 -- You only need to call this function to provide an explicit ephemerides path,
@@ -316,46 +197,3 @@ calculateCuspsStrict sys time loc = do
     pure $ Left $ "Unable to calculate cusps in the requested house system (used " ++ (show sys') ++ " instead.)"
   else
     pure $ Right calcs
-
-
--- Helpers
-
--- in the C lib, house systems are expected as ASCII
--- codes for specific characters (!)
--- documentation at: https://www.astro.com/swisseph/swephprg.htm#_Toc19111265
-toHouseSystemFlag :: HouseSystem -> Int
-toHouseSystemFlag Placidus      = ord 'P'
-toHouseSystemFlag Koch          = ord 'K'
-toHouseSystemFlag Porphyrius    = ord 'O'
-toHouseSystemFlag Regiomontanus = ord 'R'
-toHouseSystemFlag Campanus      = ord 'C'
-toHouseSystemFlag Equal         = ord 'A'
-toHouseSystemFlag WholeSign     = ord 'W'
-
-coordinatesFromList :: [Double] -> Coordinates
--- N.B. note that for some reason the SWE guys really like lng,lat coordinates
--- though only for this one function: https://www.astro.com/swisseph/swephprg.htm#_Toc19111235
-coordinatesFromList (sLng : sLat : c : d : e : f : _) = Coordinates sLng sLat c d e f
--- the underlying library goes to great lengths to not return fewer than 6 data,
--- it instead uses zeroes for unavailable entries.
-coordinatesFromList _                           = Coordinates 0 0 0 0 0 0
-
-equatorialFromList :: [Double] -> EquatorialPosition
-equatorialFromList (a:b:c:d:e:f:_) = EquatorialPosition a b c d e f
-equatorialFromList _               = EquatorialPosition 0 0 0 0 0 0
-
-obliquityNutationFromList :: [Double] -> ObliquityAndNutation
-obliquityNutationFromList (a:b:c:d:_:_:_) = ObliquityAndNutation a b c d
-obliquityNutationFromList _               = ObliquityAndNutation 0 0 0 0
-
-anglesFromList :: [Double] -> Angles
-anglesFromList (a : _mc : _armc : vtx : ea : cak : cam : pa : _ : _) =
-    Angles a _mc _armc vtx ea cak cam pa
--- the underlying library always returns _something_, defaulting to zero
--- if the angle calculation doesn't apply.
-anglesFromList _ = Angles 0 0 0 0 0 0 0 0
-
-planetNumber :: Planet -> PlanetNumber
-planetNumber p = PlanetNumber $ CInt y
-  where
-    y = fromIntegral $ fromEnum p :: Int32
