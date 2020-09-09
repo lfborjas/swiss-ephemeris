@@ -161,25 +161,25 @@ calculateCoordinates' options time planet =
 eclipticToEquatorial :: ObliquityAndNutation -> EclipticPosition -> EquatorialPosition
 eclipticToEquatorial oAndN ecliptic =
   let obliquityLn = eclipticObliquity oAndN
-      eclipticPos = [lng ecliptic, lat ecliptic, distance ecliptic]
-      (asc:dec:dist:_)  = coordinateTransform' (negate obliquityLn) eclipticPos
+      eclipticPos = eclipticToList ecliptic
+      transformed = coordinateTransform' (negate obliquityLn) eclipticPos
   in
-    EquatorialPosition asc dec dist 0 0 0
+    equatorialFromList transformed
 
 equatorialToEcliptic :: ObliquityAndNutation -> EquatorialPosition -> EclipticPosition
 equatorialToEcliptic oAndN equatorial =
   let obliquityLn   = eclipticObliquity oAndN
-      equatorialPos = [rightAscension equatorial, declination equatorial, eqDistance equatorial]
-      (ln:lt:dist:_)  = coordinateTransform' obliquityLn equatorialPos
+      equatorialPos = equatorialToList equatorial
+      transformed   = coordinateTransform' obliquityLn equatorialPos
   in
-    EclipticPosition ln lt dist 0 0 0
+    eclipticFromList transformed
 
 coordinateTransform' :: Double -> [Double] -> [Double]
 coordinateTransform' obliquity ins =
   unsafePerformIO $ do
-    withArray (map realToFrac ins) $ \xpo -> allocaArray 3 $ \xpn -> do
-      _ <- c_swe_cotrans xpo xpn (realToFrac obliquity)
-      result <- peekArray 3 xpn
+    withArray (map realToFrac ins) $ \xpo -> allocaArray 6 $ \xpn -> do
+      _ <- c_swe_cotrans_sp xpo xpn (realToFrac obliquity)
+      result <- peekArray 6 xpn
       return $ map realToFrac result
 
 -- | Alias for `calculateCuspsLenient`

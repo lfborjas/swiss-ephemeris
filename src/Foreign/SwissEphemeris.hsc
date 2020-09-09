@@ -122,6 +122,12 @@ foreign import ccall unsafe "swephexp.h swe_cotrans"
                   -> CDouble     -- obliquity of the ecliptic.
                   -> IO ()
 
+foreign import ccall unsafe "swephexp.h swe_cotrans_sp"
+    c_swe_cotrans_sp :: Ptr CDouble -- double[6]: lng, lat, distance
+                     -> Ptr CDouble -- double[6]: ascension, declination, distance (or viceversa)
+                     -> CDouble     -- obliquity of the ecliptic.
+                     -> IO ()
+
 ---
 --- NOT IMPLEMENTED IN THE PUBLIC API YET:
 --- 

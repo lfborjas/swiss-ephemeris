@@ -198,9 +198,18 @@ coordinatesFromList (sLng : sLat : c : d : e : f : _) = EclipticPosition sLng sL
 -- it instead uses zeroes for unavailable entries.
 coordinatesFromList _                           = EclipticPosition 0 0 0 0 0 0
 
+eclipticFromList :: [Double] -> EclipticPosition
+eclipticFromList = coordinatesFromList
+
+eclipticToList :: EclipticPosition -> [Double]
+eclipticToList (EclipticPosition sLng sLat c d e f) =  (sLng : sLat : c : d : e : f : [])
+
 equatorialFromList :: [Double] -> EquatorialPosition
 equatorialFromList (a:b:c:d:e:f:_) = EquatorialPosition a b c d e f
 equatorialFromList _               = EquatorialPosition 0 0 0 0 0 0
+
+equatorialToList :: EquatorialPosition -> [Double]
+equatorialToList (EquatorialPosition a b c d e f) =  (a:b:c:d:e:f:[])
 
 obliquityNutationFromList :: [Double] -> ObliquityAndNutation
 obliquityNutationFromList (a:b:c:d:_:_:_) = ObliquityAndNutation a b c d
