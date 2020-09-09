@@ -149,7 +149,11 @@ spec = do
 
       -- TODO: write property test, though this function isn't as useful as I thought:
       -- https://groups.io/g/swisseph/message/4052
-      
+    
+    describe "calculateEquatorialPosition" $ do
+      it "calculates the declination and other points of interest" $ do 
+        pendingWith "sleepy"
+
   around_ ( withEphemerides ephePath ) $ do
     describe "calculateCoordinates with bundled ephemeris" $ do
       prop "calculates coordinates for any of the planets in a wide range of time." $
