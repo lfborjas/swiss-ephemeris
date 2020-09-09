@@ -27,6 +27,9 @@ module SwissEphemeris (
 ,   JulianTime
 ,   HouseCusp
 ,   Coordinates(..)
+,   EclipticCoordinates
+,   EquatorialPosition(..)
+,   ObliquityAndNutation(..)
 ,   Angles(..)
 ,   CuspsCalculation(..)
 -- constructors
@@ -41,6 +44,7 @@ module SwissEphemeris (
 ,   withoutEphemerides
 -- core calculations
 ,   calculateCoordinates
+,   calculateEquatorialPosition
 ,   calculateCusps
 ,   calculateCuspsLenient
 ,   calculateCuspsStrict
@@ -54,6 +58,8 @@ import           Foreign.C.Types
 import           Foreign.C.String
 import           Data.Char (ord)
 import Control.Exception (bracket_)
+
+import SwissEphemeris.Internal
 
 -- | All bodies for which a position can be calculated. Covers planets
 -- in the solar system, points between the Earth and the Moon, and
@@ -111,11 +117,31 @@ data Coordinates = Coordinates
   {
     lng :: Double
   , lat :: Double
-  , distance :: Double
-  , lngSpeed :: Double
-  , latSpeed :: Double
-  , distSpeed :: Double
+  , distance :: Double -- in AU
+  , lngSpeed :: Double -- deg/day
+  , latSpeed :: Double -- deg/day
+  , distSpeed :: Double -- deg/day
   } deriving (Show, Eq, Generic)
+
+type EclipticCoordinates = Coordinates
+
+data EquatorialPosition = EquatorialPosition
+  {
+    rightAscension :: Double
+  , declination :: Double
+  , eqDistance  :: Double -- same as distance in `Coordinates`, uses AU
+  , ascensionSpeed :: Double -- deg/day
+  , declinationSpeed :: Double -- deg/day
+  , eqDistanceSpeed :: Double -- deg/day
+  } deriving (Show, Eq, Generic)
+
+data ObliquityAndNutation = ObliquityAndNutation
+  {
+    eclipticObliquity :: Double
+  , eclipticMeanObliquity :: Double
+  , nutationLongitude :: Double
+  , nutationObliquity :: Double
+  } 
 
 -- | Default coordinates with all zeros -- when you don't care about/know the velocities,
 -- which would be the case for most inputs (though most outputs /will/ include them.)
@@ -196,18 +222,46 @@ julianDay year month day hour = realToFrac $ c_swe_julday y m d h gregorian
     d = fromIntegral day
     h = realToFrac hour
 
+-- | Alias for `calculateEclipticPosition`, since it's the most common
+-- position calculation.
+calculateCoordinates :: JulianTime -> Planet -> IO (Either String Coordinates)
+calculateCoordinates = calculateEclipticPosition
+
 -- | Given `JulianTime` (see `julianDay`),
 -- and a `Planet`, returns either the position of that planet at the given time,
 -- if available in the ephemeris, or an error. The underlying library may do IO
 -- when reading ephemerides data.
-calculateCoordinates :: JulianTime -> Planet -> IO (Either String Coordinates)
-calculateCoordinates time planet =
+calculateEclipticPosition :: JulianTime -> Planet -> IO (Either String Coordinates)
+calculateEclipticPosition time planet = do
+  let options = (mkCalculationOptions defaultCalculationOptions)
+  rawCoords <- calculateCoordinates' options time (planetNumber planet)
+  return $ fmap coordinatesFromList rawCoords
+
+-- | Obtain equatorial position (includes declination) of a planet.
+-- If you've called `calculateCoordinates` in your code, this is a very cheap call, as the data
+-- is already available to the C code.
+calculateEquatorialPosition :: JulianTime -> Planet -> IO (Either String EquatorialPosition)
+calculateEquatorialPosition time planet = do
+  let options = (mkCalculationOptions $ defaultCalculationOptions ++ [equatorialPositions])
+  rawCoords <- calculateCoordinates' options time (planetNumber planet)
+  return $ fmap equatorialFromList rawCoords
+
+-- | Given a time, calculate 
+calculateObliquityAndNutation :: JulianTime -> IO (Either String ObliquityAndNutation)
+calculateObliquityAndNutation time = do
+  let options = CalcFlag 0
+  rawCoords <- calculateCoordinates' options time specialEclNut
+  return $ fmap obliquityNutationFromList rawCoords
+
+-- | Call the internal function for calculations
+calculateCoordinates' :: CalcFlag -> JulianTime -> PlanetNumber -> IO (Either String [Double])
+calculateCoordinates' options time planet =
     allocaArray 6 $ \coords -> allocaArray 256 $ \serr -> do
-        iflgret <- c_swe_calc (realToFrac time)
-                              (planetNumber planet)
-                              speed
-                              coords
-                              serr
+        iflgret <- c_swe_calc_ut (realToFrac time)
+                                 planet
+                                 options
+                                 coords
+                                 serr
 
         if unCalcFlag iflgret < 0
             then do
@@ -215,7 +269,8 @@ calculateCoordinates time planet =
                 return $ Left msg
             else do
                 result <- peekArray 6 coords
-                return $ Right $ coordinatesFromList $ map realToFrac result
+                return $ Right $ map realToFrac result
+
 
 -- | Alias for `calculateCuspsLenient`
 calculateCusps :: HouseSystem -> JulianTime -> Coordinates -> IO CuspsCalculation
@@ -284,6 +339,14 @@ coordinatesFromList (sLng : sLat : c : d : e : f : _) = Coordinates sLng sLat c 
 -- the underlying library goes to great lengths to not return fewer than 6 data,
 -- it instead uses zeroes for unavailable entries.
 coordinatesFromList _                           = Coordinates 0 0 0 0 0 0
+
+equatorialFromList :: [Double] -> EquatorialPosition
+equatorialFromList (a:b:c:d:e:f:_) = EquatorialPosition a b c d e f
+equatorialFromList _               = EquatorialPosition 0 0 0 0 0 0
+
+obliquityNutationFromList :: [Double] -> ObliquityAndNutation
+obliquityNutationFromList (a:b:c:d:_:_:_) = ObliquityAndNutation a b c d
+obliquityNutationFromList _               = ObliquityAndNutation 0 0 0 0
 
 anglesFromList :: [Double] -> Angles
 anglesFromList (a : _mc : _armc : vtx : ea : cak : cam : pa : _ : _) =
