@@ -60,13 +60,16 @@ data HouseSystem = Placidus
 type JulianTime = Double
 newtype SiderealTime = SiderealTime {unSidereal :: Double}
     deriving (Show, Eq)
-sidToArmc :: SiderealTime -> ARMC
-sidToArmc s = ARMC $ (unSidereal s) * 15
+
+-- | Convert tropical sidereal time to an ARMC relative to a given longitude
+-- this is not explained in the SWE docs, I pulled it from:
+--   armc = swe_degnorm(swe_sidtime0(tjd_ut, eps + nutlo[1], nutlo[0]) * 15 + geolon);
+-- (line 144 of swehouse.c, part of swe_houses)
+sidToArmc :: SiderealTime -> Double -> ARMC
+sidToArmc s l = ARMC $ (unSidereal s) * 15 + l
 
 newtype ARMC = ARMC {unArmc :: Double}
     deriving (Show, Eq)
-armcToSid :: ARMC -> SiderealTime
-armcToSid a = SiderealTime $ (unArmc a) / 15
 
 -- | The cusp of a given "house" or "sector"
 -- see:
@@ -105,7 +108,7 @@ data ObliquityAndNutation = ObliquityAndNutation
   , eclipticMeanObliquity :: Double
   , nutationLongitude :: Double
   , nutationObliquity :: Double
-  } 
+  } deriving (Show, Eq, Generic)
 
 -- | Default coordinates with all zeros -- when you don't care about/know the velocities,
 -- which would be the case for most inputs (though most outputs /will/ include them.)

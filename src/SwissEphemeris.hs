@@ -28,6 +28,7 @@ module SwissEphemeris (
 ,   Coordinates
 ,   EclipticPosition(..)
 ,   EquatorialPosition(..)
+,   HousePosition(..)
 ,   ObliquityAndNutation(..)
 ,   Angles(..)
 ,   CuspsCalculation(..)
@@ -127,7 +128,7 @@ calculateEquatorialPosition time planet = do
   rawCoords <- calculateCoordinates' options time (planetNumber planet)
   return $ fmap equatorialFromList rawCoords
 
--- | Given a time, calculate 
+-- | Given a time, calculate ecliptic obliquity and nutation
 calculateObliquityAndNutation :: JulianTime -> IO (Either String ObliquityAndNutation)
 calculateObliquityAndNutation time = do
   let options = CalcFlag 0
@@ -198,11 +199,16 @@ calculateCuspsStrict sys time loc = do
   else
     pure $ Right calcs
 
--- | Calculates the house position of a planet in a house in the given system.
+-- | Calculates the house position of a body in a house in the given system.
 -- requires the geographic coordinates and time of the birth/event, and the
--- ecliptic coordinates of the planet/body.
--- NOTE: for the Koch system, this is likely to fail, or return counterintuitive
--- results.
+-- ecliptic coordinates of the planet/body. You only want this function if
+-- you're working in the polar circle, or with objects that are way off the ecliptic;
+-- for most objects in usual astrological charts, simply seeing which cusps
+-- a planet falls between is sufficient.
+-- see <https://groups.io/g/swisseph/message/4052>
+-- NOTES: for the Koch system, this is likely to fail, or return counterintuitive
+-- results. Also, we're doing a bit of a funky conversion between sidereal time and
+-- ARMC, if you `calculateCusps`, the correct ARMC will be present in 
 calculateHousePositionSimple :: HouseSystem -> JulianTime -> Coordinates -> EclipticPosition -> IO (Either String HousePosition)
 calculateHousePositionSimple sys time loc pos = do
   obliquityAndNutation <- calculateObliquityAndNutation time
@@ -210,15 +216,15 @@ calculateHousePositionSimple sys time loc pos = do
     Left e -> return $ Left e
     Right on -> do
       siderealTime <- calculateSiderealTime time on
-      let armc' = sidToArmc siderealTime
+      let armc' = (sidToArmc siderealTime (lng loc))
       calculateHousePosition sys armc' loc on pos
 
 ---
 --- NOT EXPORTED (YET)
 --- 
 
--- | If you happen to have the ARMC (obtained from calculateCusps, or by converting
--- sidereal time, which is in hours, to degrees,) and obliquity and nutation,
+-- | If you happen to have the correct ARMC for a time and place (obtained from calculateCusps) 
+-- and obliquity and nutation,
 -- you can use this method to calculate a planet's house position.
 -- Usually, what you have is just the time and place of the event, and positions of a planet,
 -- in those cases, see `calculateHousePositionSimple`.

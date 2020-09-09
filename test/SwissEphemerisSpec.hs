@@ -114,7 +114,42 @@ spec = do
           assert $ (systemUsed calcs) == houseSystem
           assert $ (length $ houseCusps calcs) == 12
 
+    describe "calculateHousePositionSimple" $ do
+      it "calculates accurate house positions for some known planets" $ do
+        let time = julianDay 1989 1 6 0.0
+            place = mkCoordinates{lat = 14.06, lng = -87.13}
+            housePos = calculateHousePositionSimple Placidus time place
+            houseN = fmap houseNumber
 
+        sunH     <- housePos $ mkCoordinates{lng=285.6465775, lat=(-0.0000826)}
+        moonH    <- housePos $ mkCoordinates{lng=262.4723493, lat=(-4.9055744)}
+        mercuryH <- housePos $ mkCoordinates{lng=304.3135759, lat=(-1.3441786)}
+        venusH   <- housePos $ mkCoordinates{lng=264.0478768, lat=(0.6114330)}
+        marsH    <- housePos $ mkCoordinates{lng=22.7844912,  lat=(0.6472527)}
+        jupiterH <- housePos $ mkCoordinates{lng=56.4415899,  lat=(-0.8785552)}
+        saturnH  <- housePos $ mkCoordinates{lng=276.1819323, lat=(0.7124667)}
+        uranusH  <- housePos $ mkCoordinates{lng=272.0516769, lat=(-0.2200407)}
+        neptuneH <- housePos $ mkCoordinates{lng=280.1110192, lat=(0.9024311)}
+        plutoH   <- housePos $ mkCoordinates{lng=224.6817137, lat=(15.6296117)}
+        meanNH   <- housePos $ mkCoordinates{lng=337.5235158, lat=(0.0)}
+        chironH  <- housePos $ mkCoordinates{lng=93.5373174,  lat=(-6.8493261)}
+
+        houseN sunH `shouldBe` Right 6
+        houseN moonH `shouldBe` Right 5
+        houseN mercuryH `shouldBe` Right 7
+        houseN venusH `shouldBe` Right 6
+        houseN marsH `shouldBe` Right 10
+        houseN jupiterH `shouldBe` Right 11
+        houseN saturnH `shouldBe` Right 6
+        houseN uranusH `shouldBe` Right 6
+        houseN neptuneH `shouldBe` Right 6
+        houseN plutoH   `shouldBe` Right 4
+        houseN meanNH   `shouldBe` Right 8
+        houseN chironH  `shouldBe` Right 12
+
+      -- TODO: write property test, though this function isn't as useful as I thought:
+      -- https://groups.io/g/swisseph/message/4052
+      
   around_ ( withEphemerides ephePath ) $ do
     describe "calculateCoordinates with bundled ephemeris" $ do
       prop "calculates coordinates for any of the planets in a wide range of time." $
@@ -125,6 +160,7 @@ spec = do
         forAll genBadCoordinatesQuery $ \(time, planet) -> monadicIO $ do
           coords <- run $ calculateCoordinates time planet
           assert $ isLeft coords
+
 
 {- For reference, here's an official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
