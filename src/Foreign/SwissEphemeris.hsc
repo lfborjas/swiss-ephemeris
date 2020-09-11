@@ -80,7 +80,8 @@ foreign import ccall unsafe "swephexp.h swe_julday"
                  -> CDouble
 
 -- | Calculate the position of a body, given a time in
--- Universal Time.
+-- Universal Time. Note that this is marginally more expensive than
+-- `swe_calc`, but I use this one to keep consistency with `swe_houses`.
 foreign import ccall unsafe "swephexp.h swe_calc_ut"
     c_swe_calc_ut :: CDouble
                   -> PlanetNumber
@@ -119,43 +120,6 @@ foreign import ccall unsafe "swephexp.h swe_cotrans_sp"
                      -> Ptr CDouble -- double[6]: ascension, declination, distance (or viceversa)
                      -> CDouble     -- obliquity of the ecliptic.
                      -> IO ()
-
----
---- NOT IMPLEMENTED IN THE PUBLIC API YET:
---- 
-
--- | Split a given ecliptic longitude into sign (number)
--- degrees, minutes and seconds.
-foreign import ccall unsafe "swephexp.h swe_split_deg"
-    c_swe_split_deg :: CDouble -- longitude
-                    -> SplitDegFlag -- behavior of rounding/assigning to signs
-                    -> Ptr CInt -- degrees
-                    -> Ptr CInt -- minutes
-                    -> Ptr CInt -- seconds
-                    -> Ptr CDouble -- seconds fraction
-                    -> Ptr CInt    -- sign/nakshatra
-                    -> IO ()       -- returns void.
-
--- | Calculate the position of a planet, given a time
--- in Ephemeris Time. swe_calc_ut calls it internally,
--- so if you already have the delta time for other purposes,
--- it'll be slightly faster to call this.
-foreign import ccall unsafe "swephexp.h swe_calc"
-    c_swe_calc :: CDouble -- Ephemeris time. This is Julian + delta time.
-               -> PlanetNumber
-               -> CalcFlag
-               -> Ptr CDouble
-               -> CString
-               -> (IO CalcFlag)
-
--- | Calculate the delta time for a given julian time,
--- delta time + julian time = ephemeris time
--- NOTE: there's also swe_deltat_ex which takes an ephemeris
--- flag explicitly, vs. the current global value.
--- my calculations work in one ephemeris, so this one is suitable.
-foreign import ccall unsafe "swephexp.h swe_deltat"
-    c_swe_deltat :: CDouble -- Julian time
-                 -> (IO CDouble)
 
 -- | Calculate the sidereal time for a given julian time.
 -- NOTE: there's also swe_sidtime0 which requires obliquity
