@@ -2,13 +2,14 @@
 
 module SwissEphemerisSpec (spec) where
 
+import Control.Monad (forM_)
+import Data.Either (isLeft, isRight)
 import SwissEphemeris
+import SwissEphemeris.Internal (JulianTime (..))
 import Test.Hspec
+import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
-import Data.Either (isLeft, isRight)
-import Test.Hspec.QuickCheck (prop)
-import Control.Monad (forM_)
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
 -- https://www.astro.com/swisseph/swetest.htm
@@ -21,8 +22,8 @@ ephePath = "./swedist/sweph_18"
 
 spec :: Spec
 spec = do
-  around_ ( withoutEphemerides ) $ do
-    describe "calculateCoordinates" $ do
+  around_ (withoutEphemerides) $ do
+    describe "calculateEclipticPosition" $ do
       it "calculates coordinates for the Sun for a specific day" $ do
         let time = julianDay 1989 1 6 0.0
             expectedCoords =
@@ -35,23 +36,22 @@ spec = do
                     latSpeed = 1.4550248863443192e-5,
                     distSpeed = 1.7364210462433863e-5
                   }
-        coords <- calculateCoordinates time Sun
+        coords <- calculateEclipticPosition time Sun
         coords `compareCoords` expectedCoords
 
       it "fails to calculate coordinates for Chiron if no ephemeris file is set" $ do
         let time = julianDay 1989 1 6 0.0
             expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
-        coords <- calculateCoordinates time Chiron
+        coords <- calculateEclipticPosition time Chiron
         coords `shouldBe` expectedCoords
 
     describe "calculateCuspsStrict" $ do
       it "calculates cusps and angles for a given place and time, keeping the same house system (not near the poles)" $ do
         let time = julianDay 1989 1 6 0.0
-        let place = mkCoordinates {lat = 14.0839053, lng = -87.2750137}
+        let place = GeographicPosition {geoLat = 14.0839053, geoLng = -87.2750137}
         let expectedCalculations =
               CuspsCalculation
-                [
-                  112.20189657163523,
+                [ 112.20189657163523,
                   138.4658382335878,
                   167.69682489058204,
                   199.79861981778183,
@@ -77,12 +77,12 @@ spec = do
                 Placidus
 
         calcs <- calculateCuspsStrict Placidus time place
-        calcs `compareCalculations` (Right expectedCalculations) 
+        calcs `compareCalculations` (Right expectedCalculations)
 
       it "fails when using a house system that is unable to calculate cusps near the poles" $ do
         let time = julianDay 1989 1 6 0.0
             -- Longyearbyen:
-            place = mkCoordinates {lat = 78.2232, lng = 15.6267}
+            place = GeographicPosition {geoLat = 78.2232, geoLng = 15.6267}
         calcs <- calculateCuspsStrict Placidus time place
         calcs `shouldSatisfy` isLeft
 
@@ -90,55 +90,59 @@ spec = do
       it "falls back to Porphyry when calculating cusps for a place near the poles" $ do
         let time = julianDay 1989 1 6 0.0
             -- Longyearbyen:
-            place = mkCoordinates {lat = 78.2232, lng = 15.6267}
-            expected = CuspsCalculation {houseCusps = [190.88156009524067,226.9336677703179,262.9857754453951,299.0378831204723,322.9857754453951,346.9336677703179,10.881560095240673,46.933667770317925,82.98577544539512,119.03788312047234,142.98577544539512,166.9336677703179], angles = Angles {ascendant = 190.88156009524067, mc = 119.03788312047234, armc = 121.17906552074543, vertex = 36.408617337292114, equatorialAscendant = 213.4074315205484, coAscendantKoch = 335.2547300150891, coAscendantMunkasey = 210.81731854391526, polarAscendant = 155.2547300150891}, systemUsed = Porphyrius}
+            place = GeographicPosition {geoLat = 78.2232, geoLng = 15.6267}
+            expected = CuspsCalculation {houseCusps = [190.88156009524067, 226.9336677703179, 262.9857754453951, 299.0378831204723, 322.9857754453951, 346.9336677703179, 10.881560095240673, 46.933667770317925, 82.98577544539512, 119.03788312047234, 142.98577544539512, 166.9336677703179], angles = Angles {ascendant = 190.88156009524067, mc = 119.03788312047234, armc = 121.17906552074543, vertex = 36.408617337292114, equatorialAscendant = 213.4074315205484, coAscendantKoch = 335.2547300150891, coAscendantMunkasey = 210.81731854391526, polarAscendant = 155.2547300150891}, systemUsed = Porphyrius}
         calcs <- calculateCuspsLenient Placidus time place
         (systemUsed calcs) `shouldBe` Porphyrius
         (Right calcs) `compareCalculations` (Right expected)
 
-      prop "calculates cusps and angles for a wide range of points in space and time, in all supported house systems. Note that it may fall back to Porphyrius for some exotic (or polar) points." $
+      prop "calculates cusps and angles for a wide range of points in space and time, in all supported house systems. Note that it may fall back to Porphyrius for some exotic (or polar) points."
+        $
         -- see: `House cusps beyond the polar circle` in https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
         -- and:
-        -- > Placidus and Koch house cusps as well as Gauquelin sectors cannot be computed beyond the polar circle. 
-        -- > In such cases, swe_houses() switches to Porphyry houses (each quadrant is divided into three equal parts) and returns the error code ERR. 
+        -- > Placidus and Koch house cusps as well as Gauquelin sectors cannot be computed beyond the polar circle.
+        -- > In such cases, swe_houses() switches to Porphyry houses (each quadrant is divided into three equal parts) and returns the error code ERR.
         -- > In addition, Sunshine houses may fail, e.g. when required for a date which is outside the time range of our solar ephemeris. Here, also, Porphyry houses will be provided.
         -- from: https://www.astro.com/swisseph/swephprg.htm
-        forAll genCuspsQuery $ \((la, lo), time, houseSystem) -> monadicIO $ do
-          calcs <- run $ calculateCusps houseSystem time (mkCoordinates{lat = la, lng = lo})
+        forAll genCuspsQuery
+        $ \((la, lo), time, houseSystem) -> monadicIO $ do
+          calcs <- run $ calculateCusps houseSystem time (GeographicPosition {geoLat = la, geoLng = lo})
           assert $ (systemUsed calcs) `elem` [houseSystem, Porphyrius]
           assert $ (length $ houseCusps calcs) == 12
 
-      prop "calculates cusps and angles for points outside of the polar circles in the requested house system, no fallback." $
-        forAll genCuspsNonPolarQuery $ \((la, lo), time, houseSystem) -> monadicIO $ do
-          calcs <- run $ calculateCusps houseSystem time (mkCoordinates{lat = la, lng = lo})
+      prop "calculates cusps and angles for points outside of the polar circles in the requested house system, no fallback."
+        $ forAll genCuspsNonPolarQuery
+        $ \((la, lo), time, houseSystem) -> monadicIO $ do
+          calcs <- run $ calculateCusps houseSystem time (GeographicPosition {geoLat = la, geoLng = lo})
           assert $ (systemUsed calcs) == houseSystem
           assert $ (length $ houseCusps calcs) == 12
 
     describe "coordinate transformation" $ do
       it "converts between ecliptic and equatorial" $ do
-        let e = eclipticToEquatorial (ObliquityAndNutation (23.2) 0 0 0) $ EclipticPosition 285.6465775 (-0.0000826) 1 0 0 0
+        let e = eclipticToEquatorial (ObliquityInformation (23.2) 0 0 0) $ EclipticPosition 285.6465775 (-0.0000826) 1 0 0 0
             equatorial = EquatorialPosition {rightAscension = 286.9471857576873, declination = -22.29312747773143, eqDistance = 1.0, ascensionSpeed = 0.0, declinationSpeed = 0.0, eqDistanceSpeed = 0.0}
         e `shouldBe` equatorial
 
     describe "calculateHousePositionSimple" $ do
       it "calculates accurate house positions for some known planets" $ do
         let time = julianDay 1989 1 6 0.0
-            place = mkCoordinates{lat = 14.06, lng = -87.13}
+            place = GeographicPosition {geoLat = 14.06, geoLng = -87.13}
             housePos = calculateHousePositionSimple Placidus time place
             houseN = fmap houseNumber
+            mkEcliptic = EclipticPosition 0 0 0 0 0 0
 
-        sunH     <- housePos $ mkCoordinates{lng=285.6465775, lat=(-0.0000826)}
-        moonH    <- housePos $ mkCoordinates{lng=262.4723493, lat=(-4.9055744)}
-        mercuryH <- housePos $ mkCoordinates{lng=304.3135759, lat=(-1.3441786)}
-        venusH   <- housePos $ mkCoordinates{lng=264.0478768, lat=(0.6114330)}
-        marsH    <- housePos $ mkCoordinates{lng=22.7844912,  lat=(0.6472527)}
-        jupiterH <- housePos $ mkCoordinates{lng=56.4415899,  lat=(-0.8785552)}
-        saturnH  <- housePos $ mkCoordinates{lng=276.1819323, lat=(0.7124667)}
-        uranusH  <- housePos $ mkCoordinates{lng=272.0516769, lat=(-0.2200407)}
-        neptuneH <- housePos $ mkCoordinates{lng=280.1110192, lat=(0.9024311)}
-        plutoH   <- housePos $ mkCoordinates{lng=224.6817137, lat=(15.6296117)}
-        meanNH   <- housePos $ mkCoordinates{lng=337.5235158, lat=(0.0)}
-        chironH  <- housePos $ mkCoordinates{lng=93.5373174,  lat=(-6.8493261)}
+        sunH <- housePos $ mkEcliptic {lng = 285.6465775, lat = (-0.0000826)}
+        moonH <- housePos $ mkEcliptic {lng = 262.4723493, lat = (-4.9055744)}
+        mercuryH <- housePos $ mkEcliptic {lng = 304.3135759, lat = (-1.3441786)}
+        venusH <- housePos $ mkEcliptic {lng = 264.0478768, lat = (0.6114330)}
+        marsH <- housePos $ mkEcliptic {lng = 22.7844912, lat = (0.6472527)}
+        jupiterH <- housePos $ mkEcliptic {lng = 56.4415899, lat = (-0.8785552)}
+        saturnH <- housePos $ mkEcliptic {lng = 276.1819323, lat = (0.7124667)}
+        uranusH <- housePos $ mkEcliptic {lng = 272.0516769, lat = (-0.2200407)}
+        neptuneH <- housePos $ mkEcliptic {lng = 280.1110192, lat = (0.9024311)}
+        plutoH <- housePos $ mkEcliptic {lng = 224.6817137, lat = (15.6296117)}
+        meanNH <- housePos $ mkEcliptic {lng = 337.5235158, lat = (0.0)}
+        chironH <- housePos $ mkEcliptic {lng = 93.5373174, lat = (-6.8493261)}
 
         houseN sunH `shouldBe` Right 6
         houseN moonH `shouldBe` Right 5
@@ -149,33 +153,34 @@ spec = do
         houseN saturnH `shouldBe` Right 6
         houseN uranusH `shouldBe` Right 6
         houseN neptuneH `shouldBe` Right 6
-        houseN plutoH   `shouldBe` Right 4
-        houseN meanNH   `shouldBe` Right 8
-        houseN chironH  `shouldBe` Right 12
+        houseN plutoH `shouldBe` Right 4
+        houseN meanNH `shouldBe` Right 8
+        houseN chironH `shouldBe` Right 12
 
-      -- TODO: write property test, though this function isn't as useful as I thought:
-      -- https://groups.io/g/swisseph/message/4052
-    
+    -- TODO: write property test, though this function isn't as useful as I thought:
+    -- https://groups.io/g/swisseph/message/4052
+
     describe "calculateEquatorialPosition" $ do
-      it "calculates the declination and other points of interest" $ do 
+      it "calculates the declination and other points of interest" $ do
         pendingWith "sleepy"
 
-  around_ ( withEphemerides ephePath ) $ do
-    describe "calculateCoordinates with bundled ephemeris" $ do
-      prop "calculates coordinates for any of the planets in a wide range of time." $
-        forAll genCoordinatesQuery $ \(time, planet) -> monadicIO $ do
-          coords <- run $ calculateCoordinates time planet
+  around_ (withEphemerides ephePath) $ do
+    describe "calculateEclipticPosition with bundled ephemeris" $ do
+      prop "calculates coordinates for any of the planets in a wide range of time."
+        $ forAll genCoordinatesQuery
+        $ \(time, planet) -> monadicIO $ do
+          coords <- run $ calculateEclipticPosition time planet
           assert $ isRight coords
-      prop "is unable to calculate coordinates for times before or after the bundled ephemerides" $ 
-        forAll genBadCoordinatesQuery $ \(time, planet) -> monadicIO $ do
-          coords <- run $ calculateCoordinates time planet
+      prop "is unable to calculate coordinates for times before or after the bundled ephemerides"
+        $ forAll genBadCoordinatesQuery
+        $ \(time, planet) -> monadicIO $ do
+          coords <- run $ calculateEclipticPosition time planet
           assert $ isLeft coords
-
 
 {- For reference, here's an official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
 
-/ulb/swetest -b6.1.1989 -n1 -s1 -fPlbRS -pp -eswe 
+/ulb/swetest -b6.1.1989 -n1 -s1 -fPlbRS -pp -eswe
 date (dmy) 6.1.1989 greg.   0:00:00 TT		version 2.09.02
 UT:  2447532.499348289     delta t: 56.307812 sec
 TT:  2447532.500000000
@@ -211,26 +216,29 @@ Vesta            238.4983081   5.1734845    2.723062869    0°29'44.2131
 
 shouldBeApprox :: (Fractional a, Ord a, Show a) => a -> a -> Expectation
 shouldBeApprox expected actual =
-  if abs (actual - expected) < abs margin * max 1 (abs expected) then
-    pure ()
-  else
-    expectationFailure msg
+  if abs (actual - expected) < abs margin * max 1 (abs expected)
+    then pure ()
+    else expectationFailure msg
   where
     margin = 1e-5
-    msg = mconcat [
-      "Failure:\n expected: ", show actual,
-      " to be approximately equal to ", (show expected)]
+    msg =
+      mconcat
+        [ "Failure:\n expected: ",
+          show actual,
+          " to be approximately equal to ",
+          (show expected)
+        ]
 
 infix 1 `shouldBeApprox`
 
-compareCoords :: Either String EclipticPosition-> Either String EclipticPosition-> Expectation
+compareCoords :: Either String EclipticPosition -> Either String EclipticPosition -> Expectation
 compareCoords (Right a) (Right b) = do
-   lng a `shouldBeApprox` lng b
-   lat a `shouldBeApprox` lat b
-   distance a `shouldBeApprox` distance b
-   lngSpeed a `shouldBeApprox` lngSpeed b
-   latSpeed a `shouldBeApprox` latSpeed b
-   distSpeed a `shouldBeApprox` distSpeed b
+  lng a `shouldBeApprox` lng b
+  lat a `shouldBeApprox` lat b
+  distance a `shouldBeApprox` distance b
+  lngSpeed a `shouldBeApprox` lngSpeed b
+  latSpeed a `shouldBeApprox` latSpeed b
+  distSpeed a `shouldBeApprox` distSpeed b
 compareCoords (Left e) _ = expectationFailure $ "Expected coordinates, got: " ++ e
 compareCoords _ (Left e) = expectationFailure $ "Expected coordinates, got: " ++ e
 
@@ -251,8 +259,6 @@ compareCalculations (Right (CuspsCalculation housesA anglesA sysA)) (Right (Cusp
   coAscendantKoch anglesA `shouldBeApprox` coAscendantKoch anglesB
   coAscendantMunkasey anglesA `shouldBeApprox` coAscendantMunkasey anglesB
   polarAscendant anglesA `shouldBeApprox` polarAscendant anglesB
-
-
 compareCalculations _ _ = expectationFailure "Unable to calculate"
 
 -- | As noted in the readme, the test ephemeris only covers from
@@ -276,9 +282,9 @@ genHouseSystem = elements [Placidus, Koch, Porphyrius, Regiomontanus, Campanus, 
 
 genCoordinatesQuery :: Gen (JulianTime, Planet)
 genCoordinatesQuery = do
-  time   <- genJulian
+  time <- genJulian
   planet <- elements [Sun .. Chiron]
-  return (time, planet)
+  return (JulianTime time, planet)
 
 -- only Chiron is reliably outside of our calculations,
 -- our ephemerides data does have some other bodies missing though.
@@ -287,29 +293,29 @@ genBadCoordinatesQuery = do
   time <- genBadJulian
   -- TODO: does the library _really_ misbehave for all bodies, or just Chiron?
   planet <- pure $ Chiron
-  return (time, planet)
+  return (JulianTime time, planet)
 
 genAnyCoords :: Gen (Double, Double)
 genAnyCoords = do
   -- see swehouse.c: for many systems, being _on_ the pole will fail,
   -- even if the system works in the polar circle, nominally.
-  anyLat  <- choose (-90.0, 90.0)
+  anyLat <- choose (-90.0, 90.0)
   anyLong <- choose (-180.0, 180.0)
   return (anyLat, anyLong)
 
 genCuspsQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
 genCuspsQuery = do
   coords <- genAnyCoords
-  time   <- genJulian
+  time <- genJulian
   -- Placidus and Koch _sometimes_ succeed, for certain locations, but are more likely to fail.
   -- Regiomontanus and Campanus also struggle to calculate some angles.
-  house  <- genHouseSystem
-  return (coords, time, house)
+  house <- genHouseSystem
+  return (coords, (JulianTime time), house)
 
 genCuspsNonPolarQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
 genCuspsNonPolarQuery = do
   nonPolarLat <- choose (-40.0, 40.0)
-  anyLong     <- choose (-180.0, 180.0)
-  time        <- genJulian
-  house       <- genHouseSystem
-  return      ((nonPolarLat, anyLong), time, house)
+  anyLong <- choose (-180.0, 180.0)
+  time <- genJulian
+  house <- genHouseSystem
+  return ((nonPolarLat, anyLong), (JulianTime time), house)

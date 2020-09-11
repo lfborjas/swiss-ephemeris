@@ -1,65 +1,72 @@
+-- |
+-- Module: SwissEphemeris
+-- Description: Bindings to the swisseph C library.
+-- License: GPL-2
+-- Maintainer: swiss-ephemeris@lfborjas.com
+-- Portability: POSIX
+--
+-- Exposes types and functions that mirror the rich functionality of <https://www.astro.com/swisseph/swephinfo_e.htm Swiss Ephemeris>.
+-- Currently only certain bodies are exposed as data constructors, same for the major house systems. This is for the sake of simplicity
+-- only, if you need more, please refer to the bundled header files in @csrc@.
+--
+-- You'll need to procure ephemeris files (see the official site, linked above) if you wish to obtain positions for planets outside of the main planetary
+-- bodies in the solar system, or before 3000 B.C or after 3000 A.D. For example, the test suite uses a small ephemeris
+-- that includes data for the asteroid Chiron, which is astrologically relevant in most modern practices.
+--
+-- Currently, only `calculateCoordinates` (to calculate the geocentric position of a given celestial body at a given Julian time,)
+-- and `calculateCusps` (to calculate house cusps and relevant angles in various house systems/traditions) are provided; plus a
+-- small `julianDay` function to translate between gregorian and julian times. There's a wealth of other calculations possible with
+-- the underlying library, please refer to their documentation and the bundled sources for ideas!
+module SwissEphemeris
+  ( -- newtypes without exposed constructors
+    JulianTime,
+    SiderealTime,
+    HouseCusp,
+    -- deprecated type!
+    Coordinates,
+    -- fundamental enumerations
+    Planet (..),
+    HouseSystem (..),
+    -- coordinate/position systems
+    EclipticPosition (..),
+    EquatorialPosition (..),
+    GeographicPosition (..),
+    HousePosition (..),
+    -- information about the ecliptic at a point in time.
+    ObliquityInformation (..),
+    Angles (..),
+    CuspsCalculation (..),
+    -- management of data files
+    setEphemeridesPath,
+    setNoEphemeridesPath,
+    closeEphemerides,
+    withEphemerides,
+    withoutEphemerides,
+    -- core calculations
+    calculateCoordinates,
+    calculateEclipticPosition,
+    calculateEquatorialPosition,
+    calculateObliquity,
+    calculateCusps,
+    calculateCuspsLenient,
+    calculateCuspsStrict,
+    -- utility: coordinate transformation
+    equatorialToEcliptic,
+    eclipticToEquatorial,
+    -- utilities for sidereal information
+    calculateSiderealTime,
+    calculateSiderealTimeSimple,
+    calculateHousePosition,
+    calculateHousePositionSimple,
+    -- utilities for time calculations:
+    julianDay,
+  )
+where
 
-{-|
-Module: SwissEphemeris
-Description: Bindings to the swisseph C library.
-License: GPL-2
-Maintainer: swiss-ephemeris@lfborjas.com
-Portability: POSIX
-
-Exposes types and functions that mirror the rich functionality of <https://www.astro.com/swisseph/swephinfo_e.htm Swiss Ephemeris>.
-Currently only certain bodies are exposed as data constructors, same for the major house systems. This is for the sake of simplicity
-only, if you need more, please refer to the bundled header files in @csrc@.
-
-You'll need to procure ephemeris files (see the official site, linked above) if you wish to obtain positions for planets outside of the main planetary
-bodies in the solar system, or before 3000 B.C or after 3000 A.D. For example, the test suite uses a small ephemeris
-that includes data for the asteroid Chiron, which is astrologically relevant in most modern practices.
-
-Currently, only `calculateCoordinates` (to calculate the geocentric position of a given celestial body at a given Julian time,)
-and `calculateCusps` (to calculate house cusps and relevant angles in various house systems/traditions) are provided; plus a
-small `julianDay` function to translate between gregorian and julian times. There's a wealth of other calculations possible with
-the underlying library, please refer to their documentation and the bundled sources for ideas!
--}
-
-module SwissEphemeris (
-    Planet(..)
-,   HouseSystem(..)
-,   JulianTime
-,   HouseCusp
-,   Coordinates
-,   EclipticPosition(..)
-,   EquatorialPosition(..)
-,   HousePosition(..)
-,   ObliquityAndNutation(..)
-,   Angles(..)
-,   CuspsCalculation(..)
--- constructors
-,   mkCoordinates
-,   julianDay
--- management of data files
-,   setEphemeridesPath
-,   setNoEphemeridesPath
-,   closeEphemerides
-,   withEphemerides
-,   withoutEphemerides
--- core calculations
-,   calculateCoordinates
-,   calculateEquatorialPosition
-,   calculateObliquityAndNutation
-,   calculateCusps
-,   calculateCuspsLenient
-,   calculateCuspsStrict
-,   calculateHousePositionSimple
--- utility
-,   equatorialToEcliptic
-,   eclipticToEquatorial
-) where
-
-import           Foreign.SwissEphemeris
-
-import           Foreign
-import           Foreign.C.String
 import Control.Exception (bracket_)
-
+import Foreign
+import Foreign.C.String
+import Foreign.SwissEphemeris
 import SwissEphemeris.Internal
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -68,7 +75,7 @@ import System.IO.Unsafe (unsafePerformIO)
 -- if the environment variable @SE_EPHE_PATH@ is set, it overrides this function.
 setEphemeridesPath :: FilePath -> IO ()
 setEphemeridesPath path =
-    withCString path $ \ephePath -> c_swe_set_ephe_path ephePath
+  withCString path $ \ephePath -> c_swe_set_ephe_path ephePath
 
 -- | Explicitly state that we don't want to set an ephemeris path,
 -- which will default to the built-in ephemeris, or use the directory
@@ -81,32 +88,36 @@ setNoEphemeridesPath = c_swe_set_ephe_path nullPtr
 closeEphemerides :: IO ()
 closeEphemerides = c_swe_close
 
--- | Run a computation with a given ephemerides path open, and then close it. 
--- Note that the computation does /not/ receive the ephemerides, 
+-- | Run a computation with a given ephemerides path open, and then close it.
+-- Note that the computation does /not/ receive the ephemerides,
 -- in keeping with the underlying library's side-effectful conventions.
 withEphemerides :: FilePath -> (IO a) -> IO a
 withEphemerides ephemeridesPath =
-  bracket_ (setEphemeridesPath ephemeridesPath)
-           (closeEphemerides)
+  bracket_
+    (setEphemeridesPath ephemeridesPath)
+    (closeEphemerides)
 
 -- | Run a computation with no explicit ephemerides set, if the @SE_EPHE_PATH@
 -- environment variable is set, that will be used. If not, it'll fall back to
 -- in-memory data.
 withoutEphemerides :: (IO a) -> IO a
 withoutEphemerides =
-  bracket_ (setNoEphemeridesPath)
-           (closeEphemerides)
+  bracket_
+    (setNoEphemeridesPath)
+    (closeEphemerides)
 
 -- | Given year, month and day as `Int` and a time as `Double`, return
 -- a single floating point number representing absolute `JulianTime`.
 -- The input date is assumed to be in Gregorian time.
 julianDay :: Int -> Int -> Int -> Double -> JulianTime
-julianDay year month day hour = realToFrac $ c_swe_julday y m d h gregorian
+julianDay year month day hour = JulianTime $ realToFrac $ c_swe_julday y m d h gregorian
   where
     y = fromIntegral year
     m = fromIntegral month
     d = fromIntegral day
     h = realToFrac hour
+
+{-# DEPRECATED calculateCoordinates "Use calculateEclipticPosition or calculateEquatorialPosition." #-}
 
 -- | Alias for `calculateEclipticPosition`, since it's the most common
 -- position calculation.
@@ -117,7 +128,7 @@ calculateCoordinates = calculateEclipticPosition
 -- and a `Planet`, returns either the position of that planet at the given time,
 -- if available in the ephemeris, or an error. The underlying library may do IO
 -- when reading ephemerides data.
-calculateEclipticPosition :: JulianTime -> Planet -> IO (Either String Coordinates)
+calculateEclipticPosition :: JulianTime -> Planet -> IO (Either String EclipticPosition)
 calculateEclipticPosition time planet = do
   let options = (mkCalculationOptions defaultCalculationOptions)
   rawCoords <- calculateCoordinates' options time (planetNumber planet)
@@ -133,47 +144,52 @@ calculateEquatorialPosition time planet = do
   return $ fmap equatorialFromList rawCoords
 
 -- | Given a time, calculate ecliptic obliquity and nutation
-calculateObliquityAndNutation :: JulianTime -> IO (Either String ObliquityAndNutation)
-calculateObliquityAndNutation time = do
+calculateObliquity :: JulianTime -> IO (Either String ObliquityInformation)
+calculateObliquity time = do
   let options = CalcFlag 0
   rawCoords <- calculateCoordinates' options time specialEclNut
   return $ fmap obliquityNutationFromList rawCoords
 
--- | Call the internal function for calculations
+-- | Internal function for calculations: the contract is too permissive, use one of the specialized
+-- ones!
 calculateCoordinates' :: CalcFlag -> JulianTime -> PlanetNumber -> IO (Either String [Double])
 calculateCoordinates' options time planet =
-    allocaArray 6 $ \coords -> allocaArray 256 $ \serr -> do
-        iflgret <- c_swe_calc_ut (realToFrac time)
-                                 planet
-                                 options
-                                 coords
-                                 serr
+  allocaArray 6 $ \coords -> allocaArray 256 $ \serr -> do
+    iflgret <-
+      c_swe_calc_ut
+        (realToFrac . unJulianTime $ time)
+        planet
+        options
+        coords
+        serr
 
-        if unCalcFlag iflgret < 0
-            then do
-                msg <- peekCAString serr
-                return $ Left msg
-            else do
-                result <- peekArray 6 coords
-                return $ Right $ map realToFrac result
+    if unCalcFlag iflgret < 0
+      then do
+        msg <- peekCAString serr
+        return $ Left msg
+      else do
+        result <- peekArray 6 coords
+        return $ Right $ map realToFrac result
 
--- | Non-speed preserving transformation between 
-eclipticToEquatorial :: ObliquityAndNutation -> EclipticPosition -> EquatorialPosition
+-- | Convert from an ecliptic position to an equatorial position. Requires
+-- knowledge of obliquity (see `calculateObliquity`.)
+eclipticToEquatorial :: ObliquityInformation -> EclipticPosition -> EquatorialPosition
 eclipticToEquatorial oAndN ecliptic =
   let obliquityLn = eclipticObliquity oAndN
       eclipticPos = eclipticToList ecliptic
       transformed = coordinateTransform' (negate obliquityLn) eclipticPos
-  in
-    equatorialFromList transformed
+   in equatorialFromList transformed
 
-equatorialToEcliptic :: ObliquityAndNutation -> EquatorialPosition -> EclipticPosition
+-- | Convert from an equatorial position to an ecliptic position. Requires
+-- knowledge of obliquity (see `calculateObliquity`.)
+equatorialToEcliptic :: ObliquityInformation -> EquatorialPosition -> EclipticPosition
 equatorialToEcliptic oAndN equatorial =
-  let obliquityLn   = eclipticObliquity oAndN
+  let obliquityLn = eclipticObliquity oAndN
       equatorialPos = equatorialToList equatorial
-      transformed   = coordinateTransform' obliquityLn equatorialPos
-  in
-    eclipticFromList transformed
+      transformed = coordinateTransform' obliquityLn equatorialPos
+   in eclipticFromList transformed
 
+-- | Internal function for coordinate transformation.
 coordinateTransform' :: Double -> [Double] -> [Double]
 coordinateTransform' obliquity ins =
   unsafePerformIO $ do
@@ -183,105 +199,111 @@ coordinateTransform' obliquity ins =
       return $ map realToFrac result
 
 -- | Alias for `calculateCuspsLenient`
-calculateCusps :: HouseSystem -> JulianTime -> Coordinates -> IO CuspsCalculation
+calculateCusps :: HouseSystem -> JulianTime -> GeographicPosition -> IO CuspsCalculation
 calculateCusps = calculateCuspsLenient
 
 -- | Given a decimal representation of Julian Time (see `julianDay`),
 -- a set of `Coordinates` (see `mkCoordinates`,) and a `HouseSystem`
 -- (most applications use `Placidus`,) return a `CuspsCalculation` with all
--- house cusps in that system, and other relevant `Angles`. 
+-- house cusps in that system, and other relevant `Angles`.
 -- Notice that certain systems,
 -- like `Placidus` and `Koch`, are very likely to fail close to the polar circles; in this
 -- and other edge cases, the calculation returns cusps in the `Porphyrius` system.
 -- The underlying library may do IO when consulting ephemerides data.
-calculateCuspsLenient :: HouseSystem -> JulianTime -> Coordinates -> IO CuspsCalculation
-calculateCuspsLenient sys time loc = 
-    allocaArray 13 $ \cusps -> allocaArray 10 $ \ascmc -> do
-        rval <- c_swe_houses (realToFrac time)
-                             (realToFrac $ lat loc)
-                             (realToFrac $ lng loc)
-                             (fromIntegral $ toHouseSystemFlag sys)
-                             cusps
-                             ascmc
-        -- NOTE: the underlying library returns 13 cusps for most systems,
-        -- but the first element is always zero, to enable saying:
-        -- cusps[1] -> first house.
-        -- we treat it as a normal zero-indexed list.
-        -- TODO: the Gauquelin system may return 37 doubles,
-        -- we can try to support that, though do keep in mind that it may fall
-        -- back to porphyrius near the poles, which ony has 13 doubles returned.
-        (_:cuspsL)  <- peekArray 13 cusps
-        anglesL     <- peekArray 10 ascmc
-        return $ CuspsCalculation
-                  (map realToFrac $ cuspsL) 
-                  (anglesFromList $ map realToFrac $ anglesL)
-                  (if rval < 0 then Porphyrius else sys)
+calculateCuspsLenient :: HouseSystem -> JulianTime -> GeographicPosition -> IO CuspsCalculation
+calculateCuspsLenient sys time loc =
+  allocaArray 13 $ \cusps -> allocaArray 10 $ \ascmc -> do
+    rval <-
+      c_swe_houses
+        (realToFrac . unJulianTime $ time)
+        (realToFrac $ geoLat loc)
+        (realToFrac $ geoLng loc)
+        (fromIntegral $ toHouseSystemFlag sys)
+        cusps
+        ascmc
+    -- NOTE: the underlying library returns 13 cusps for most systems,
+    -- but the first element is always zero, to enable saying:
+    -- cusps[1] -> first house.
+    -- we treat it as a normal zero-indexed list.
+    -- TODO: the Gauquelin system may return 37 doubles,
+    -- we can try to support that, though do keep in mind that it may fall
+    -- back to porphyrius near the poles, which ony has 13 doubles returned.
+    (_ : cuspsL) <- peekArray 13 cusps
+    anglesL <- peekArray 10 ascmc
+    return $
+      CuspsCalculation
+        (map realToFrac $ cuspsL)
+        (anglesFromList $ map realToFrac $ anglesL)
+        (if rval < 0 then Porphyrius else sys)
 
 -- | Unlike `calculateCuspsLenient`, return a `Left` value if the required house system
 -- couldn't be used to perform the calculations.
-calculateCuspsStrict :: HouseSystem -> JulianTime -> Coordinates -> IO (Either String CuspsCalculation)
+calculateCuspsStrict :: HouseSystem -> JulianTime -> GeographicPosition -> IO (Either String CuspsCalculation)
 calculateCuspsStrict sys time loc = do
   calcs@(CuspsCalculation _ _ sys') <- calculateCuspsLenient sys time loc
-  if sys' /= sys then
-    pure $ Left $ "Unable to calculate cusps in the requested house system (used " ++ (show sys') ++ " instead.)"
-  else
-    pure $ Right calcs
+  if sys' /= sys
+    then pure $ Left $ "Unable to calculate cusps in the requested house system (used " ++ (show sys') ++ " instead.)"
+    else pure $ Right calcs
 
 -- | Calculates the house position of a body in a house in the given system.
 -- requires the geographic coordinates and time of the birth/event, and the
 -- ecliptic coordinates of the planet/body. You only want this function if
 -- you're working in the polar circle, or with objects that are way off the ecliptic;
 -- for most objects in usual astrological charts, simply seeing which cusps
--- a planet falls between is sufficient.
+-- a planet falls between is sufficient, no need for this more complicated method.
 -- see <https://groups.io/g/swisseph/message/4052>
 -- NOTES: for the Koch system, this is likely to fail, or return counterintuitive
 -- results. Also, we're doing a bit of a funky conversion between sidereal time and
--- ARMC, if you `calculateCusps`, the correct ARMC will be present in 
-calculateHousePositionSimple :: HouseSystem -> JulianTime -> Coordinates -> EclipticPosition -> IO (Either String HousePosition)
+-- ARMC, if you `calculateCusps`, the correct ARMC will be present in
+calculateHousePositionSimple :: HouseSystem -> JulianTime -> GeographicPosition -> EclipticPosition -> IO (Either String HousePosition)
 calculateHousePositionSimple sys time loc pos = do
-  obliquityAndNutation <- calculateObliquityAndNutation time
+  obliquityAndNutation <- calculateObliquity time
   case obliquityAndNutation of
     Left e -> return $ Left e
     Right on -> do
       siderealTime <- calculateSiderealTime time on
-      let armc' = (sidToArmc siderealTime (lng loc))
+      let armc' = (unSidereal $ siderealTime) * 15 + geoLng loc
       calculateHousePosition sys armc' loc on pos
 
----
---- NOT EXPORTED (YET)
---- 
-
--- | If you happen to have the correct ARMC for a time and place (obtained from calculateCusps) 
+-- | If you happen to have the correct ARMC for a time and place (obtained from calculateCusps)
 -- and obliquity and nutation,
 -- you can use this method to calculate a planet's house position.
 -- Usually, what you have is just the time and place of the event, and positions of a planet,
 -- in those cases, see `calculateHousePositionSimple`.
-calculateHousePosition :: HouseSystem -> ARMC -> Coordinates -> ObliquityAndNutation -> EclipticPosition -> IO (Either String HousePosition)
+calculateHousePosition :: HouseSystem -> Double -> GeographicPosition -> ObliquityInformation -> EclipticPosition -> IO (Either String HousePosition)
 calculateHousePosition sys armc' geoCoords obliq eclipticCoords =
   withArray [realToFrac $ lng eclipticCoords, realToFrac $ lat eclipticCoords] $ \xpin -> allocaArray 256 $ \serr -> do
-    housePos <- c_swe_house_pos (realToFrac   $ unArmc armc')
-                                (realToFrac   $ lat geoCoords)
-                                (realToFrac   $ eclipticObliquity obliq)
-                                (fromIntegral $ toHouseSystemFlag sys)
-                                xpin
-                                serr
-    if housePos <= 0 then do
-      msg <- peekCAString serr
-      return $ Left msg
-    else do
-      let houseN = truncate housePos
-          cuspD  = housePos - (fromIntegral houseN)
-      return $ Right $ HousePosition houseN (realToFrac cuspD)
+    housePos <-
+      c_swe_house_pos
+        (realToFrac armc')
+        (realToFrac $ geoLat geoCoords)
+        (realToFrac $ eclipticObliquity obliq)
+        (fromIntegral $ toHouseSystemFlag sys)
+        xpin
+        serr
+    if housePos <= 0
+      then do
+        msg <- peekCAString serr
+        return $ Left msg
+      else do
+        let houseN = truncate housePos
+            cuspD = housePos - (fromIntegral houseN)
+        return $ Right $ HousePosition houseN (realToFrac cuspD)
 
--- TODO: consider CDouble vs. realtoFrac, for loss of information issues.
+-- | Given `JulianTime`, get `SiderealTime`. May consult ephemerides data, hence it being in IO,
+-- will have to calculate obliquity at the given julian time, so it'll be slightly slower than
+-- `calculateSiderealTime`.
 calculateSiderealTimeSimple :: JulianTime -> IO SiderealTime
 calculateSiderealTimeSimple jt = do
-  sidTime <- c_swe_sidtime (realToFrac jt)
+  sidTime <- c_swe_sidtime (realToFrac . unJulianTime $ jt)
   return $ SiderealTime $ realToFrac sidTime
 
-calculateSiderealTime :: JulianTime -> ObliquityAndNutation -> IO SiderealTime
+-- | Given a `JulianTime` and `ObliquityInformation`, calculate the equivalent `SiderealTime`.
+-- prefer it over `calculateSiderealTimeSimple` if you already obtained `ObliquityInformation`
+-- for another calculation.
+calculateSiderealTime :: JulianTime -> ObliquityInformation -> IO SiderealTime
 calculateSiderealTime jt on = do
   let obliq = realToFrac $ eclipticObliquity on
-      nut   = realToFrac $ nutationLongitude on
-  sidTime <- c_swe_sidtime0 (realToFrac jt) obliq nut
+      nut = realToFrac $ nutationLongitude on
+  sidTime <- c_swe_sidtime0 (realToFrac . unJulianTime $ jt) obliq nut
   return $ SiderealTime $ realToFrac sidTime
