@@ -73,7 +73,7 @@ data ZodiacSignName
 -- | Represents an instant in Julian time.
 -- see:
 -- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847871 8. Date and time conversion functions>
--- also cf. `julianDay`
+-- also cf. @julianDay@
 newtype JulianTime = JulianTime {unJulianTime :: Double}
   deriving (Show, Eq, Ord)
 
@@ -102,6 +102,8 @@ data EclipticPosition = EclipticPosition
 
 {-# DEPRECATED Coordinates "This was an ambiguous type, use EclipticPosition for positions of celestial bodies, or GeographicPosition for a point on Earth." #-}
 
+-- | Deprecated type alias, used to mean `EclipticPosition` before we introduced other
+-- types of positions.
 type Coordinates = EclipticPosition
 
 -- | Represents a point on Earth, with negative values

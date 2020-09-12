@@ -140,7 +140,7 @@ calculateEclipticPosition time planet = do
   return $ fmap coordinatesFromList rawCoords
 
 -- | Obtain equatorial position (includes declination) of a planet.
--- If you've called `calculateCoordinates` in your code, this is a very cheap call, as the data
+-- If you've called `calculateEclipticPosition` in your code, this is a very cheap call, as the data
 -- is already available to the C code.
 calculateEquatorialPosition :: JulianTime -> Planet -> IO (Either String EquatorialPosition)
 calculateEquatorialPosition time planet = do
@@ -208,7 +208,7 @@ calculateCusps :: HouseSystem -> JulianTime -> GeographicPosition -> IO CuspsCal
 calculateCusps = calculateCuspsLenient
 
 -- | Given a decimal representation of Julian Time (see `julianDay`),
--- a set of `Coordinates` (see `mkCoordinates`,) and a `HouseSystem`
+-- a `GeographicPosition` and a `HouseSystem`
 -- (most applications use `Placidus`,) return a `CuspsCalculation` with all
 -- house cusps in that system, and other relevant `Angles`.
 -- Notice that certain systems,
@@ -259,7 +259,7 @@ calculateCuspsStrict sys time loc = do
 -- see <https://groups.io/g/swisseph/message/4052>
 -- NOTES: for the Koch system, this is likely to fail, or return counterintuitive
 -- results. Also, we're doing a bit of a funky conversion between sidereal time and
--- ARMC, if you `calculateCusps`, the correct ARMC will be present in
+-- ARMC, if you `calculateCusps`, the correct `armc` will be present in the returned `Angles`
 calculateHousePositionSimple :: HouseSystem -> JulianTime -> GeographicPosition -> EclipticPosition -> IO (Either String HousePosition)
 calculateHousePositionSimple sys time loc pos = do
   obliquityAndNutation <- calculateObliquity time
@@ -324,6 +324,8 @@ deltaTime jt = do
   deltaT <- c_swe_deltat . realToFrac . unJulianTime $ jt
   return $ realToFrac deltaT
 
+-- | Given a longitude, return the degrees it's from its nearest sign,
+-- minutes, seconds and seconds fraction.
 splitDegreesZodiac :: Double -> LongitudeComponents
 splitDegreesZodiac d =
   LongitudeComponents (Just $ toEnum z) deg m s sf
@@ -331,6 +333,7 @@ splitDegreesZodiac d =
     (z, deg, m, s, sf) = splitDegrees' options d
     options = mkSplitDegOptions $ defaultSplitDegOptions ++ [splitZodiacal]
 
+-- | Given a longitude, return the degrees from zero, minutes, seconds and seconds fraction.
 splitDegrees :: Double -> LongitudeComponents
 splitDegrees d =
   LongitudeComponents Nothing deg m s sf

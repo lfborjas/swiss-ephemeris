@@ -1,4 +1,12 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-| 
+Module: Foreign.SwissEphemeris
+Description: Declarations of bindings to the underlying C library. Import at your own risk!
+
+Exposes very low-level FFI bindings to the C library. Use the @SwissEphemeris@ module and its more
+Haskell-friendly exports.
+-}
+
 
 module Foreign.SwissEphemeris where
 
@@ -81,7 +89,7 @@ foreign import ccall unsafe "swephexp.h swe_julday"
 
 -- | Calculate the position of a body, given a time in
 -- Universal Time. Note that this is marginally more expensive than
--- `swe_calc`, but I use this one to keep consistency with `swe_houses`.
+-- @swe_calc@, but I use this one to keep consistency with @swe_houses@.
 foreign import ccall unsafe "swephexp.h swe_calc_ut"
     c_swe_calc_ut :: CDouble
                   -> PlanetNumber
@@ -115,6 +123,7 @@ foreign import ccall unsafe "swephexp.h swe_house_pos"
                     -> CString     -- char[256] for errors.
                     -> (IO CDouble)
 
+-- | Low-level function to translate between coordinate systems, with speed position included.
 foreign import ccall unsafe "swephexp.h swe_cotrans_sp"
     c_swe_cotrans_sp :: Ptr CDouble -- double[6]: lng, lat, distance
                      -> Ptr CDouble -- double[6]: ascension, declination, distance (or viceversa)
@@ -135,7 +144,7 @@ foreign import ccall unsafe "swephexp.h swe_split_deg"
 
 -- | Calculate the delta time for a given julian time,
 -- delta time + julian time = ephemeris time
--- NOTE: there's also swe_deltat_ex which takes an ephemeris
+-- NOTE: there's also @swe_deltat_ex@ which takes an ephemeris
 -- flag explicitly, vs. the current global value.
 -- my calculations work in one ephemeris, so this one is suitable.
 foreign import ccall unsafe "swephexp.h swe_deltat"
@@ -143,15 +152,13 @@ foreign import ccall unsafe "swephexp.h swe_deltat"
                  -> (IO CDouble)
 
 -- | Calculate the sidereal time for a given julian time.
--- NOTE: there's also swe_sidtime0 which requires obliquity
+-- NOTE: there's also @swe_sidtime0@ which requires obliquity
 -- and nutation, this one computes them internally.
 foreign import ccall unsafe "swephexp.h swe_sidtime"
     c_swe_sidtime :: CDouble -- Julian time
                    -> (IO CDouble)
 
--- | Calculate the sidereal time for a given julian time.
--- NOTE: there's also swe_sidtime0 which requires obliquity
--- and nutation, this one computes them internally.
+-- | Calculate the sidereal time for a given julian time, obliquity and nutation.
 foreign import ccall unsafe "swephexp.h swe_sidtime0"
     c_swe_sidtime0 :: CDouble -- Julian time
                    -> CDouble -- obliquity
