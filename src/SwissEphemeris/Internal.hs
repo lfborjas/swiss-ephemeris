@@ -100,12 +100,6 @@ data EclipticPosition = EclipticPosition
   }
   deriving (Show, Eq, Generic)
 
-{-# DEPRECATED Coordinates "This was an ambiguous type, use EclipticPosition for positions of celestial bodies, or GeographicPosition for a point on Earth." #-}
-
--- | Deprecated type alias, used to mean `EclipticPosition` before we introduced other
--- types of positions.
-type Coordinates = EclipticPosition
-
 -- | Represents a point on Earth, with negative values
 -- for latitude meaning South, and negative values for longitude
 -- meaning West. No speed information is included (or needed,)

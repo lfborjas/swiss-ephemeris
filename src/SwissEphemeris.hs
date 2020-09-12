@@ -21,8 +21,6 @@ module SwissEphemeris
     JulianTime,
     SiderealTime,
     HouseCusp,
-    -- deprecated type!
-    Coordinates,
     -- fundamental enumerations
     Planet (..),
     HouseSystem (..),
@@ -44,7 +42,6 @@ module SwissEphemeris
     withEphemerides,
     withoutEphemerides,
     -- core calculations
-    calculateCoordinates,
     calculateEclipticPosition,
     calculateEquatorialPosition,
     calculateObliquity,
@@ -121,13 +118,6 @@ julianDay year month day hour = JulianTime $ realToFrac $ c_swe_julday y m d h g
     m = fromIntegral month
     d = fromIntegral day
     h = realToFrac hour
-
-{-# DEPRECATED calculateCoordinates "Use calculateEclipticPosition or calculateEquatorialPosition." #-}
-
--- | Alias for `calculateEclipticPosition`, since it's the most common
--- position calculation.
-calculateCoordinates :: JulianTime -> Planet -> IO (Either String Coordinates)
-calculateCoordinates = calculateEclipticPosition
 
 -- | Given `JulianTime` (see `julianDay`),
 -- and a `Planet`, returns either the position of that planet at the given time,

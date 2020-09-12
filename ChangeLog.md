@@ -2,6 +2,10 @@
 
 ## v1.1.0.0 (2020-09-12)
 
+**BREAKING CHANGE:** the `Coordinates` type has been retired, in favor of the more specific
+`GeographicPosition` and `EclipticPosition`. `calculateCoordinates` is now `calculateEclipticPosition`,
+and the `calculateCusps*` family now takes a `GeographicPosition` as part of its inputs.
+
 * Introduces an `Internal` module with types and helpers that this library introduces,
   which are not native to the underlying C library. Import at your own risk! (the "curated"/
   "stable" ones are re-exported by the main module.)
