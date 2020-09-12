@@ -1,5 +1,25 @@
 # Changelog for swiss-ephemeris
 
+## v1.1.0.0 (2020-09-12)
+
+**BREAKING CHANGE:** the `Coordinates` type has been retired, in favor of the more specific
+`GeographicPosition` and `EclipticPosition`. `calculateCoordinates` is now `calculateEclipticPosition`,
+and the `calculateCusps*` family now takes a `GeographicPosition` as part of its inputs.
+
+* Introduces an `Internal` module with types and helpers that this library introduces,
+  which are not native to the underlying C library. Import at your own risk! (the "curated"/
+  "stable" ones are re-exported by the main module.)
+  - Deprecates the `Coordinates` type, in favor of `EclipticPosition`.
+* Introduces functions to `calculateEquatorialPosition` and `calculteObliquity` at a given time,
+  as well as types that better convey the different types of positions (`EquatorialPosition`, `ObliquityInformation`).
+* Some astrology helpers: convert between equatorial and ecliptic (and vice-versa,)
+  obtain the Delta Time effective at a given moment, obtain the house position of a given body.
+  (**Note:** the `calculateHousePosition` function is more useful for working near the polar circles or for bodies
+  off of the ecliptic -- the ARMC and obliquity need to be calculated or provided, it's simpler
+  if you already have the cusps: just check which cusps a given longitude falls between -- no need for
+  this function!)
+
+
 ## v1.0.0.0 (2020-09-07)
 
 * Refactor the `calculateCusps` function:

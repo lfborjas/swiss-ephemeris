@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3000345ad0f1743d5d07d502ab8a82e9041a9ce0c3638099da145a5987d1f3a0
+-- hash: 25f7b59663125c750ee70fd238ed152f8c7496541d173c1e07bcb3944b332ee1
 
 name:           swiss-ephemeris
-version:        1.0.0.0
+version:        1.1.0.0
 synopsis:       Haskell bindings for the Swiss Ephemeris C library
 description:    Please see the README on GitHub at <https://github.com/lfborjas/swiss-ephemeris#readme>
 category:       Data, Astrology
@@ -30,6 +30,7 @@ library
   exposed-modules:
       Foreign.SwissEphemeris
       SwissEphemeris
+      SwissEphemeris.Internal
   other-modules:
       Paths_swiss_ephemeris
   hs-source-dirs:
