@@ -60,6 +60,7 @@ module SwissEphemeris
     calculateHousePositionSimple,
     -- utilities for time calculations:
     julianDay,
+    deltaTime,
   )
 where
 
@@ -307,3 +308,14 @@ calculateSiderealTime jt on = do
       nut = realToFrac $ nutationLongitude on
   sidTime <- c_swe_sidtime0 (realToFrac . unJulianTime $ jt) obliq nut
   return $ SiderealTime $ realToFrac sidTime
+
+-- | Given a `JulianTime` (based on a UniversalTime), calculate the delta
+-- between it and "true time":
+-- See <https://www.astro.com/swisseph/swisseph.htm#_Toc46391727 7. Delta T>
+-- It relies on ephemeris data being open, and as such belongs in IO.
+-- /NOTE:/ this could be used to create a JulianTime -> EphemerisTime
+-- function to send down to @swe_calc@, if we choose to port that one.
+deltaTime :: JulianTime -> IO Double
+deltaTime jt = do
+  deltaT <- c_swe_deltat . realToFrac . unJulianTime $ jt
+  return $ realToFrac deltaT

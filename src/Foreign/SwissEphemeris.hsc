@@ -121,6 +121,31 @@ foreign import ccall unsafe "swephexp.h swe_cotrans_sp"
                      -> CDouble     -- obliquity of the ecliptic.
                      -> IO ()
 
+---
+--- NOT IMPLEMENTED IN THE PUBLIC API YET:
+--- 
+
+-- | Split a given ecliptic longitude into sign (number)
+-- degrees, minutes and seconds.
+foreign import ccall unsafe "swephexp.h swe_split_deg"
+    c_swe_split_deg :: CDouble -- longitude
+                    -> SplitDegFlag -- behavior of rounding/assigning to signs
+                    -> Ptr CInt -- degrees
+                    -> Ptr CInt -- minutes
+                    -> Ptr CInt -- seconds
+                    -> Ptr CDouble -- seconds fraction
+                    -> Ptr CInt    -- sign/nakshatra
+                    -> IO ()       -- returns void.
+
+-- | Calculate the delta time for a given julian time,
+-- delta time + julian time = ephemeris time
+-- NOTE: there's also swe_deltat_ex which takes an ephemeris
+-- flag explicitly, vs. the current global value.
+-- my calculations work in one ephemeris, so this one is suitable.
+foreign import ccall unsafe "swephexp.h swe_deltat"
+    c_swe_deltat :: CDouble -- Julian time
+                 -> (IO CDouble)
+
 -- | Calculate the sidereal time for a given julian time.
 -- NOTE: there's also swe_sidtime0 which requires obliquity
 -- and nutation, this one computes them internally.
