@@ -13,32 +13,29 @@ import SwissEphemeris
 main :: IO
 main = do 
   -- location of your ephemeris directory. We bundle a sample one in `swedist`.
-  setEphemeridesPath "./swedist/sweph_18"
-
-  let time = julianDay 1989 1 6 0.0
-      place = mkCoordinates{lat = 14.0839053, lng = -87.2750137}
-
-  -- locate all bodies between the Sun and Chiron (further asteroids currently not supported, but they're an enum entry away)
-  -- use the Placidus house system, which is the most traditional.
-  forM_ [Sun .. Chiron] $ \planet ->
-    -- if no ephemerides data is available for the given planetary body, a `Left` value
-    -- will be returned.
-    coord <- calculateCoordinates time planet
-    putStrLn $ show planet <> ": " <> show coord
-  -- Calculate cusps for the given time and place, preferring the `Placidus` system.
-  -- note that the underlying library may decide to use a different system if it can't
-  -- calculate cusps (happens for the Placidus and Koch systems in locations near the poles.)
-  cusps <- calculateCusps Placidus time place
-  putStrLn $ "Cusps: " <> show cusps
-
-  -- the underlying library, sadly, allocates some in-memory "cache" and file descriptors, you can free it with:
-  closeEphemerides
+  withEphemerides "./swedist/sweph_18" $ do
+    let time = julianDay 1989 1 6 0.0
+        place = GeographicPosition {geoLat = 14.0839053, geoLng = -87.2750137}
+  
+    -- locate all bodies between the Sun and Chiron
+    forM_ [Sun .. Chiron] $ \planet -> do
+      -- if no ephemerides data is available for the given planetary body, a `Left` value
+      -- will be returned.
+      coord <- calculateEclipticPosition time planet
+      putStrLn $ show planet <> ": " <> show coord
+   
+    -- Calculate cusps for the given time and place, preferring the `Placidus` system.
+    -- note that the underlying library may decide to use the `Porphyrius` system if it can't
+    -- calculate cusps (happens for the Placidus and Koch systems in locations near the poles.)
+    cusps <- calculateCusps Placidus time place
+    putStrLn $ "Cusps: " <> show cusps
 ```
-The above should print the latitude and longitude (plus some velocities) for all planets, and then the cusps and other major angles.
+The above should print the ecliptic latitude and longitude (plus some velocities) for all planets, and then the cusps and other major angles (ascendant, mc, ARMC, alternative angles.)
 
-There's also `withEphemerides` and `withoutEphemerides` bracket-style functions that take care of closing the files for you.
+There's `withEphemerides` to run calculations using a particular ephemerides directory and then close any used
+system resources, and `withoutEphemerides` to use the default ephemerides ("Moshier.")
 
-To see actual results and more advanced usage, check out the tests. For some more advanced examples, see `swetest.c` and `swemini.c` in the `csrc` directory: they're the test/example programs provided by the original authors.
+To see actual results and more advanced usage, check out the tests. For some more advanced examples, see `swetest.c` and `swemini.c` in the `csrc` directory: they're the test/example programs provided by the original authors. You can also play around with the C library via [the authors' test page](https://www.astro.com/swisseph/swetest.htm).
 
 
 ## Notes
@@ -57,12 +54,15 @@ acquainted with the functionality and implementation details.
 
 ### Ephemerides files
 
-As noted in the [original documentation](https://www.astro.com/swisseph/swisseph.htm) you can omit the `setEphePath` call and calculations will use a built-in analytical
-ephemeris which:
+As noted in the [original documentation](https://www.astro.com/swisseph/swisseph.htm) you can omit the `setEphemerides` call (or use `setNoEphemerides`, or the `withoutEphemerides` bracket function) and calculations will use a built-in analytical
+ephemeris ("Moshier") which:
 
 > provides "only" a precision of 0.1 arc seconds for the planets and 3" for the Moon. No asteroids will be available, and no barycentric option can be used.
 
-For convenience, we bundle a few files for the time range `1800 AD – 2399 AD`. If you were born before that, or plan to code e.g. transits for after that (!) or 
+
+Note that if you're interested in the asteroid `Chiron` (which is common in astrological practice these days,) you'll have to procure Ephemerides files and shouldn't use the default ephemerides. 
+
+For convenience, we bundle a few ephemerides files in this repository (see `swedist`) for the time range `1800 AD – 2399 AD`. If you were born before that, or plan to code e.g. transits for after that (!) or 
 you'd prefer even more precision, you can [download more ephemerides files from the astro.com downloads page](https://www.astro.com/ftp/swisseph/ephe/)
 
 I chose the bundled files due to this comment in the official docs:
