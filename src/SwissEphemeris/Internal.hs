@@ -166,6 +166,16 @@ data CuspsCalculation = CuspsCalculation
   }
   deriving (Show, Eq, Generic)
 
+-- | A longitude expressed in its constituent parts.
+data LongitudeComponents = LongitudeComponents
+  { longitudeZodiacSign :: Maybe ZodiacSignName,
+    longitudeDegrees :: Integer,
+    longitudeMinutes :: Integer,
+    longitudeSeconds :: Integer,
+    longitudeSecondsFraction :: Double
+  }
+  deriving (Show, Eq, Generic)
+
 -- folders for bitwise flags, and some opinionated defaults.
 
 mkCalculationOptions :: [CalcFlag] -> CalcFlag
@@ -174,18 +184,14 @@ mkCalculationOptions = CalcFlag . foldr ((.|.) . unCalcFlag) 0
 defaultCalculationOptions :: [CalcFlag]
 defaultCalculationOptions = [speed, swissEph]
 
-mkRoundingOptions :: [SplitDegFlag] -> SplitDegFlag
-mkRoundingOptions = SplitDegFlag . foldr ((.|.) . unSplitDegFlag) 0
+mkSplitDegOptions :: [SplitDegFlag] -> SplitDegFlag
+mkSplitDegOptions = SplitDegFlag . foldr ((.|.) . unSplitDegFlag) 0
 
-defaultRoundingOptions :: [SplitDegFlag]
-defaultRoundingOptions =
+defaultSplitDegOptions :: [SplitDegFlag]
+defaultSplitDegOptions =
   [ splitKeepDeg, -- don't round up to the next degree
-    splitKeepSign, -- don't round up to the next sign
-    splitZodiacal, -- reference zodiacal signs
-    splitRoundSec -- don't need second fractions.
+    splitKeepSign -- don't round up to the next sign
   ]
-
--- helpers
 
 -- Helpers
 

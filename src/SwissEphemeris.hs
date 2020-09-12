@@ -13,10 +13,9 @@
 -- bodies in the solar system, or before 3000 B.C or after 3000 A.D. For example, the test suite uses a small ephemeris
 -- that includes data for the asteroid Chiron, which is astrologically relevant in most modern practices.
 --
--- Currently, only `calculateCoordinates` (to calculate the geocentric position of a given celestial body at a given Julian time,)
--- and `calculateCusps` (to calculate house cusps and relevant angles in various house systems/traditions) are provided; plus a
--- small `julianDay` function to translate between gregorian and julian times. There's a wealth of other calculations possible with
--- the underlying library, please refer to their documentation and the bundled sources for ideas!
+-- Currently, only a few select functions that are useful for western horoscopy are exported.
+-- There's a wealth of other calculations possible with the underlying library, however,
+-- please refer to their documentation and the bundled sources for ideas!
 module SwissEphemeris
   ( -- newtypes without exposed constructors
     JulianTime,
@@ -27,6 +26,7 @@ module SwissEphemeris
     -- fundamental enumerations
     Planet (..),
     HouseSystem (..),
+    ZodiacSignName (..),
     -- coordinate/position systems
     EclipticPosition (..),
     EquatorialPosition (..),
@@ -36,6 +36,7 @@ module SwissEphemeris
     ObliquityInformation (..),
     Angles (..),
     CuspsCalculation (..),
+    LongitudeComponents (..),
     -- management of data files
     setEphemeridesPath,
     setNoEphemeridesPath,
@@ -61,6 +62,9 @@ module SwissEphemeris
     -- utilities for time calculations:
     julianDay,
     deltaTime,
+    -- utilities for angles:
+    splitDegrees,
+    splitDegreesZodiac,
   )
 where
 
@@ -319,3 +323,38 @@ deltaTime :: JulianTime -> IO Double
 deltaTime jt = do
   deltaT <- c_swe_deltat . realToFrac . unJulianTime $ jt
   return $ realToFrac deltaT
+
+splitDegreesZodiac :: Double -> LongitudeComponents
+splitDegreesZodiac d =
+  LongitudeComponents (Just $ toEnum z) deg m s sf
+  where
+    (z, deg, m, s, sf) = splitDegrees' options d
+    options = mkSplitDegOptions $ defaultSplitDegOptions ++ [splitZodiacal]
+
+splitDegrees :: Double -> LongitudeComponents
+splitDegrees d =
+  LongitudeComponents Nothing deg m s sf
+  where
+    (_, deg, m, s, sf) = splitDegrees' options d
+    options = mkSplitDegOptions $ defaultSplitDegOptions
+
+-- | Internal implementation to split a given longitude into components.
+splitDegrees' :: SplitDegFlag -> Double -> (Int, Integer, Integer, Integer, Double)
+splitDegrees' options deg =
+  unsafePerformIO $ do
+    alloca $ \ideg -> alloca $ \imin -> alloca $ \isec -> alloca $ \dsecfr -> alloca $ \isign -> do
+      _ <-
+        c_swe_split_deg
+          (realToFrac deg)
+          options
+          ideg
+          imin
+          isec
+          dsecfr
+          isign
+      sign' <- peek isign
+      deg' <- peek ideg
+      min' <- peek imin
+      sec' <- peek isec
+      secfr <- peek dsecfr
+      return $ ((fromIntegral sign'), (fromIntegral deg'), (fromIntegral min'), (fromIntegral sec'), (realToFrac secfr))

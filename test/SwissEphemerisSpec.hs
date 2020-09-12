@@ -22,9 +22,35 @@ ephePath = "./swedist/sweph_18"
 
 spec :: Spec
 spec = do
+  describe "eclipticToEquatorial" $ do
+    it "converts between ecliptic and equatorial" $ do
+      let e = eclipticToEquatorial (ObliquityInformation (23.2) 0 0 0) $ EclipticPosition 285.6465775 (-0.0000826) 1 0 0 0
+          equatorial = EquatorialPosition {rightAscension = 286.9471857576873, declination = -22.29312747773143, eqDistance = 1.0, ascensionSpeed = 0.0, declinationSpeed = 0.0, eqDistanceSpeed = 0.0}
+      (rightAscension e) `shouldBeApprox` (rightAscension equatorial)
+      (declination e) `shouldBeApprox` (declination equatorial)
+
+  describe "equatorialToEcliptic" $ do
+    it "converts between equatorial and ecliptic" $ do
+      let e = equatorialToEcliptic (ObliquityInformation (23.2) 0 0 0) $ EquatorialPosition {rightAscension = 286.9471857576873, declination = -22.29312747773143, eqDistance = 1.0, ascensionSpeed = 0.0, declinationSpeed = 0.0, eqDistanceSpeed = 0.0}
+          ecliptic = EclipticPosition 285.6465775 (-0.0000826) 1 0 0 0
+      (lng e) `shouldBeApprox` (lng ecliptic)
+      (lat e) `shouldBeApprox` (lat ecliptic)
+
+  describe "splitDegrees" $ do
+    it "splits a given longitude into its components, not relative to the zodiac" $ do
+      let longitude = 285.64723120365153
+          split = LongitudeComponents {longitudeZodiacSign = Nothing, longitudeDegrees = 285, longitudeMinutes = 38, longitudeSeconds = 50, longitudeSecondsFraction = 3.233314550481481e-2}
+      (splitDegrees longitude) `shouldBe` split
+
+  describe "splitDegreesZodiac" $ do
+    it "splits a given longitude into its components, relative to the nearest zodiac sign" $ do
+      let longitude = 285.64723120365153
+          split = LongitudeComponents {longitudeZodiacSign = Just Capricorn, longitudeDegrees = 15, longitudeMinutes = 38, longitudeSeconds = 50, longitudeSecondsFraction = 3.233314550481481e-2}
+      (splitDegreesZodiac longitude) `shouldBe` split
+
   around_ (withoutEphemerides) $ do
     describe "calculateEclipticPosition" $ do
-      it "calculates coordinates for the Sun for a specific day" $ do
+      it "calculates ecliptic coordinates for the Sun for a specific day" $ do
         let time = julianDay 1989 1 6 0.0
             expectedCoords =
               Right $
@@ -117,12 +143,6 @@ spec = do
           assert $ (systemUsed calcs) == houseSystem
           assert $ (length $ houseCusps calcs) == 12
 
-    describe "coordinate transformation" $ do
-      it "converts between ecliptic and equatorial" $ do
-        let e = eclipticToEquatorial (ObliquityInformation (23.2) 0 0 0) $ EclipticPosition 285.6465775 (-0.0000826) 1 0 0 0
-            equatorial = EquatorialPosition {rightAscension = 286.9471857576873, declination = -22.29312747773143, eqDistance = 1.0, ascensionSpeed = 0.0, declinationSpeed = 0.0, eqDistanceSpeed = 0.0}
-        e `shouldBe` equatorial
-
     describe "calculateHousePositionSimple" $ do
       it "calculates accurate house positions for some known planets" $ do
         let time = julianDay 1989 1 6 0.0
@@ -157,16 +177,30 @@ spec = do
         houseN meanNH `shouldBe` Right 8
         houseN chironH `shouldBe` Right 12
 
-    -- TODO: write property test, though this function isn't as useful as I thought:
-    -- https://groups.io/g/swisseph/message/4052
-
     describe "calculateEquatorialPosition" $ do
-      it "calculates the declination and other points of interest" $ do
-        pendingWith "sleepy"
+      it "calculates equatorial coordinates for the Sun for a specific date" $ do
+        let time = julianDay 1989 1 6 0.0
+            expectedPosition = Right (EquatorialPosition {rightAscension = 286.9771081985312, declination = -22.52537550693229, eqDistance = 0.9833448914987338, ascensionSpeed = 1.0963895541503408, declinationSpeed = 0.1184607330811988, eqDistanceSpeed = 1.736421046243553e-5})
+        position <- calculateEquatorialPosition time Sun
+        position `shouldBe` expectedPosition
+
+    describe "calculateObliquity" $ do
+      it "calculates obliquity of the ecliptic, and nutation, for a specific date" $ do
+        let time = julianDay 1989 1 6 0.0
+            expectedObliquity = Right (ObliquityInformation {eclipticObliquity = 23.44288555112768, eclipticMeanObliquity = 23.44070869609064, nutationLongitude = 1.9483531068634399e-3, nutationObliquity = 2.1768550370416455e-3})
+        obliquity <- calculateObliquity time
+        obliquity `shouldBe` expectedObliquity
+
+    describe "deltaTime" $ do
+      it "calculates the Delta T for a specific date" $ do
+        let time = julianDay 1989 1 6 0.0
+            expectedDeltaT = 6.517108007976064e-4
+        deltaT <- deltaTime time
+        deltaT `shouldBeApprox` expectedDeltaT
 
   around_ (withEphemerides ephePath) $ do
-    describe "calculateEclipticPosition with bundled ephemeris" $ do
-      prop "calculates coordinates for any of the planets in a wide range of time."
+    context "with bundled ephemeris" $ do
+      prop "calculates ecliptic coordinates for any of the planets in a wide range of time."
         $ forAll genCoordinatesQuery
         $ \(time, planet) -> monadicIO $ do
           coords <- run $ calculateEclipticPosition time planet

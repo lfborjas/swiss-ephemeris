@@ -121,10 +121,6 @@ foreign import ccall unsafe "swephexp.h swe_cotrans_sp"
                      -> CDouble     -- obliquity of the ecliptic.
                      -> IO ()
 
----
---- NOT IMPLEMENTED IN THE PUBLIC API YET:
---- 
-
 -- | Split a given ecliptic longitude into sign (number)
 -- degrees, minutes and seconds.
 foreign import ccall unsafe "swephexp.h swe_split_deg"
