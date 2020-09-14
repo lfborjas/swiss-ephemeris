@@ -17,9 +17,9 @@
 -- There's a wealth of other calculations possible with the underlying library, however,
 -- please refer to their documentation and the bundled sources for ideas!
 module SwissEphemeris
-  ( -- newtypes without exposed constructors
-    JulianTime,
-    SiderealTime,
+  ( -- fundamental aliases/newtypes
+    JulianTime (..),
+    SiderealTime (..),
     HouseCusp,
     -- fundamental enumerations
     Planet (..),

@@ -5,7 +5,6 @@ module SwissEphemerisSpec (spec) where
 import Control.Monad (forM_)
 import Data.Either (isLeft, isRight)
 import SwissEphemeris
-import SwissEphemeris.Internal (JulianTime (..))
 import Test.Hspec
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
