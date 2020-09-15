@@ -70,10 +70,38 @@ data ZodiacSignName
   | Pisces
   deriving (Eq, Show, Enum, Generic)
 
--- | Nakshatras, provided for thoroughness, please excuse the misspellings!
+-- | Nakshatras, provided for thoroughness, please excuse any misspellings!
 -- List from: https://en.wikipedia.org/wiki/List_of_Nakshatras
+-- note that the underlying library uses 27 nakshatras, so Abhijit is
+-- omitted.
 data NakshatraName
   = Ashvini
+  | Bharani
+  | Krittika
+  | Rohini
+  | Mrigashirsha
+  | Ardra
+  | Punarvasu
+  | Pushya
+  | Ashlesha
+  | Magha
+  | PurvaPhalghuni
+  | UttaraPhalguni
+  | Hasta
+  | Chitra
+  | Swati
+  | Vishakha
+  | Anuradha
+  | Jyeshtha
+  | Mula
+  | PurvaAshadha
+  | UttaraAshadha
+  | Sravana
+  | Dhanishta
+  | Shatabhisha
+  | PurvaBhadrapada
+  | UttaraBhadrapada
+  | Revati
   deriving (Eq, Show, Enum, Generic)
 
 -- | Options to split a `Double` representing degrees:
@@ -82,7 +110,7 @@ data NakshatraName
 -- RoundDegrees  -- round at the degrees granularity.
 -- SplitZodiacal -- relative to zodiac signs.
 -- SplitNakshatra -- relative to nakshatra.
--- KeepSign       -- when rounding, don't round if it'll move it to the next zodiac sector.
+-- KeepSign       -- when rounding, don't round if it'll move it to the next zodiac/nakshatra sector.
 -- KeepDegrees    -- when rounding, don't round if it'll move it to the next degree.
 data SplitDegreesOption
   = RoundSeconds
@@ -102,7 +130,7 @@ newtype JulianTime = JulianTime {unJulianTime :: Double}
   deriving (Show, Eq, Ord)
 
 -- | Represents an instant in sidereal time
-newtype SiderealTime = SiderealTime {unSidereal :: Double}
+newtype SiderealTime = SiderealTime {unSiderealTime :: Double}
   deriving (Show, Eq, Ord)
 
 -- | The cusp of a given "house" or "sector". It is an ecliptic longitude.
@@ -218,6 +246,8 @@ splitOptionToFlag SplitNakshatra = splitNakshatra
 splitOptionToFlag KeepSign = splitKeepSign
 splitOptionToFlag KeepDegrees = splitKeepDeg
 
+-- | Convenient defaults when using `splitDegrees`:
+-- Omit rounding if it would bring it over the next sign or degree.
 defaultSplitDegreesOptions :: [SplitDegreesOption]
 defaultSplitDegreesOptions = [KeepSign, KeepDegrees]
 

@@ -22,9 +22,11 @@ module SwissEphemeris
     SiderealTime (..),
     HouseCusp,
     -- fundamental enumerations
+    SplitDegreesOption (..),
     Planet (..),
     HouseSystem (..),
     ZodiacSignName (..),
+    NakshatraName (..),
     -- coordinate/position systems
     EclipticPosition (..),
     EquatorialPosition (..),
@@ -257,8 +259,8 @@ calculateHousePositionSimple sys time loc pos = do
   case obliquityAndNutation of
     Left e -> return $ Left e
     Right on -> do
-      siderealTime <- calculateSiderealTime time on
-      let armc' = (unSidereal $ siderealTime) * 15 + geoLng loc
+      SiderealTime siderealTime <- calculateSiderealTime time on
+      let armc' = siderealTime * 15 + geoLng loc
       calculateHousePosition sys armc' loc on pos
 
 -- | If you happen to have the correct ARMC for a time and place (obtained from calculateCusps)
@@ -316,10 +318,10 @@ deltaTime jt = do
   return $ realToFrac deltaT
 
 -- | Given a longitude, return the degrees it's from its nearest sign,
--- minutes, seconds, with seconds rounded. Convenience alias for `splitDegrees`,
+-- minutes, and seconds; with seconds rounded. Convenience alias for `splitDegrees`,
 -- when wanting to display e.g. a table in a horoscope.
 splitDegreesZodiac :: Double -> LongitudeComponents
-splitDegreesZodiac = splitDegrees [SplitZodiacal, RoundSeconds]
+splitDegreesZodiac = splitDegrees $ defaultSplitDegreesOptions <> [SplitZodiacal, RoundSeconds]
 
 -- | Given a `Double` representing an ecliptic longitude, split it according to any
 -- options from `SplitDegreesOption`:
