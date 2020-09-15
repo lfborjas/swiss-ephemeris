@@ -70,6 +70,58 @@ data ZodiacSignName
   | Pisces
   deriving (Eq, Show, Enum, Generic)
 
+-- | Nakshatras, provided for thoroughness, please excuse any misspellings!
+-- List from: https://en.wikipedia.org/wiki/List_of_Nakshatras
+-- note that the underlying library uses 27 nakshatras, so Abhijit is
+-- omitted.
+data NakshatraName
+  = Ashvini
+  | Bharani
+  | Krittika
+  | Rohini
+  | Mrigashirsha
+  | Ardra
+  | Punarvasu
+  | Pushya
+  | Ashlesha
+  | Magha
+  | PurvaPhalghuni
+  | UttaraPhalguni
+  | Hasta
+  | Chitra
+  | Swati
+  | Vishakha
+  | Anuradha
+  | Jyeshtha
+  | Mula
+  | PurvaAshadha
+  | UttaraAshadha
+  | Sravana
+  | Dhanishta
+  | Shatabhisha
+  | PurvaBhadrapada
+  | UttaraBhadrapada
+  | Revati
+  deriving (Eq, Show, Enum, Generic)
+
+-- | Options to split a `Double` representing degrees:
+-- RoundSeconds  -- round at the seconds granularity (omits seconds fraction.)
+-- RoundMinutes  -- round at the minutes granularity.
+-- RoundDegrees  -- round at the degrees granularity.
+-- SplitZodiacal -- relative to zodiac signs.
+-- SplitNakshatra -- relative to nakshatra.
+-- KeepSign       -- when rounding, don't round if it'll move it to the next zodiac/nakshatra sector.
+-- KeepDegrees    -- when rounding, don't round if it'll move it to the next degree.
+data SplitDegreesOption
+  = RoundSeconds
+  | RoundMinutes
+  | RoundDegrees
+  | SplitZodiacal
+  | SplitNakshatra
+  | KeepSign
+  | KeepDegrees
+  deriving (Eq, Show, Enum, Generic)
+
 -- | Represents an instant in Julian time.
 -- see:
 -- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847871 8. Date and time conversion functions>
@@ -78,7 +130,7 @@ newtype JulianTime = JulianTime {unJulianTime :: Double}
   deriving (Show, Eq, Ord)
 
 -- | Represents an instant in sidereal time
-newtype SiderealTime = SiderealTime {unSidereal :: Double}
+newtype SiderealTime = SiderealTime {unSiderealTime :: Double}
   deriving (Show, Eq, Ord)
 
 -- | The cusp of a given "house" or "sector". It is an ecliptic longitude.
@@ -168,7 +220,9 @@ data LongitudeComponents = LongitudeComponents
     longitudeDegrees :: Integer,
     longitudeMinutes :: Integer,
     longitudeSeconds :: Integer,
-    longitudeSecondsFraction :: Double
+    longitudeSecondsFraction :: Double,
+    longitudeSignum :: Maybe Int,
+    longitudeNakshatra :: Maybe NakshatraName
   }
   deriving (Show, Eq, Generic)
 
@@ -180,14 +234,22 @@ mkCalculationOptions = CalcFlag . foldr ((.|.) . unCalcFlag) 0
 defaultCalculationOptions :: [CalcFlag]
 defaultCalculationOptions = [speed, swissEph]
 
-mkSplitDegOptions :: [SplitDegFlag] -> SplitDegFlag
-mkSplitDegOptions = SplitDegFlag . foldr ((.|.) . unSplitDegFlag) 0
+foldSplitDegOptions :: [SplitDegFlag] -> SplitDegFlag
+foldSplitDegOptions = SplitDegFlag . foldr ((.|.) . unSplitDegFlag) 0
 
-defaultSplitDegOptions :: [SplitDegFlag]
-defaultSplitDegOptions =
-  [ splitKeepDeg, -- don't round up to the next degree
-    splitKeepSign -- don't round up to the next sign
-  ]
+splitOptionToFlag :: SplitDegreesOption -> SplitDegFlag
+splitOptionToFlag RoundSeconds = splitRoundSec
+splitOptionToFlag RoundMinutes = splitRoundMin
+splitOptionToFlag RoundDegrees = splitRoundDeg
+splitOptionToFlag SplitZodiacal = splitZodiacal
+splitOptionToFlag SplitNakshatra = splitNakshatra
+splitOptionToFlag KeepSign = splitKeepSign
+splitOptionToFlag KeepDegrees = splitKeepDeg
+
+-- | Convenient defaults when using `splitDegrees`:
+-- Omit rounding if it would bring it over the next sign or degree.
+defaultSplitDegreesOptions :: [SplitDegreesOption]
+defaultSplitDegreesOptions = [KeepSign, KeepDegrees]
 
 -- Helpers
 

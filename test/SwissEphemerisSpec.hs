@@ -5,7 +5,6 @@ module SwissEphemerisSpec (spec) where
 import Control.Monad (forM_)
 import Data.Either (isLeft, isRight)
 import SwissEphemeris
-import SwissEphemeris.Internal (JulianTime (..))
 import Test.Hspec
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
@@ -39,13 +38,13 @@ spec = do
   describe "splitDegrees" $ do
     it "splits a given longitude into its components, not relative to the zodiac" $ do
       let longitude = 285.64723120365153
-          split = LongitudeComponents {longitudeZodiacSign = Nothing, longitudeDegrees = 285, longitudeMinutes = 38, longitudeSeconds = 50, longitudeSecondsFraction = 3.233314550481481e-2}
-      (splitDegrees longitude) `shouldBe` split
+          split = LongitudeComponents {longitudeZodiacSign = Nothing, longitudeDegrees = 285, longitudeMinutes = 38, longitudeSeconds = 50, longitudeSecondsFraction = 3.233314550481481e-2, longitudeSignum = Just 1, longitudeNakshatra = Nothing}
+      (splitDegrees defaultSplitDegreesOptions longitude) `shouldBe` split
 
   describe "splitDegreesZodiac" $ do
-    it "splits a given longitude into its components, relative to the nearest zodiac sign" $ do
+    it "splits a given longitude into its components, relative to the nearest zodiac sign; rounds seconds, keeps degrees and sign." $ do
       let longitude = 285.64723120365153
-          split = LongitudeComponents {longitudeZodiacSign = Just Capricorn, longitudeDegrees = 15, longitudeMinutes = 38, longitudeSeconds = 50, longitudeSecondsFraction = 3.233314550481481e-2}
+          split = LongitudeComponents {longitudeZodiacSign = Just Capricorn, longitudeDegrees = 15, longitudeMinutes = 38, longitudeSeconds = 50, longitudeSecondsFraction = 0.0, longitudeSignum = Nothing, longitudeNakshatra = Nothing}
       (splitDegreesZodiac longitude) `shouldBe` split
 
   around_ (withoutEphemerides) $ do

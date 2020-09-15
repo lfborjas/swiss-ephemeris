@@ -1,5 +1,17 @@
 # Changelog for swiss-ephemeris
 
+## v1.2.0.0 (2020-09-14)
+
+**BREAKING CHANGE:** `splitDegrees` now takes options that reflect the options in the underlying library.
+
+* Constructors for `JulianTime` and `SiderealTime` are now exposed.
+* Introduce `SplitDegreesOption` enum for all options one can split degrees with; amends `splitDegrees` to take
+  said options as the first argument.
+* `splitDegreesZodiac` is unchanged, though a mere veneer for the now more powerful `splitDegrees`.
+* Since `splitDegreesZodiac` goes the extra enum-mile to provide human-readable zodiac names, and the underlying
+  library can also split on Nakshatras, we now include the `NakshatraName` enum. Names are from wikipedia
+  and I saw some variants, so please forgive any mispellings!
+
 ## v1.1.0.0 (2020-09-12)
 
 **BREAKING CHANGE:** the `Coordinates` type has been retired, in favor of the more specific

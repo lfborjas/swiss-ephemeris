@@ -7,6 +7,8 @@ Haskell bindings for the [Swiss Ephemeris](https://www.astro.com/swisseph/swephi
 
 See the tests in the `spec` folder for thorough example usage, but here's a simple "main" that demonstrates the current abilities, inspired by the [sample program in the official library](https://www.astro.com/swisseph/swephprg.htm#_Toc46406771):
 
+**NOTE:** this library is under very active development, as such, most releases in v1.x will probably show a fastly evolving API, which is reflected by the fact that new versions have been increasing the major version numbers (in [PVP](https://pvp.haskell.org/), unlike semver, the first _two_ components of the version correspond to the major version.)
+
 ```haskell
 import SwissEphemeris
 

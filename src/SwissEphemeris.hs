@@ -17,14 +17,16 @@
 -- There's a wealth of other calculations possible with the underlying library, however,
 -- please refer to their documentation and the bundled sources for ideas!
 module SwissEphemeris
-  ( -- newtypes without exposed constructors
-    JulianTime,
-    SiderealTime,
+  ( -- fundamental aliases/newtypes
+    JulianTime (..),
+    SiderealTime (..),
     HouseCusp,
     -- fundamental enumerations
+    SplitDegreesOption (..),
     Planet (..),
     HouseSystem (..),
     ZodiacSignName (..),
+    NakshatraName (..),
     -- coordinate/position systems
     EclipticPosition (..),
     EquatorialPosition (..),
@@ -60,12 +62,14 @@ module SwissEphemeris
     julianDay,
     deltaTime,
     -- utilities for angles:
+    defaultSplitDegreesOptions,
     splitDegrees,
     splitDegreesZodiac,
   )
 where
 
 import Control.Exception (bracket_)
+import Data.Semigroup ((<>))
 import Foreign
 import Foreign.C.String
 import Foreign.SwissEphemeris
@@ -256,8 +260,8 @@ calculateHousePositionSimple sys time loc pos = do
   case obliquityAndNutation of
     Left e -> return $ Left e
     Right on -> do
-      siderealTime <- calculateSiderealTime time on
-      let armc' = (unSidereal $ siderealTime) * 15 + geoLng loc
+      SiderealTime siderealTime <- calculateSiderealTime time on
+      let armc' = siderealTime * 15 + geoLng loc
       calculateHousePosition sys armc' loc on pos
 
 -- | If you happen to have the correct ARMC for a time and place (obtained from calculateCusps)
@@ -315,27 +319,39 @@ deltaTime jt = do
   return $ realToFrac deltaT
 
 -- | Given a longitude, return the degrees it's from its nearest sign,
--- minutes, seconds and seconds fraction.
+-- minutes, and seconds; with seconds rounded. Convenience alias for `splitDegrees`,
+-- when wanting to display e.g. a table in a horoscope.
 splitDegreesZodiac :: Double -> LongitudeComponents
-splitDegreesZodiac d =
-  LongitudeComponents (Just $ toEnum z) deg m s sf
-  where
-    (z, deg, m, s, sf) = splitDegrees' options d
-    options = mkSplitDegOptions $ defaultSplitDegOptions ++ [splitZodiacal]
+splitDegreesZodiac = splitDegrees $ defaultSplitDegreesOptions <> [SplitZodiacal, RoundSeconds]
 
--- | Given a longitude, return the degrees from zero, minutes, seconds and seconds fraction.
-splitDegrees :: Double -> LongitudeComponents
-splitDegrees d =
-  LongitudeComponents Nothing deg m s sf
+-- | Given a `Double` representing an ecliptic longitude, split it according to any
+-- options from `SplitDegreesOption`:
+-- if `SplitZodiacal` or `SplitNakshatra` are specified, they're returned
+-- in `longitudeZodiacSign` and `longitudeNakshatra`, respectively.
+-- If neither of those is specified, the raw `signum` is then populated, in
+-- `longitudeSignum` (-1 for negative, 1, for positive.)
+-- /NOTE:/ this function can also be used for latitudes, speeds or quantities
+-- from other positional systems (like declinations,) but the zodiacal or
+-- nakshatra components would of course be nonsensical.
+splitDegrees :: [SplitDegreesOption] -> Double -> LongitudeComponents
+splitDegrees options d =
+  LongitudeComponents sign deg m s sf signum' nak
   where
-    (_, deg, m, s, sf) = splitDegrees' options d
-    options = mkSplitDegOptions $ defaultSplitDegOptions
+    (z, deg, m, s, sf) = splitDegrees' flags d
+    flags = foldSplitDegOptions $ map splitOptionToFlag options
+    isZodiacSplit = SplitZodiacal `elem` options
+    isNakshatraSplit = SplitNakshatra `elem` options
+    sign = if isZodiacSplit then (Just . toEnum $ z) else Nothing
+    nak = if isNakshatraSplit then (Just . toEnum $ z) else Nothing
+    signum' = if (not isZodiacSplit && not isNakshatraSplit) then Just z else Nothing
 
 -- | Internal implementation to split a given longitude into components.
 splitDegrees' :: SplitDegFlag -> Double -> (Int, Integer, Integer, Integer, Double)
 splitDegrees' options deg =
   unsafePerformIO $ do
     alloca $ \ideg -> alloca $ \imin -> alloca $ \isec -> alloca $ \dsecfr -> alloca $ \isign -> do
+      -- initialize with 0, since it may never be touched.
+      poke dsecfr 0
       _ <-
         c_swe_split_deg
           (realToFrac deg)
