@@ -69,6 +69,7 @@ module SwissEphemeris
 where
 
 import Control.Exception (bracket_)
+import Data.Semigroup ((<>))
 import Foreign
 import Foreign.C.String
 import Foreign.SwissEphemeris
