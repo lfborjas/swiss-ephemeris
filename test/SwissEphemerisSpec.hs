@@ -21,6 +21,14 @@ ephePath = "./swedist/sweph_18"
 
 spec :: Spec
 spec = do
+  describe "julianDay" $ do
+    it "returns the julian day number given a gregorian date" $ do
+      julianDay 2020 11 6 15.773315995931625 `shouldBe` (JulianTime 2459160.1572215)
+
+  describe "gregorianDateTime" $ do
+    it "returns a tuple representing a gregorian date, given a julian day number" $ do
+      (gregorianDateTime $ JulianTime 2459160.1572215) `shouldBe` (2020, 11, 6, 15.773315995931625)
+
   describe "eclipticToEquatorial" $ do
     it "converts between ecliptic and equatorial" $ do
       let e = eclipticToEquatorial (ObliquityInformation (23.2) 0 0 0) $ EclipticPosition 285.6465775 (-0.0000826) 1 0 0 0

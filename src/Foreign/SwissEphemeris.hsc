@@ -87,6 +87,17 @@ foreign import ccall unsafe "swephexp.h swe_julday"
                  -> GregFlag
                  -> CDouble
 
+-- | Reverse of `c_swe_julday`: produce a gregorian date
+foreign import ccall unsafe "swephexp.h swe_revjul"
+    c_swe_revjul :: CDouble
+                 -> GregFlag
+                 -> Ptr CInt -- year
+                 -> Ptr CInt -- month
+                 -> Ptr CInt -- day
+                 -> Ptr CDouble -- hour
+                 -> IO ()
+
+
 -- | Calculate the position of a body, given a time in
 -- Universal Time. Note that this is marginally more expensive than
 -- @swe_calc@, but I use this one to keep consistency with @swe_houses@.
