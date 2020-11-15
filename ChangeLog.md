@@ -1,5 +1,10 @@
 # Changelog for swiss-ephemeris
 
+## v1.2.1.0 (2020-11-14)
+
+* Introduces `gregorianDateTime`, which is the reverse of `julianDay`: given a JD, return
+  a tuple with `(year, month, day, decimalHour)`.
+
 ## v1.2.0.0 (2020-09-14)
 
 **BREAKING CHANGE:** `splitDegrees` now takes options that reflect the options in the underlying library.
@@ -22,7 +27,7 @@ and the `calculateCusps*` family now takes a `GeographicPosition` as part of its
   which are not native to the underlying C library. Import at your own risk! (the "curated"/
   "stable" ones are re-exported by the main module.)
   - Deprecates the `Coordinates` type, in favor of `EclipticPosition`.
-* Introduces functions to `calculateEquatorialPosition` and `calculteObliquity` at a given time,
+* Introduces functions to `calculateEquatorialPosition` and `calculateObliquity` at a given time,
   as well as types that better convey the different types of positions (`EquatorialPosition`, `ObliquityInformation`).
 * Some astrology helpers: convert between equatorial and ecliptic (and vice-versa,)
   obtain the Delta Time effective at a given moment, obtain the house position of a given body.

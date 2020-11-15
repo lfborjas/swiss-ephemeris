@@ -60,6 +60,7 @@ module SwissEphemeris
     calculateHousePositionSimple,
     -- utilities for time calculations:
     julianDay,
+    gregorianDateTime,
     deltaTime,
     -- utilities for angles:
     defaultSplitDegreesOptions,
@@ -122,6 +123,24 @@ julianDay year month day hour = JulianTime $ realToFrac $ c_swe_julday y m d h g
     m = fromIntegral month
     d = fromIntegral day
     h = realToFrac hour
+
+gregorianDateTime :: JulianTime -> (Int, Int, Int, Double)
+gregorianDateTime (JulianTime jd) =
+  unsafePerformIO $ do
+    alloca $ \jyear -> alloca $ \jmon -> alloca $ \jday -> alloca $ \jut -> do
+      _ <-
+        c_swe_revjul
+          (realToFrac jd)
+          gregorian
+          jyear
+          jmon
+          jday
+          jut
+      year <- peek jyear
+      month <- peek jmon
+      day <- peek jday
+      time <- peek jut
+      return $ (fromIntegral year, fromIntegral month, fromIntegral day, realToFrac time)
 
 -- | Given `JulianTime` (see `julianDay`),
 -- and a `Planet`, returns either the position of that planet at the given time,
