@@ -19,6 +19,9 @@ import Test.QuickCheck.Monadic
 ephePath :: FilePath
 ephePath = "./swedist/sweph_18"
 
+uncurry4  :: (a -> b -> c -> d -> e) -> (a, b, c, d) -> e
+uncurry4 f (a, b, c, d) = f a b c d
+
 spec :: Spec
 spec = do
   describe "julianDay" $ do
@@ -28,6 +31,10 @@ spec = do
   describe "gregorianDateTime" $ do
     it "returns a tuple representing a gregorian date, given a julian day number" $ do
       (gregorianDateTime $ JulianTime 2459160.1572215) `shouldBe` (2020, 11, 6, 15.773315995931625)
+
+  prop "date round trips: transforming a julian day to gregorian and back" $ do
+    forAll genJulian $ \jd ->
+      (uncurry4 julianDay $ gregorianDateTime (JulianTime jd)) == (JulianTime jd)
 
   describe "eclipticToEquatorial" $ do
     it "converts between ecliptic and equatorial" $ do
