@@ -1,5 +1,9 @@
 # Changelog for swiss-ephemeris
 
+## v1.2.1.1 (2021-03-14)
+
+* Bump upper bound for `base`, to work with newer haskells.
+
 ## v1.2.1.0 (2020-11-14)
 
 * Introduces `gregorianDateTime`, which is the reverse of `julianDay`: given a JD, return

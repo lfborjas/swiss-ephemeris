@@ -124,6 +124,8 @@ julianDay year month day hour = JulianTime $ realToFrac $ c_swe_julday y m d h g
     d = fromIntegral day
     h = realToFrac hour
 
+-- | Given a `JulianTime`, return a tuple with a year, month, day
+-- and hour (as a `Double`.) It is the reverse of `julianDay`.
 gregorianDateTime :: JulianTime -> (Int, Int, Int, Double)
 gregorianDateTime (JulianTime jd) =
   unsafePerformIO $ do

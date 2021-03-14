@@ -79,3 +79,7 @@ data](https://www.astro.com/swisseph/swisseph.htm#_Toc46391741).
 
 I've only made available the types and functions that are useful for my own, traditional, horoscope calculations.
 Feel free to add more! See the [astro.com documentation](https://www.astro.com/swisseph/swisseph.htm) for ideas.
+
+### Releasing
+
+I use `stack` for this project, so releasing it should just be a matter of running `stack sdist`.

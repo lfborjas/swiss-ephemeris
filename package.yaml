@@ -1,5 +1,5 @@
 name:                swiss-ephemeris
-version:             1.2.1.0
+version:             1.2.1.1
 github:              "lfborjas/swiss-ephemeris"
 license:             GPL-2
 author:              "Luis Borjas Reyes"
@@ -19,7 +19,7 @@ category:            Data, Astrology
 description:         Please see the README on GitHub at <https://github.com/lfborjas/swiss-ephemeris#readme>
 
 dependencies:
-- base >= 4.7 && < 4.14
+- base >= 4.7 && <= 4.15
 
 ghc-options:
 - -Wall
