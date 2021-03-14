@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 487b18d84ce97183156848cacbaf172f870c1cda01cb841feee5f230365175c3
+-- hash: 87e5143a1b60bccf232483d76a38cf044429f9a273bbd11667914c911d969015
 
 name:           swiss-ephemeris
-version:        1.2.1.0
+version:        1.2.1.1
 synopsis:       Haskell bindings for the Swiss Ephemeris C library
 description:    Please see the README on GitHub at <https://github.com/lfborjas/swiss-ephemeris#readme>
 category:       Data, Astrology
@@ -63,7 +63,7 @@ library
       csrc/sweph.c
       csrc/swephlib.c
   build-depends:
-      base >=4.7 && <4.14
+      base >=4.7 && <=4.15
   default-language: Haskell2010
 
 test-suite swiss-ephemeris-test
@@ -79,7 +79,7 @@ test-suite swiss-ephemeris-test
       hspec-discover:hspec-discover >=2.7 && <2.8
   build-depends:
       QuickCheck >=2.12 && <=2.14
-    , base >=4.7 && <4.14
+    , base >=4.7 && <=4.15
     , directory >=1.3 && <1.4
     , hspec >=2.7 && <2.8
     , swiss-ephemeris
