@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 87e5143a1b60bccf232483d76a38cf044429f9a273bbd11667914c911d969015
+-- hash: 310a9ec4743f7ca5236f3ea18c497ebada49f399e28502a533e3c752a343ea9e
 
 name:           swiss-ephemeris
 version:        1.2.1.1
@@ -78,7 +78,7 @@ test-suite swiss-ephemeris-test
   build-tool-depends:
       hspec-discover:hspec-discover >=2.7 && <2.8
   build-depends:
-      QuickCheck >=2.12 && <=2.14
+      QuickCheck >=2.12 && <=2.15
     , base >=4.7 && <=4.15
     , directory >=1.3 && <1.4
     , hspec >=2.7 && <2.8
