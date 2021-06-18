@@ -1,5 +1,13 @@
 # Changelog for swiss-ephemeris
 
+## v1.2.2.0 (2021-06-18)
+
+* Add `Utils` namespace, with a couple of convenience functions for chart drawing.
+* Upgrade to swiss ephemeris 2.10.01.
+* **Update LICENSE to AGPL** -- it changed in the C library, too.
+* [dev] Fix QuickCheck test dependency, to hopefully be copacetic in NixOS builds.
+* [dev] add optional `nix` scripts.
+
 ## v1.2.1.1 (2021-03-14)
 
 * Bump upper bound for `base`, to work with newer haskells.
