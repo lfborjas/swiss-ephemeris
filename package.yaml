@@ -1,7 +1,7 @@
 name:                swiss-ephemeris
 version:             1.2.2.0
 github:              "lfborjas/swiss-ephemeris"
-license:             GPL-2
+license:             AGPL-3
 author:              "Luis Borjas Reyes"
 maintainer:          "swiss-ephemeris@lfborjas.com"
 
