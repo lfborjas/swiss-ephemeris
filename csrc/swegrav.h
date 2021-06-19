@@ -80,14 +80,13 @@ The license applies also to translation of this code into another language than 
 /* the units for positions are usually centiseconds, i.e.
    degrees * 360000.
    This allows for integer calculation, a speed advantage in the year 1998, when the code was originally written */
+#include "sweodef.h"
 
 #define MAX_OBJ_SHAKE   11
 #define VERT_FACT       (2 / (3.0 * 3.0))
 #define INF_WEIGHT      0.001
 #define PENALTY         1000
 
-#define DEGTORAD 0.0174532925199433
-#define RADTODEG 57.2957795130823
 
 typedef int   int32;
 typedef int32    centisec;       /* centiseconds used for angles and times */
@@ -109,8 +108,6 @@ typedef int32    centisec;       /* centiseconds used for angles and times */
 #define DEG270  (270 * DEG)
 #define DEG360  (360 * DEG)
 
-#define CSTORAD  4.84813681109536E-08 /* centisec to rad: pi / 180 /3600/100 */
-#define RADTOCS  2.06264806247096E+07 /* rad to centisec 180*3600*100/pi */
 
 #define DEG2MSEC 3600000.0      /* degree to milliseconds */
 #define DEG2CSEC 360000.0       /* degree to centiseconds */

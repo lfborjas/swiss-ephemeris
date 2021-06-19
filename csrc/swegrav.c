@@ -81,7 +81,7 @@ The license applies also to translation of this code into another language than 
    degrees * 360000.
    This allows for integer calculation, a speed advantage in the year 1998, when the code was originally written */
 
-#include "sweph.h"
+#include "swephexp.h"
 #include "swephlib.h"
 #include "swegrav.h"
 
@@ -593,7 +593,6 @@ static int grav_group_sector(GROB *grobs, int nob, int32 *sbdy, AS_BOOL may_shif
         nob0++;
       }
       }
-    }
     nob = nob0;
   }
   /*
