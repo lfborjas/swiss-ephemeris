@@ -44,6 +44,7 @@ library:
     - csrc/swepdate.c
     - csrc/sweph.c
     - csrc/swephlib.c
+    - csrc/swegrav.c
   include-dirs: csrc
   install-includes:
     - csrc/swedate.h
@@ -57,6 +58,7 @@ library:
     - csrc/sweph.h
     - csrc/swephexp.h
     - csrc/swephlib.h
+    - csrc/swegrav.h
 
 tests:
   swiss-ephemeris-test:

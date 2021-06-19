@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c43e460dec19e6bcebd3150ac4a65c7356ee4e6b058bbb2e7efd31789287f087
+-- hash: 697e569b563a6a9cb2ea6147ec99d66c761018306f11a7a916146f83eb97209f
 
 name:           swiss-ephemeris
 version:        1.2.2.0
@@ -50,6 +50,7 @@ library
       csrc/sweph.h
       csrc/swephexp.h
       csrc/swephlib.h
+      csrc/swegrav.h
   c-sources:
       csrc/swecl.c
       csrc/swedate.c
@@ -62,6 +63,7 @@ library
       csrc/swepdate.c
       csrc/sweph.c
       csrc/swephlib.c
+      csrc/swegrav.c
   build-depends:
       base >=4.7 && <=4.15
   default-language: Haskell2010
