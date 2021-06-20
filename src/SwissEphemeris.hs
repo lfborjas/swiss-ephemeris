@@ -70,7 +70,6 @@ module SwissEphemeris
 where
 
 import Control.Exception (bracket_)
-import Data.Semigroup ((<>))
 import Foreign
 import Foreign.C.String
 import Foreign.SwissEphemeris
@@ -98,20 +97,20 @@ closeEphemerides = c_swe_close
 -- | Run a computation with a given ephemerides path open, and then close it.
 -- Note that the computation does /not/ receive the ephemerides,
 -- in keeping with the underlying library's side-effectful conventions.
-withEphemerides :: FilePath -> (IO a) -> IO a
+withEphemerides :: FilePath -> IO a -> IO a
 withEphemerides ephemeridesPath =
   bracket_
     (setEphemeridesPath ephemeridesPath)
-    (closeEphemerides)
+    closeEphemerides
 
 -- | Run a computation with no explicit ephemerides set, if the @SE_EPHE_PATH@
 -- environment variable is set, that will be used. If not, it'll fall back to
 -- in-memory data.
-withoutEphemerides :: (IO a) -> IO a
+withoutEphemerides :: IO a -> IO a
 withoutEphemerides =
   bracket_
-    (setNoEphemeridesPath)
-    (closeEphemerides)
+    setNoEphemeridesPath
+    closeEphemerides
 
 -- | Given year, month and day as `Int` and a time as `Double`, return
 -- a single floating point number representing absolute `JulianTime`.
@@ -128,7 +127,7 @@ julianDay year month day hour = JulianTime $ realToFrac $ c_swe_julday y m d h g
 -- and hour (as a `Double`.) It is the reverse of `julianDay`.
 gregorianDateTime :: JulianTime -> (Int, Int, Int, Double)
 gregorianDateTime (JulianTime jd) =
-  unsafePerformIO $ do
+  unsafePerformIO $
     alloca $ \jyear -> alloca $ \jmon -> alloca $ \jday -> alloca $ \jut -> do
       _ <-
         c_swe_revjul
@@ -142,7 +141,7 @@ gregorianDateTime (JulianTime jd) =
       month <- peek jmon
       day <- peek jday
       time <- peek jut
-      return $ (fromIntegral year, fromIntegral month, fromIntegral day, realToFrac time)
+      return (fromIntegral year, fromIntegral month, fromIntegral day, realToFrac time)
 
 -- | Given `JulianTime` (see `julianDay`),
 -- and a `Planet`, returns either the position of that planet at the given time,
@@ -150,7 +149,7 @@ gregorianDateTime (JulianTime jd) =
 -- when reading ephemerides data.
 calculateEclipticPosition :: JulianTime -> Planet -> IO (Either String EclipticPosition)
 calculateEclipticPosition time planet = do
-  let options = (mkCalculationOptions defaultCalculationOptions)
+  let options = mkCalculationOptions defaultCalculationOptions
   rawCoords <- calculateCoordinates' options time (planetNumber planet)
   return $ fmap coordinatesFromList rawCoords
 
@@ -159,7 +158,7 @@ calculateEclipticPosition time planet = do
 -- is already available to the C code.
 calculateEquatorialPosition :: JulianTime -> Planet -> IO (Either String EquatorialPosition)
 calculateEquatorialPosition time planet = do
-  let options = (mkCalculationOptions $ defaultCalculationOptions ++ [equatorialPositions])
+  let options = mkCalculationOptions $ defaultCalculationOptions ++ [equatorialPositions]
   rawCoords <- calculateCoordinates' options time (planetNumber planet)
   return $ fmap equatorialFromList rawCoords
 
@@ -212,7 +211,7 @@ equatorialToEcliptic oAndN equatorial =
 -- | Internal function for coordinate transformation.
 coordinateTransform' :: Double -> [Double] -> [Double]
 coordinateTransform' obliquity ins =
-  unsafePerformIO $ do
+  unsafePerformIO $
     withArray (map realToFrac $ take 6 ins) $ \xpo -> allocaArray 6 $ \xpn -> do
       _ <- c_swe_cotrans_sp xpo xpn (realToFrac obliquity)
       result <- peekArray 6 xpn
@@ -252,8 +251,8 @@ calculateCuspsLenient sys time loc =
     anglesL <- peekArray 10 ascmc
     return $
       CuspsCalculation
-        (map realToFrac $ cuspsL)
-        (anglesFromList $ map realToFrac $ anglesL)
+        (map realToFrac cuspsL)
+        (anglesFromList $ map realToFrac anglesL)
         (if rval < 0 then Porphyrius else sys)
 
 -- | Unlike `calculateCuspsLenient`, return a `Left` value if the required house system
@@ -262,7 +261,7 @@ calculateCuspsStrict :: HouseSystem -> JulianTime -> GeographicPosition -> IO (E
 calculateCuspsStrict sys time loc = do
   calcs@(CuspsCalculation _ _ sys') <- calculateCuspsLenient sys time loc
   if sys' /= sys
-    then pure $ Left $ "Unable to calculate cusps in the requested house system (used " ++ (show sys') ++ " instead.)"
+    then pure $ Left $ "Unable to calculate cusps in the requested house system (used " ++ show sys' ++ " instead.)"
     else pure $ Right calcs
 
 -- | Calculates the house position of a body in a house in the given system.
@@ -307,7 +306,7 @@ calculateHousePosition sys armc' geoCoords obliq eclipticCoords =
         return $ Left msg
       else do
         let houseN = truncate housePos
-            cuspD = housePos - (fromIntegral houseN)
+            cuspD = housePos - fromIntegral houseN
         return $ Right $ HousePosition houseN (realToFrac cuspD)
 
 -- | Given `JulianTime`, get `SiderealTime`. May consult ephemerides data, hence it being in IO,
@@ -343,7 +342,7 @@ deltaTime jt = do
 -- minutes, and seconds; with seconds rounded. Convenience alias for `splitDegrees`,
 -- when wanting to display e.g. a table in a horoscope.
 splitDegreesZodiac :: Double -> LongitudeComponents
-splitDegreesZodiac = splitDegrees $ defaultSplitDegreesOptions <> [SplitZodiacal, RoundSeconds]
+splitDegreesZodiac = splitDegrees $ defaultSplitDegreesOptions ++ [SplitZodiacal, RoundSeconds]
 
 -- | Given a `Double` representing an ecliptic longitude, split it according to any
 -- options from `SplitDegreesOption`:
@@ -362,14 +361,14 @@ splitDegrees options d =
     flags = foldSplitDegOptions $ map splitOptionToFlag options
     isZodiacSplit = SplitZodiacal `elem` options
     isNakshatraSplit = SplitNakshatra `elem` options
-    sign = if isZodiacSplit then (Just . toEnum $ z) else Nothing
-    nak = if isNakshatraSplit then (Just . toEnum $ z) else Nothing
-    signum' = if (not isZodiacSplit && not isNakshatraSplit) then Just z else Nothing
+    sign = if isZodiacSplit then Just . toEnum $ z else Nothing
+    nak = if isNakshatraSplit then Just . toEnum $ z else Nothing
+    signum' = if not isZodiacSplit && not isNakshatraSplit then Just z else Nothing
 
 -- | Internal implementation to split a given longitude into components.
 splitDegrees' :: SplitDegFlag -> Double -> (Int, Integer, Integer, Integer, Double)
 splitDegrees' options deg =
-  unsafePerformIO $ do
+  unsafePerformIO $
     alloca $ \ideg -> alloca $ \imin -> alloca $ \isec -> alloca $ \dsecfr -> alloca $ \isign -> do
       -- initialize with 0, since it may never be touched.
       poke dsecfr 0
@@ -387,4 +386,4 @@ splitDegrees' options deg =
       min' <- peek imin
       sec' <- peek isec
       secfr <- peek dsecfr
-      return $ ((fromIntegral sign'), (fromIntegral deg'), (fromIntegral min'), (fromIntegral sec'), (realToFrac secfr))
+      return (fromIntegral sign', fromIntegral deg', fromIntegral min', fromIntegral sec', realToFrac secfr)

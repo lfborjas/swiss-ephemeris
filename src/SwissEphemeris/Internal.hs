@@ -48,9 +48,9 @@ instance Storable Planet where
   peek ptr = do
     planetN <- peek $ castPtr ptr
     pure $ numberToPlanet planetN
-  poke ptr p = do  
+  poke ptr p =
     poke (castPtr ptr) (planetNumber p)
-  
+
 
 -- | The major house systems. The underlying library supports many more, including the
 -- 36-cusp outlier Gauquelin.
@@ -290,14 +290,14 @@ eclipticFromList :: [Double] -> EclipticPosition
 eclipticFromList = coordinatesFromList
 
 eclipticToList :: EclipticPosition -> [Double]
-eclipticToList (EclipticPosition sLng sLat c d e f) = (sLng : sLat : c : d : e : f : [])
+eclipticToList (EclipticPosition sLng sLat c d e f) = [sLng, sLat, c, d, e, f]
 
 equatorialFromList :: [Double] -> EquatorialPosition
 equatorialFromList (a : b : c : d : e : f : _) = EquatorialPosition a b c d e f
 equatorialFromList _ = EquatorialPosition 0 0 0 0 0 0
 
 equatorialToList :: EquatorialPosition -> [Double]
-equatorialToList (EquatorialPosition a b c d e f) = (a : b : c : d : e : f : [])
+equatorialToList (EquatorialPosition a b c d e f) = [a, b, c, d, e, f]
 
 obliquityNutationFromList :: [Double] -> ObliquityInformation
 obliquityNutationFromList (a : b : c : d : _ : _ : _) = ObliquityInformation a b c d

@@ -1,10 +1,10 @@
 module ChartUtilsSpec (spec) where
 
 import Data.Bifunctor
-import Data.Either (rights)
 import SwissEphemeris
 import SwissEphemeris.ChartUtils
 import Test.Hspec
+import Data.Either (fromRight)
 
 defaultPosition :: EclipticPosition
 defaultPosition = EclipticPosition 0.0 0.0 0.0 0.0 0.0 0.0
@@ -46,7 +46,7 @@ spec :: Spec
 spec = do
   describe "gravGroupEasy" $ do
     it "returns planets in corrected positions, when applicable" $ do
-      let Right grouped = gravGroupEasy 5.0 examplePositions exampleCusps
+      let grouped = fromRight [] $ gravGroupEasy 5.0 examplePositions exampleCusps
           redux = map (first lng) grouped
 
       redux
@@ -66,7 +66,7 @@ spec = do
                    ]
   describe "gravGroup2Easy" $ do
     it "returns planets in corrected positions, when applicable" $ do
-      let Right grouped = gravGroup2Easy 5.0 examplePositions exampleCusps True
+      let grouped = fromRight [] $ gravGroup2Easy 5.0 examplePositions exampleCusps True
           redux = map (first lng) grouped
 
       redux
