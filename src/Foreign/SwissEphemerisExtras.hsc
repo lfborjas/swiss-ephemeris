@@ -78,7 +78,7 @@ instance Storable a => Storable (GravityObject a) where
 -- (e.g. houses.) See @GravityObject@.
 foreign import ccall unsafe "swegrav.h grav_group"
   c_grav_group :: Ptr (GravityObject a)
-               -- ^ pointer to a "GROB"
+               -- ^ array of "GROB"s
                -> CInt
                -- ^ nob
                -> Ptr CInt
@@ -95,13 +95,15 @@ foreign import ccall unsafe "swegrav.h grav_group"
 -- of resolving collisions in glyphs.
 foreign import ccall unsafe "swegrav.h grav_group2"
   c_grav_group2 :: Ptr (GravityObject a)
-               -- ^ pointer to a "GROB"
+               -- ^ array of "GROB"s
                -> CInt
                -- ^ nob
                -> Ptr CInt
                -- ^ sectors; must include an extra, final sector.
                -> CInt
                -- ^ nsectors
+               -> CBool
+               -- ^ allow planets to "shift" levels?
                -> CString
                -- ^ char* err
                -> (IO CInt)
