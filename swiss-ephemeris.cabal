@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d1ba8de2ffafd4815273b85c6fbe59ceb2c12c230ae0c4021553ccd5a67ee930
+-- hash: 46809910aa7a2846cb068086dd3ef3565ae29d35c6c5b42056572f1df71835f6
 
 name:           swiss-ephemeris
 version:        1.2.2.0
@@ -67,7 +67,7 @@ library
       csrc/swephlib.c
       csrc/swegrav.c
   build-depends:
-      base >=4.7 && <=4.15
+      base >=4.10 && <=4.15
   default-language: Haskell2010
 
 test-suite swiss-ephemeris-test
@@ -84,7 +84,7 @@ test-suite swiss-ephemeris-test
       hspec-discover:hspec-discover >=2.7 && <2.8
   build-depends:
       QuickCheck >=2.12 && <=2.15
-    , base >=4.7 && <=4.15
+    , base >=4.10 && <=4.15
     , directory >=1.3 && <1.4
     , hspec >=2.7 && <2.8
     , swiss-ephemeris

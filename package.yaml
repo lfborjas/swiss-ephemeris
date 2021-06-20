@@ -19,7 +19,7 @@ category:            Data, Astrology
 description:         Please see the README on GitHub at <https://github.com/lfborjas/swiss-ephemeris#readme>
 
 dependencies:
-- base >= 4.7 && <= 4.15
+- base >= 4.10 && <= 4.15
 
 ghc-options:
 - -Wall
