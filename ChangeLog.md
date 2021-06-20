@@ -1,7 +1,11 @@
 # Changelog for swiss-ephemeris
 
-## v1.2.2.0 (2021-06-18)
+## v1.3.0.0 (2021-06-18)
 
+* **Drops support for base < 4.10**, which effectively excludes GHC versions less
+  than or equal to 8.0.2. Supporting older haskells gets more cumbersome with each
+  addition. Please submit a patch with all the preprocessor magic if you _really_
+  want old haskell support.
 * Add `ChartUtils` namespace, with a couple of convenience functions for chart drawing.
 * Upgrade to swiss ephemeris 2.10.01.
 * **Update LICENSE to AGPL** -- it changed in the C library, too.
