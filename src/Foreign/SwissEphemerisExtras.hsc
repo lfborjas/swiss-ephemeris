@@ -107,10 +107,8 @@ foreign import ccall unsafe "swegrav.h grav_group2"
                -- ^ sectors; must include an extra, final sector.
                -> CInt
                -- ^ nsectors
-               -> CInt
+               -> CBool
                -- ^ allow planets to "shift" levels?
-               -- NOTE(luis) this should be @CBool@, but 
-               -- ghc <= 8.0.2 didn't have it.
                -> CString
                -- ^ char* err
                -> (IO CInt)
