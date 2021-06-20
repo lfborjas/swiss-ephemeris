@@ -1,14 +1,17 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface, RecordWildCards #-}
-{-| 
-Module: Foreign.SwissEphemerisExtras
-Description: Declarations of bindings to the underlying C library's non-essential
-functionality.
-
-Import at your own risk!
-
-Exposes very low-level FFI bindings to the C library. Use the @SwissEphemeris.*@ modules and their more
-Haskell-friendly exports.
--}
+-- |
+-- Module: Foreign.SwissEphemerisExtras
+-- License: AGPL-3
+-- Maintainer: swiss-ephemeris@lfborjas.com
+-- Portability: POSIX
+--
+-- Declarations of bindings to the underlying C library's non-essential
+-- functionality.
+--
+-- Import at your own risk!
+--
+-- Exposes very low-level FFI bindings to the C library. Use the @SwissEphemeris.*@ modules and their more
+-- Haskell-friendly exports.
 
 
 module Foreign.SwissEphemerisExtras where
@@ -75,10 +78,10 @@ instance Storable a => Storable (GravityObject a) where
 -- | Simple helper to recalculate positions for planets/bodies
 -- for drawing in a circular chart without collisions/
 -- overlaps, keeping them inside their assigned "sectors"
--- (e.g. houses.) See @GravityObject@.
+-- (e.g. houses.) See 'GravityObject'.
 foreign import ccall unsafe "swegrav.h grav_group"
   c_grav_group :: Ptr (GravityObject a)
-               -- ^ array of "GROB"s
+               -- ^ array of @GROB@s ('GravityObject's)
                -> CInt
                -- ^ nob
                -> Ptr CInt
@@ -90,12 +93,14 @@ foreign import ccall unsafe "swegrav.h grav_group"
                -> (IO CInt)
 
 -- | More advanced version of @grav_group@ that also allows:
+--
 -- * Sending in zero sectors (i.e. just drawing in a circle)
 -- * Shifting between "levels" (closer to the center) as a way
 -- of resolving collisions in glyphs.
+--
 foreign import ccall unsafe "swegrav.h grav_group2"
   c_grav_group2 :: Ptr (GravityObject a)
-               -- ^ array of "GROB"s
+               -- ^ array of @GROB@s ('GravityObject's)
                -> CInt
                -- ^ nob
                -> Ptr CInt

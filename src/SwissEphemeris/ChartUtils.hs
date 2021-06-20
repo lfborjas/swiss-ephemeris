@@ -1,13 +1,13 @@
 {-# LANGUAGE NamedFieldPuns #-}
-{- | 
-Module: SwissEphemeris.ChartUtils
-Description: Utility functions for chart drawing.
-functionality. Uses the C code shared by the swiss ephemeris authors in the official
-mailing list: https://groups.io/g/swisseph/message/5568
-License: AGPL-3
-Maintainer: swiss-ephemeris@lfborjas.com
-Portability: POSIX
--}
+-- | 
+-- Module: SwissEphemeris.ChartUtils
+-- License: AGPL-3
+-- Maintainer: swiss-ephemeris@lfborjas.com
+-- Portability: POSIX
+--
+-- Utility functions for chart drawing functionality. 
+-- Uses the C code shared by the swiss ephemeris authors in the official
+-- mailing list: <https://groups.io/g/swisseph/message/5568>
 
 module SwissEphemeris.ChartUtils (
   GlyphInfo(..),
@@ -27,21 +27,39 @@ import Foreign.SwissEphemerisExtras
 import SwissEphemeris.Internal
 import Control.Category ((>>>))
 import System.IO.Unsafe (unsafePerformIO)
-import Data.List
+import Data.List ( sortBy, sort )
 
 type PlanetGlyph = GravityObject Planet
 
+-- | Information about a @glyph@ (planet or some other object
+-- one intends to render within a circular chart) indicating
+-- suggested position and scale as decided by 'gravGroup'
+-- or 'gravGroup2' to minimize collisions without affecting
+-- the sequence of a list of objects, or the sectors
+-- within which they may be grouped.
 data GlyphInfo a = GlyphInfo
   { placedPosition :: Double
+  -- ^ position decided by the algorithm, in degrees
   , sectorNumber :: Int
+  -- ^ sector assigned; should be the same as the original
   , sequenceNumber :: Int
+  -- ^ position in sequence, should also be preserved
   , levelNumber :: Int
+  -- ^ if allowing for multiple concentric levels, which
+  -- level is this supposed to be on.
   , glyphScale :: Double
+  -- ^ percentage of actualy size it should be resized to
+  -- fit, as per the algorithm's recommendation.
   , extraData  :: a
+  -- ^ arbitrary data. For @PlanetGlyphInfo@, this is a 'Planet'.
   } deriving (Show, Eq)
 
+-- | @GlyphInfo@ specialized to carry 'Planet' names
+-- as its @extraData@.
 type PlanetGlyphInfo = GlyphInfo Planet
 
+-- | Convenience alias for the 'extraData' accessor, get
+-- the 'Planet' conveyed along a glyph info.
 glyphPlanet :: PlanetGlyphInfo -> Planet
 glyphPlanet = extraData
 
@@ -50,9 +68,9 @@ glyphPlanet = extraData
 -- sector is an "impossible" position beyond 360, that
 -- sets the end of the last sector as the first sector's beginning,
 -- beyond one turn. That way, any body occurring in
--- the last sector will exist between sectors[N-1] and
--- sectors[N]. I've been using this as the "linearization"
--- approach for the sectors required by @gravGroup@,
+-- the last sector will exist between @sectors[N-1]@ and
+-- @sectors[N]@. I've been using this as the "linearization"
+-- approach for the sectors required by 'gravGroup',
 -- but one may choose something different.
 cuspsToSectors :: [HouseCusp] -> [Double]
 cuspsToSectors cusps =
@@ -62,14 +80,14 @@ cuspsToSectors cusps =
 
 -- | Given dimensions, planet positions and "sectors" within which
 -- the planets are meant to be drawn as glyphs, return a list
--- pairing each position with a @PlanetGlyphInfo@ that not only
+-- pairing each position with a 'PlanetGlyphInfo' that not only
 -- remembers the position's planet, it's guaranteed to place it
--- in the same sector and sequence it started in, but without colliding
--- with other nearby planets or sector boundaries.
+-- in the same sector and sequence it started in, but moved as to
+-- avoid colliding with other nearby planets or sector boundaries.
 --
 -- Note that "sectors" are usually cusps, but one must take that they're
 -- sorted or "linearized": no sector should jump over 0/360, and the
--- last sector should mark the "end" of the circle. I use @cuspsToSectors@
+-- last sector should mark the "end" of the circle. I use 'cuspsToSectors'
 -- on cusps obtained from the main module's cusp calculation functionality
 -- and that seems to ensure that sectors are adequately monotonic and not
 -- truncated, but one would be wise to take heed to the swiss ephemeris author's
@@ -103,25 +121,29 @@ gravGroup sz positions sectors =
                 sortedOriginal = sortBy (\a b -> planetCmp (fst a) (fst b)) positions
             pure $ Right $ zipWith (\(_p, pos) glyph -> (pos, glyph)) sortedOriginal sortedInfo
 
--- "Easy" version of @gravGroup@ that assumes:
+-- | /Easy/ version of 'gravGroup' that assumes:
+--
 -- * Glyphs are square/symmetrical, so the left and right widths
 -- are just half of the provided width, each.
--- * The provided cusps can be "linearized" by the naïve approach of @cuspsToSectors@
+-- * The provided cusps can be "linearized" by the naïve approach of 'cuspsToSectors'
+-- 
 gravGroupEasy :: Double
   -> [(Planet, EclipticPosition)]
   -> [HouseCusp]
   -> Either String [(EclipticPosition, PlanetGlyphInfo)]
 gravGroupEasy w ps s = gravGroup (w/2,w/2) ps (cuspsToSectors s)
 
--- | Same semantics and warnings as @gravGroup@, but allows a couple of things for
+-- | Same semantics and warnings as 'gravGroup', but allows a couple of things for
 -- more advanced (or crowded) applications:
+--
 -- * Can send an empty list of sectors, to indicate that there's no subdivisions
 -- in the circle.
 -- * Can specify if planets can be pushed to an "inner" level if they're too
 -- crowded in their assigned sector. Useful when drawing several objects in a
 -- chart with many/tight sectors.
+--
 -- With a non-empty list of sectors, and not allowing shifting, this is essentially
--- a slightly slower version of @gravGroup@.
+-- a slightly slower version of 'gravGroup'.
 gravGroup2
   :: (Double, Double)
   -- ^ lwidth, rwidth
@@ -139,7 +161,8 @@ gravGroup2 sz positions sectors allowShift =
       withArray (map (fromIntegral . degreeToCentiseconds) sectors) $ \sbdy ->
         allocaArray 256 $ \serr -> do
           let nob = fromIntegral $ length positions
-              nsectors = fromIntegral $ length sectors - 1
+              -- empty sector lists are allowed:
+              nsectors = max 0 $ fromIntegral $ length sectors - 1
               mayShift = fromBool allowShift
           retval <-
             c_grav_group2 grobs nob sbdy nsectors mayShift serr
@@ -155,7 +178,7 @@ gravGroup2 sz positions sectors allowShift =
             pure $ Right $ zipWith (\(_p, pos) glyph -> (pos, glyph)) sortedOriginal sortedInfo
 
 
--- | "Easy" version of @gravGroup2@, same provisions as @gravGroupEasy@
+-- | /Easy/ version of 'gravGroup2', same provisions as 'gravGroupEasy'
 gravGroup2Easy :: Double
   -> [(Planet, EclipticPosition)]
   -> [HouseCusp]
@@ -163,7 +186,7 @@ gravGroup2Easy :: Double
   -> Either String [(EclipticPosition, PlanetGlyphInfo)]
 gravGroup2Easy w ps s = gravGroup2 (w/2, w/2) ps (cuspsToSectors s)
 
--- | Given dimensions, and a @Planet@ and @EclipticPosition@ pair,
+-- | Given dimensions, and a 'Planet' and 'EclipticPosition' pair,
 -- produce a "glyph" object suitable for the @grav_group@ functions.
 planetPositionToGlyph :: (Double, Double) -> (Planet, EclipticPosition) -> PlanetGlyph
 planetPositionToGlyph (lwidth, rwidth) (planet, EclipticPosition {lng}) = unsafePerformIO $ do
@@ -212,10 +235,3 @@ centisecondsToDegree = realToFrac >>> (/ deg2cs)
 planetCmp :: Planet -> Planet -> Ordering
 planetCmp a b =
   compare (fromEnum a) (fromEnum b)
-
-
-{-
-let sz = (2,2)
-let ps = [(Mars, defaultPos{lng=56.6}), (Venus, defaultPos{lng=56.0})]
-
--}
