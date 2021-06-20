@@ -38,7 +38,7 @@ data GlyphInfo a = GlyphInfo
   , levelNumber :: Int
   , glyphScale :: Double
   , extraData  :: a
-  } deriving Show
+  } deriving (Show, Eq)
 
 type PlanetGlyphInfo = GlyphInfo Planet
 
