@@ -1,7 +1,7 @@
 -- |
 -- Module: SwissEphemeris
 -- Description: Bindings to the swisseph C library.
--- License: GPL-2
+-- License: AGPL-3
 -- Maintainer: swiss-ephemeris@lfborjas.com
 -- Portability: POSIX
 --

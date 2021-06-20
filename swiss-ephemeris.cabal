@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4b94b63425e111509f00c1a692f0794dbfebcabe308ef64439bbb0e30aff4f60
+-- hash: 901167b87e9a39901b373e085fe18e23c8f82915bde470ef0b09f08838fe2cd3
 
 name:           swiss-ephemeris
 version:        1.2.2.0
@@ -31,6 +31,7 @@ library
       Foreign.SwissEphemeris
       Foreign.SwissEphemerisExtras
       SwissEphemeris
+      SwissEphemeris.ChartUtils
       SwissEphemeris.Internal
   other-modules:
       Paths_swiss_ephemeris

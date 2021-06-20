@@ -19,6 +19,17 @@ import Foreign.C.String
 newtype PlanetNumber = PlanetNumber
   { unPlanetNumber :: CInt } deriving (Eq, Show)
 
+instance Storable PlanetNumber where
+  sizeOf _ = sizeOf (undefined::CInt)
+  alignment  = sizeOf
+  peek ptr = do
+    n <- peek $ castPtr ptr
+    pure $ PlanetNumber n
+  poke ptr (PlanetNumber n) =
+    poke (castPtr ptr) n
+
+
+
 newtype GregFlag = GregFlag
   { unGregFlag :: CInt } deriving (Eq, Show)
 
