@@ -39,6 +39,9 @@ type PlanetGlyph = GravityObject Planet
 data GlyphInfo a = GlyphInfo
   { originalPosition :: Double
   -- ^ the original position, before correction
+  , glyphSize :: (Double, Double)
+  -- ^ lsize,rsize: original size, in degrees, from the center extending
+  -- to the left and the right, respectively.
   ,  placedPosition :: Double
   -- ^ position decided by the algorithm, in degrees
   , sectorNumber :: Int
@@ -210,11 +213,12 @@ planetPositionToGlyph (lwidth, rwidth) (planet, pos) = unsafePerformIO $ do
       }
 
 glyphInfo :: PlanetGlyph -> PlanetGlyphInfo
-glyphInfo GravityObject{pos, ppos, sector_no, sequence_no, level_no, scale, dp} = unsafePerformIO $ do
+glyphInfo GravityObject{pos, lsize, rsize, ppos, sector_no, sequence_no, level_no, scale, dp} = unsafePerformIO $ do
   planet' <- peek dp
   pure $
     GlyphInfo {
       originalPosition = realToFrac  pos
+    , glyphSize = (realToFrac lsize, realToFrac rsize)
     , placedPosition = realToFrac ppos
     , sectorNumber = fromIntegral  sector_no
     , sequenceNumber = fromIntegral sequence_no
