@@ -51,6 +51,16 @@ sectorCompare a b = compare (sectorNumber a) (sectorNumber b)
 spec :: Spec
 spec = do
   describe "gravGroupEasy" $ do
+    it "downscales glyphs in narrow sectors" $ do
+      -- [{pos: 274.5, lsize:2.5, rsize: 2.5, dp: "Mars"}, {pos: 275.0, lsize: 2.5, rsize: 2.5, dp: "Venus"}];
+      let positions = [(Mars, Lng 274.5), (Venus, Lng 275.0)]
+          sectors = [270.0, 274.0, 280.0]
+          grouped = fromRight [] $ gravGroupEasy 5.0 positions sectors
+      grouped
+        `shouldBe` [ GlyphInfo {originalPosition = 274.5, glyphSize = (2.5, 2.5), placedPosition = 275.5, sectorNumber = 1, sequenceNumber = 0, levelNumber = 0, glyphScale = 0.6, extraData = Mars},
+                     GlyphInfo {originalPosition = 275.0, glyphSize = (2.5, 2.5), placedPosition = 278.5, sectorNumber = 1, sequenceNumber = 1, levelNumber = 0, glyphScale = 0.6, extraData = Venus}
+                   ]
+
     it "returns planets in corrected positions, when applicable" $ do
       let grouped = fromRight [] $ gravGroupEasy 5.0 examplePositions exampleCusps
           redux = sortBy sectorCompare grouped
@@ -72,6 +82,17 @@ spec = do
                    ]
 
   describe "gravGroup2Easy" $ do
+    it "shifts glyphs in narrow sectors to different levels, keeps the scale" $ do
+      -- [{pos: 274.5, lsize:2.5, rsize: 2.5, dp: "Mars"}, {pos: 275.0, lsize: 2.5, rsize: 2.5, dp: "Venus"}];
+      let positions = [(Mars, Lng 274.5), (Venus, Lng 275.0)]
+          sectors = [270.0, 274.0, 280.0]
+          grouped = fromRight [] $ gravGroup2Easy 5.0 positions sectors True
+      grouped
+        `shouldBe` [
+          GlyphInfo {originalPosition = 275.0, glyphSize = (2.5,2.5), placedPosition = 276.5, sectorNumber = 1, sequenceNumber = 1, levelNumber = 0, glyphScale = 1.0, extraData = Venus},
+          GlyphInfo {originalPosition = 274.5, glyphSize = (2.5,2.5), placedPosition = 276.5, sectorNumber = 1, sequenceNumber = 0, levelNumber = 1, glyphScale = 1.0, extraData = Mars}
+        ]
+
     it "returns planets in corrected positions, when applicable" $ do
       let grouped = fromRight [] $ gravGroup2Easy 5.0 examplePositions exampleCusps True
           redux = sortBy sectorCompare grouped
