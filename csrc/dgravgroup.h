@@ -55,6 +55,10 @@
 // As published in:
 // https://groups.io/g/swisseph/message/10076
 
+/* NOTE(luis, 6/23/2021): this is the same as gravgroup, but all centiseconds are
+   doubles instead.
+ */
+
 /* the units for positions are usually centiseconds, i.e.
    degrees * 360000.
    This allows for integer calculation, a speed advantage in the year 1998, when the code was originally written */
@@ -108,10 +112,10 @@ typedef int32    centisec;       /* centiseconds used for angles and times */
 
 
 typedef struct grav_object {
-        int32 pos;      /* original position */
-        int32 lsize;    /* left size of element */
-        int32 rsize;    /* right size of element */
-        int32 ppos;     /* placed position, output */
+        double pos;      /* original position */
+        double lsize;    /* left size of element */
+        double rsize;    /* right size of element */
+        double ppos;     /* placed position, output */
         int  sector_no; /* in which sector is the element */
         int  sequence_no;       /* original sequence number */
         int  level_no;  /* for two_level sorting, level nr. 0 or 1 */
@@ -122,16 +126,16 @@ typedef struct grav_object {
 typedef struct gravity_group {
         GROB *fp;
         int  n, n_on_level;
-        int32 width;
-        int32 cgrav;
+        double width;
+        double cgrav;
         AS_BOOL calc_levels;
         } group;
 
-static int grav_group_sector(GROB *grobs, int nob, int32 *sbdy, AS_BOOL may_shift, int nlevels, char *err);
+static int grav_group_sector(GROB *grobs, int nob, double *sbdy, AS_BOOL may_shift, int nlevels, char *err);
 static int sort_sector(GROB *grobs, int nob);
-static int grav_group_shaker(GROB *grobs, int nob, int32 *sbdy, AS_BOOL may_shift, char *err);
+static int grav_group_shaker(GROB *grobs, int nob, double *sbdy, AS_BOOL may_shift, char *err);
 
 
 int grob_compare(const GROB *g1, const GROB *g2);
-int grav_group(GROB *grobs, int nob, int32 *sbdy, int nsectors, char *err);
-int grav_group2(GROB *grobs, int nob, int32 *sbdy, int nsectors, AS_BOOL may_shift, char *err);
+int grav_group(GROB *grobs, int nob, double *sbdy, int nsectors, char *err);
+int grav_group2(GROB *grobs, int nob, double *sbdy, int nsectors, AS_BOOL may_shift, char *err);

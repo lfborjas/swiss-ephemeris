@@ -22,17 +22,17 @@ import Foreign.Storable
 import Foreign.C.Types
 import Foreign.C.String
 
-#include <gravgroup.h>
+#include <dgravgroup.h>
 
 -- | Equivalent to GROB in @gravgroup.h@
 data GravityObject a = GravityObject
-  { pos :: CInt
+  { pos :: CDouble
   -- ^ position of object in /centiseconds/.
-  , lsize :: CInt
+  , lsize :: CDouble
   -- ^ glyph size in your chosen graphics env, left side.
-  , rsize :: CInt
+  , rsize :: CDouble
   -- ^ glyph size in your chosen graphics env, right side.
-  , ppos :: CInt
+  , ppos :: CDouble
   -- ^ corrected ("placed") position after we're done; can set as zero.
   , sector_no :: CInt
   -- ^ assigned sector number, will be set as objects are
@@ -79,12 +79,12 @@ instance Storable a => Storable (GravityObject a) where
 -- for drawing in a circular chart without collisions/
 -- overlaps, keeping them inside their assigned "sectors"
 -- (e.g. houses.) See 'GravityObject'.
-foreign import ccall unsafe "gravgroup.h grav_group"
+foreign import ccall unsafe "dgravgroup.h grav_group"
   c_grav_group :: Ptr (GravityObject a)
                -- ^ array of @GROB@s ('GravityObject's)
                -> CInt
                -- ^ nob
-               -> Ptr CInt
+               -> Ptr CDouble
                -- ^ sectors; must include an extra, final sector.
                -> CInt
                -- ^ nsectors
@@ -98,12 +98,12 @@ foreign import ccall unsafe "gravgroup.h grav_group"
 -- * Shifting between "levels" (closer to the center) as a way
 -- of resolving collisions in glyphs.
 --
-foreign import ccall unsafe "gravgroup.h grav_group2"
+foreign import ccall unsafe "dgravgroup.h grav_group2"
   c_grav_group2 :: Ptr (GravityObject a)
                -- ^ array of @GROB@s ('GravityObject's)
                -> CInt
                -- ^ nob
-               -> Ptr CInt
+               -> Ptr CDouble
                -- ^ sectors; must include an extra, final sector.
                -> CInt
                -- ^ nsectors

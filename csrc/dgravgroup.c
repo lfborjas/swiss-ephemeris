@@ -61,11 +61,11 @@
 
 #include "swephexp.h"
 #include "swephlib.h"
-#include "gravgroup.h"
+#include "dgravgroup.h"
 
 int grob_compare(const GROB *g1, const GROB *g2)
 {
-  return g1->pos - g2->pos;
+  return (int)(g1->pos - g2->pos);
 }
 
 /*
@@ -87,11 +87,11 @@ int grob_compare(const GROB *g1, const GROB *g2)
  *
  * In case of error, an error message is put into err and ERR is returned.
  */
-int grav_group(GROB *grobs, int nob, int32 *sbdy, int nsectors, char *err)
+int grav_group(GROB *grobs, int nob, double *sbdy, int nsectors, char *err)
 {
   int i, no, ns, n, nr_in_sec, ng;
   int retval = OK;
-  int32  width_in_sec, pos;
+  double width_in_sec, pos;
   double scale, x;
   GROB *op, *first_op, *cop;
   group *grp, *gp;
@@ -142,7 +142,7 @@ int grav_group(GROB *grobs, int nob, int32 *sbdy, int nsectors, char *err)
      * find the first element in this sector.
      */
     nr_in_sec = 0;
-    width_in_sec = 0;
+    width_in_sec = 0.0;
     for (no = 0, op = grobs; no < nob; no++, op++) {
       if (op->sector_no < ns) continue;
       if (op->sector_no > ns) break;
@@ -174,7 +174,7 @@ int grav_group(GROB *grobs, int nob, int32 *sbdy, int nsectors, char *err)
        * compute width and sector of gravity of the group
        */
 compute_gravity:
-      gp->width = gp->cgrav = 0;
+      gp->width = gp->cgrav = 0.0;
       x = 0.0;
       for (i = 0, op = gp->fp; i < gp->n; i++, op++) {
         x += op->pos;   /* use double */
@@ -253,7 +253,7 @@ compute_gravity:
  *
  * In case of error, an error message is put into err and ERR is returned.
  */
-int grav_group2(GROB *grobs, int nob, int32 *sbdy, int nsectors, AS_BOOL may_shift, char *err)
+int grav_group2(GROB *grobs, int nob, double *sbdy, int nsectors, AS_BOOL may_shift, char *err)
 {
   int i, no, ns;
   int retval = OK;
@@ -262,7 +262,7 @@ int grav_group2(GROB *grobs, int nob, int32 *sbdy, int nsectors, AS_BOOL may_shi
   GROB *op;
   GROB **psect = NULL;  /* silence gcc */
   AS_BOOL do_circular_grouping = FALSE;
-  int32 d, dsave, pos0 = 0;
+  double d, dsave, pos0 = 0;
   if (nsectors == 0) {
     do_circular_grouping = TRUE;
     nsectors = 1;
@@ -377,10 +377,10 @@ end_grav_group2:
   return retval;
 }
 
-static int grav_group_shaker(GROB *grobs, int nob, int32 *sbdy, AS_BOOL may_shift, char *err)
+static int grav_group_shaker(GROB *grobs, int nob, double *sbdy, AS_BOOL may_shift, char *err)
 {
   int i;
-  int32 mpre, mpat, mpatmax, fpat;
+  int mpre, mpat, mpatmax, fpat;
   double fprice, price, hprice, vprice,pprice;
   int nlevels = 1;
   int retval;
@@ -525,11 +525,12 @@ static int grav_group_shaker(GROB *grobs, int nob, int32 *sbdy, AS_BOOL may_shif
  *      -shifting may have caused groups falling in pieces;
  *         make sure that none of new group begins on level one
  */
-static int grav_group_sector(GROB *grobs, int nob, int32 *sbdy, AS_BOOL may_shift, int nlevels, char *err)
+static int grav_group_sector(GROB *grobs, int nob, double *sbdy, AS_BOOL may_shift, int nlevels, char *err)
 {
   int i, retval = OK, io, ig, n;
-  int width_sum, nob0, nob1 = 0;        /* silence gcc */
-  int32 pos;
+  int nob0, nob1 = 0;        /* silence gcc */
+  double width_sum = 0;
+  double pos;
   GROB *op, *opx, *opy, *op0, *op1, *grobs1 = NULL, *cop;
   group *grp, *gp;
   double x, scale;
@@ -668,7 +669,7 @@ compute_gravity:
          sector.
          */
       while (may_shift > 0) {
-        if (abs(op->ppos - op->pos) < (op->lsize + op->rsize) / 3) break;
+        if (fabs(op->ppos - op->pos) < (op->lsize + op->rsize) / 3) break;
         if (op == grobs && op->ppos - op->pos > 0) break;
         if (op == grobs + nob - 1 && op->ppos - op->pos < 0) break;
         gp->calc_levels = TRUE;

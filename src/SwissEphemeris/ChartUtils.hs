@@ -104,7 +104,7 @@ gravGroup
 gravGroup sz positions sectors =
   unsafePerformIO $ do
     withArray (map (planetPositionToGlyph sz) positions) $ \grobs ->
-      withArray (map (fromIntegral . degreeToCentiseconds) sectors) $ \sbdy ->
+      withArray (map realToFrac sectors) $ \sbdy ->
         allocaArray 256 $ \serr -> do
           let nob = fromIntegral $ length positions
               nsectors = fromIntegral $ length sectors - 1
@@ -158,7 +158,7 @@ gravGroup2
 gravGroup2 sz positions sectors allowShift =
   unsafePerformIO $ do
     withArray (map (planetPositionToGlyph sz) positions) $ \grobs ->
-      withArray (map (fromIntegral . degreeToCentiseconds) sectors) $ \sbdy ->
+      withArray (map realToFrac sectors) $ \sbdy ->
         allocaArray 256 $ \serr -> do
           let nob = fromIntegral $ length positions
               -- empty sector lists are allowed:
@@ -194,11 +194,11 @@ planetPositionToGlyph (lwidth, rwidth) (planet, EclipticPosition {lng}) = unsafe
     poke planetPtr planet
     pure $
       GravityObject {
-        pos = fromIntegral . degreeToCentiseconds $ lng
-      , lsize = fromIntegral . degreeToCentiseconds $ lwidth
-      , rsize = fromIntegral . degreeToCentiseconds $ rwidth
+        pos =   realToFrac lng
+      , lsize = realToFrac  lwidth
+      , rsize = realToFrac  rwidth
       -- fields that will be initialized by the functions
-      , ppos = 0
+      , ppos = 0.0
       , sector_no = 0
       , sequence_no = 0
       , level_no = 0
@@ -215,22 +215,13 @@ glyphInfo GravityObject{ppos,sector_no,sequence_no, level_no, scale, dp} = unsaf
   planet' <- peek dp
   pure $
     GlyphInfo {
-      placedPosition = centisecondsToDegree $ fromIntegral ppos
+      placedPosition = realToFrac ppos
     , sectorNumber = fromIntegral  sector_no
     , sequenceNumber = fromIntegral sequence_no
     , levelNumber = fromIntegral level_no
     , glyphScale = realToFrac scale
     , extraData = planet'
     }
-
-deg2cs :: Double
-deg2cs = 360000.0
-
-degreeToCentiseconds :: Double -> Int
-degreeToCentiseconds = (* deg2cs) >>> round
-
-centisecondsToDegree :: Int -> Double
-centisecondsToDegree = realToFrac >>> (/ deg2cs)
 
 planetCmp :: Planet -> Planet -> Ordering
 planetCmp a b =
