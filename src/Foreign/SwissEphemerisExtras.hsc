@@ -22,9 +22,9 @@ import Foreign.Storable
 import Foreign.C.Types
 import Foreign.C.String
 
-#include <swegrav.h>
+#include <gravgroup.h>
 
--- | Equivalent to GROB in @swegrav.h@
+-- | Equivalent to GROB in @gravgroup.h@
 data GravityObject a = GravityObject
   { pos :: CInt
   -- ^ position of object in /centiseconds/.
@@ -79,7 +79,7 @@ instance Storable a => Storable (GravityObject a) where
 -- for drawing in a circular chart without collisions/
 -- overlaps, keeping them inside their assigned "sectors"
 -- (e.g. houses.) See 'GravityObject'.
-foreign import ccall unsafe "swegrav.h grav_group"
+foreign import ccall unsafe "gravgroup.h grav_group"
   c_grav_group :: Ptr (GravityObject a)
                -- ^ array of @GROB@s ('GravityObject's)
                -> CInt
@@ -98,7 +98,7 @@ foreign import ccall unsafe "swegrav.h grav_group"
 -- * Shifting between "levels" (closer to the center) as a way
 -- of resolving collisions in glyphs.
 --
-foreign import ccall unsafe "swegrav.h grav_group2"
+foreign import ccall unsafe "gravgroup.h grav_group2"
   c_grav_group2 :: Ptr (GravityObject a)
                -- ^ array of @GROB@s ('GravityObject's)
                -> CInt

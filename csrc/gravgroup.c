@@ -83,7 +83,7 @@ The license applies also to translation of this code into another language than 
 
 #include "swephexp.h"
 #include "swephlib.h"
-#include "swegrav.h"
+#include "gravgroup.h"
 
 int grob_compare(const GROB *g1, const GROB *g2)
 {
