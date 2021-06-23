@@ -1,29 +1,32 @@
 module ChartUtilsSpec (spec) where
 
-import Data.Bifunctor
+import Data.Either (fromRight)
+import Data.List (sortBy)
 import SwissEphemeris
 import SwissEphemeris.ChartUtils
 import Test.Hspec
-import Data.Either (fromRight)
 
-defaultPosition :: EclipticPosition
-defaultPosition = EclipticPosition 0.0 0.0 0.0 0.0 0.0 0.0
+newtype Lng = Lng Double
+  deriving (Eq)
 
-examplePositions :: [(Planet, EclipticPosition)]
+instance HasEclipticLongitude Lng where
+  getEclipticLongitude (Lng d) = d
+
+examplePositions :: [(Planet, Lng)]
 examplePositions =
-  [ (Sun, defaultPosition {lng = 285.64}),
-    (Moon, defaultPosition {lng = 262.47}),
-    (Mercury, defaultPosition {lng = 304.31}),
-    (Venus, defaultPosition {lng = 264.04}),
-    (Mars, defaultPosition {lng = 22.78}),
-    (Jupiter, defaultPosition {lng = 56.44}),
-    (Saturn, defaultPosition {lng = 276.18}),
-    (Uranus, defaultPosition {lng = 272.05}),
-    (Neptune, defaultPosition {lng = 280.11}),
-    (Pluto, defaultPosition {lng = 224.68}),
-    (MeanNode, defaultPosition {lng = 337.52}),
-    (MeanApog, defaultPosition {lng = 176.41}),
-    (Chiron, defaultPosition {lng = 93.53})
+  [ (Sun, Lng 285.64),
+    (Moon, Lng 262.47),
+    (Mercury, Lng 304.31),
+    (Venus, Lng 264.04),
+    (Mars, Lng 22.78),
+    (Jupiter, Lng 56.44),
+    (Saturn, Lng 276.18),
+    (Uranus, Lng 272.05),
+    (Neptune, Lng 280.11),
+    (Pluto, Lng 224.68),
+    (MeanNode, Lng 337.52),
+    (MeanApog, Lng 176.41),
+    (Chiron, Lng 93.53)
   ]
 
 exampleCusps :: [HouseCusp]
@@ -42,47 +45,51 @@ exampleCusps =
     161.89809835262577 -- 6
   ]
 
+sectorCompare :: GlyphInfo Planet -> GlyphInfo Planet -> Ordering
+sectorCompare a b = compare (sectorNumber a) (sectorNumber b)
+
 spec :: Spec
 spec = do
   describe "gravGroupEasy" $ do
     it "returns planets in corrected positions, when applicable" $ do
       let grouped = fromRight [] $ gravGroupEasy 5.0 examplePositions exampleCusps
-          redux = map (first lng) grouped
+          redux = sortBy sectorCompare grouped
 
       redux
-        `shouldBe` [ (285.64, GlyphInfo {placedPosition = 285.64, sectorNumber = 9, sequenceNumber = 0, levelNumber = 0, glyphScale = 1.0, extraData = Sun}),
-                     (262.47, GlyphInfo {placedPosition = 258.64011666666664, sectorNumber = 8, sequenceNumber = 1, levelNumber = 0, glyphScale = 1.0, extraData = Moon}),
-                     (304.31, GlyphInfo {placedPosition = 304.31, sectorNumber = 9, sequenceNumber = 2, levelNumber = 0, glyphScale = 1.0, extraData = Mercury}),
-                     (264.04, GlyphInfo {placedPosition = 263.64011666666664, sectorNumber = 8, sequenceNumber = 3, levelNumber = 0, glyphScale = 1.0, extraData = Venus}),
-                     (22.78, GlyphInfo {placedPosition = 22.78, sectorNumber = 0, sequenceNumber = 4, levelNumber = 0, glyphScale = 1.0, extraData = Mars}),
-                     (56.44, GlyphInfo {placedPosition = 56.44, sectorNumber = 1, sequenceNumber = 5, levelNumber = 0, glyphScale = 1.0, extraData = Jupiter}),
-                     (276.18, GlyphInfo {placedPosition = 273.64011666666664, sectorNumber = 8, sequenceNumber = 6, levelNumber = 0, glyphScale = 1.0, extraData = Saturn}),
-                     (272.05, GlyphInfo {placedPosition = 268.64011666666664, sectorNumber = 8, sequenceNumber = 7, levelNumber = 0, glyphScale = 1.0, extraData = Uranus}),
-                     (280.11, GlyphInfo {placedPosition = 278.64011666666664, sectorNumber = 8, sequenceNumber = 8, levelNumber = 0, glyphScale = 1.0, extraData = Neptune}),
-                     (224.68, GlyphInfo {placedPosition = 224.68, sectorNumber = 7, sequenceNumber = 9, levelNumber = 0, glyphScale = 1.0, extraData = Pluto}),
-                     (337.52, GlyphInfo {placedPosition = 337.52, sectorNumber = 10, sequenceNumber = 10, levelNumber = 0, glyphScale = 1.0, extraData = MeanNode}),
-                     (176.41, GlyphInfo {placedPosition = 176.41, sectorNumber = 5, sequenceNumber = 11, levelNumber = 0, glyphScale = 1.0, extraData = MeanApog}),
-                     (93.53, GlyphInfo {placedPosition = 93.53, sectorNumber = 2, sequenceNumber = 12, levelNumber = 0, glyphScale = 1.0, extraData = Chiron})
+        `shouldBe` [ GlyphInfo {originalPosition = 22.78, placedPosition = 22.78, sectorNumber = 0, sequenceNumber = 4, levelNumber = 0, glyphScale = 1.0, extraData = Mars},
+                     GlyphInfo {originalPosition = 56.44, placedPosition = 56.44, sectorNumber = 1, sequenceNumber = 5, levelNumber = 0, glyphScale = 1.0, extraData = Jupiter},
+                     GlyphInfo {originalPosition = 93.53, placedPosition = 93.53, sectorNumber = 2, sequenceNumber = 12, levelNumber = 0, glyphScale = 1.0, extraData = Chiron},
+                     GlyphInfo {originalPosition = 176.41, placedPosition = 176.41, sectorNumber = 5, sequenceNumber = 11, levelNumber = 0, glyphScale = 1.0, extraData = MeanApog},
+                     GlyphInfo {originalPosition = 224.68, placedPosition = 224.68, sectorNumber = 7, sequenceNumber = 9, levelNumber = 0, glyphScale = 1.0, extraData = Pluto},
+                     GlyphInfo {originalPosition = 262.47, placedPosition = 258.6401159871351, sectorNumber = 8, sequenceNumber = 1, levelNumber = 0, glyphScale = 1.0, extraData = Moon},
+                     GlyphInfo {originalPosition = 264.04, placedPosition = 263.6401159871351, sectorNumber = 8, sequenceNumber = 3, levelNumber = 0, glyphScale = 1.0, extraData = Venus},
+                     GlyphInfo {originalPosition = 272.05, placedPosition = 268.6401159871351, sectorNumber = 8, sequenceNumber = 7, levelNumber = 0, glyphScale = 1.0, extraData = Uranus},
+                     GlyphInfo {originalPosition = 276.18, placedPosition = 273.6401159871351, sectorNumber = 8, sequenceNumber = 6, levelNumber = 0, glyphScale = 1.0, extraData = Saturn},
+                     GlyphInfo {originalPosition = 280.11, placedPosition = 278.6401159871351, sectorNumber = 8, sequenceNumber = 8, levelNumber = 0, glyphScale = 1.0, extraData = Neptune},
+                     GlyphInfo {originalPosition = 285.64, placedPosition = 285.64, sectorNumber = 9, sequenceNumber = 0, levelNumber = 0, glyphScale = 1.0, extraData = Sun},
+                     GlyphInfo {originalPosition = 304.31, placedPosition = 304.31, sectorNumber = 9, sequenceNumber = 2, levelNumber = 0, glyphScale = 1.0, extraData = Mercury},
+                     GlyphInfo {originalPosition = 337.52, placedPosition = 337.52, sectorNumber = 10, sequenceNumber = 10, levelNumber = 0, glyphScale = 1.0, extraData = MeanNode}
                    ]
+
   describe "gravGroup2Easy" $ do
     it "returns planets in corrected positions, when applicable" $ do
       let grouped = fromRight [] $ gravGroup2Easy 5.0 examplePositions exampleCusps True
-          redux = map (first lng) grouped
+          redux = sortBy sectorCompare grouped
 
       redux
-        `shouldBe` [ (285.64, GlyphInfo {placedPosition = 285.64, sectorNumber = 9, sequenceNumber = 0, levelNumber = 0, glyphScale = 1.0, extraData = Sun}),
-                     (262.47, GlyphInfo {placedPosition = 262.47, sectorNumber = 8, sequenceNumber = 1, levelNumber = 0, glyphScale = 1.0, extraData = Moon}),
-                     (304.31, GlyphInfo {placedPosition = 304.31, sectorNumber = 9, sequenceNumber = 2, levelNumber = 0, glyphScale = 1.0, extraData = Mercury}),
-                     (264.04, GlyphInfo {placedPosition = 264.04, sectorNumber = 8, sequenceNumber = 3, levelNumber = 1, glyphScale = 1.0, extraData = Venus}),
-                     (22.78, GlyphInfo {placedPosition = 22.78, sectorNumber = 0, sequenceNumber = 4, levelNumber = 0, glyphScale = 1.0, extraData = Mars}),
-                     (56.44, GlyphInfo {placedPosition = 56.44, sectorNumber = 1, sequenceNumber = 5, levelNumber = 0, glyphScale = 1.0, extraData = Jupiter}),
-                     (276.18, GlyphInfo {placedPosition = 276.18, sectorNumber = 8, sequenceNumber = 6, levelNumber = 1, glyphScale = 1.0, extraData = Saturn}),
-                     (272.05, GlyphInfo {placedPosition = 272.05, sectorNumber = 8, sequenceNumber = 7, levelNumber = 0, glyphScale = 1.0, extraData = Uranus}),
-                     (280.11, GlyphInfo {placedPosition = 278.64011666666664, sectorNumber = 8, sequenceNumber = 8, levelNumber = 0, glyphScale = 1.0, extraData = Neptune}),
-                     (224.68, GlyphInfo {placedPosition = 224.68, sectorNumber = 7, sequenceNumber = 9, levelNumber = 0, glyphScale = 1.0, extraData = Pluto}),
-                     (337.52, GlyphInfo {placedPosition = 337.52, sectorNumber = 10, sequenceNumber = 10, levelNumber = 0, glyphScale = 1.0, extraData = MeanNode}),
-                     (176.41, GlyphInfo {placedPosition = 176.41, sectorNumber = 5, sequenceNumber = 11, levelNumber = 0, glyphScale = 1.0, extraData = MeanApog}),
-                     (93.53, GlyphInfo {placedPosition = 93.53, sectorNumber = 2, sequenceNumber = 12, levelNumber = 0, glyphScale = 1.0, extraData = Chiron})
+        `shouldBe` [ GlyphInfo {originalPosition = 22.78, placedPosition = 22.78, sectorNumber = 0, sequenceNumber = 4, levelNumber = 0, glyphScale = 1.0, extraData = Mars},
+                     GlyphInfo {originalPosition = 56.44, placedPosition = 56.44, sectorNumber = 1, sequenceNumber = 5, levelNumber = 0, glyphScale = 1.0, extraData = Jupiter},
+                     GlyphInfo {originalPosition = 93.53, placedPosition = 93.53, sectorNumber = 2, sequenceNumber = 12, levelNumber = 0, glyphScale = 1.0, extraData = Chiron},
+                     GlyphInfo {originalPosition = 176.41, placedPosition = 176.41, sectorNumber = 5, sequenceNumber = 11, levelNumber = 0, glyphScale = 1.0, extraData = MeanApog},
+                     GlyphInfo {originalPosition = 224.68, placedPosition = 224.68, sectorNumber = 7, sequenceNumber = 9, levelNumber = 0, glyphScale = 1.0, extraData = Pluto},
+                     GlyphInfo {originalPosition = 262.47, placedPosition = 258.6401159871351, sectorNumber = 8, sequenceNumber = 1, levelNumber = 0, glyphScale = 1.0, extraData = Moon},
+                     GlyphInfo {originalPosition = 264.04, placedPosition = 263.6401159871351, sectorNumber = 8, sequenceNumber = 3, levelNumber = 0, glyphScale = 1.0, extraData = Venus},
+                     GlyphInfo {originalPosition = 272.05, placedPosition = 268.6401159871351, sectorNumber = 8, sequenceNumber = 7, levelNumber = 0, glyphScale = 1.0, extraData = Uranus},
+                     GlyphInfo {originalPosition = 276.18, placedPosition = 273.6401159871351, sectorNumber = 8, sequenceNumber = 6, levelNumber = 0, glyphScale = 1.0, extraData = Saturn},
+                     GlyphInfo {originalPosition = 280.11, placedPosition = 278.6401159871351, sectorNumber = 8, sequenceNumber = 8, levelNumber = 0, glyphScale = 1.0, extraData = Neptune},
+                     GlyphInfo {originalPosition = 285.64, placedPosition = 285.64, sectorNumber = 9, sequenceNumber = 0, levelNumber = 0, glyphScale = 1.0, extraData = Sun},
+                     GlyphInfo {originalPosition = 304.31, placedPosition = 304.31, sectorNumber = 9, sequenceNumber = 2, levelNumber = 0, glyphScale = 1.0, extraData = Mercury},
+                     GlyphInfo {originalPosition = 337.52, placedPosition = 337.52, sectorNumber = 10, sequenceNumber = 10, levelNumber = 0, glyphScale = 1.0, extraData = MeanNode}
                    ]
 
 {-

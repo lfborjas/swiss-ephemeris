@@ -17,8 +17,6 @@
 module Foreign.SwissEphemerisExtras where
 
 import Foreign
-import Foreign.Ptr
-import Foreign.Storable
 import Foreign.C.Types
 import Foreign.C.String
 

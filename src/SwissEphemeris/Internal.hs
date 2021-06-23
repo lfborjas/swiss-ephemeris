@@ -15,6 +15,11 @@ import Foreign.SwissEphemeris
 import GHC.Generics
 import Foreign.Storable
 
+-- | For objects that can be placed along the ecliptic
+-- in a 1-dimensional "longitude-only" manner.
+class Eq a => HasEclipticLongitude a where
+  getEclipticLongitude :: a -> Double
+
 -- | All bodies for which a position can be calculated. Covers planets
 -- in the solar system, points between the Earth and the Moon, and
 -- astrologically significant asteroids (currently, only Chiron, but
@@ -164,6 +169,9 @@ data EclipticPosition = EclipticPosition
     distSpeed :: Double -- deg/day
   }
   deriving (Show, Eq, Generic)
+
+instance HasEclipticLongitude EclipticPosition where
+  getEclipticLongitude = lng
 
 -- | Represents a point on Earth, with negative values
 -- for latitude meaning South, and negative values for longitude

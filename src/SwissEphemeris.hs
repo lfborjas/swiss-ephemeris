@@ -17,7 +17,9 @@
 -- There's a wealth of other calculations possible with the underlying library, however,
 -- please refer to their documentation and the bundled sources for ideas!
 module SwissEphemeris
-  ( -- fundamental aliases/newtypes
+  ( -- classes for general concepts
+    HasEclipticLongitude(..),
+    -- fundamental aliases/newtypes
     JulianTime (..),
     SiderealTime (..),
     HouseCusp,

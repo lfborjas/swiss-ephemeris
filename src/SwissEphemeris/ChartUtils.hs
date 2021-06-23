@@ -25,9 +25,8 @@ import Foreign
 import Foreign.C.String
 import Foreign.SwissEphemerisExtras
 import SwissEphemeris.Internal
-import Control.Category ((>>>))
 import System.IO.Unsafe (unsafePerformIO)
-import Data.List ( sortBy, sort )
+import Data.List ( sort )
 
 type PlanetGlyph = GravityObject Planet
 
@@ -38,7 +37,9 @@ type PlanetGlyph = GravityObject Planet
 -- the sequence of a list of objects, or the sectors
 -- within which they may be grouped.
 data GlyphInfo a = GlyphInfo
-  { placedPosition :: Double
+  { originalPosition :: Double
+  -- ^ the original position, before correction
+  ,  placedPosition :: Double
   -- ^ position decided by the algorithm, in degrees
   , sectorNumber :: Int
   -- ^ sector assigned; should be the same as the original
@@ -48,7 +49,7 @@ data GlyphInfo a = GlyphInfo
   -- ^ if allowing for multiple concentric levels, which
   -- level is this supposed to be on.
   , glyphScale :: Double
-  -- ^ percentage of actualy size it should be resized to
+  -- ^ percentage of actual size it should be resized to
   -- fit, as per the algorithm's recommendation.
   , extraData  :: a
   -- ^ arbitrary data. For @PlanetGlyphInfo@, this is a 'Planet'.
@@ -94,13 +95,14 @@ cuspsToSectors cusps =
 -- notes, too:
 -- https://groups.io/g/swisseph/message/5568
 gravGroup
-  :: (Double, Double)
+  :: HasEclipticLongitude  a
+  => (Double, Double)
   -- ^ lwidth, rwidth
-  -> [(Planet, EclipticPosition)]
+  -> [(Planet, a)]
   -- ^ list of pre-calculated positions
   -> [Double]
   -- ^ list of "sectors" (e.g. house cusps + end of last cusp)
-  -> Either String [(EclipticPosition, PlanetGlyphInfo)]
+  -> Either String [PlanetGlyphInfo]
 gravGroup sz positions sectors =
   unsafePerformIO $ do
     withArray (map (planetPositionToGlyph sz) positions) $ \grobs ->
@@ -116,10 +118,7 @@ gravGroup sz positions sectors =
             pure $ Left msg
           else do
             repositioned <- peekArray (fromIntegral  nob) grobs
-            let repositionedInfo = map glyphInfo repositioned
-                sortedInfo = sortBy (\a b -> planetCmp (glyphPlanet a) (glyphPlanet b)) repositionedInfo
-                sortedOriginal = sortBy (\a b -> planetCmp (fst a) (fst b)) positions
-            pure $ Right $ zipWith (\(_p, pos) glyph -> (pos, glyph)) sortedOriginal sortedInfo
+            pure . Right $ map glyphInfo repositioned
 
 -- | /Easy/ version of 'gravGroup' that assumes:
 --
@@ -127,10 +126,11 @@ gravGroup sz positions sectors =
 -- are just half of the provided width, each.
 -- * The provided cusps can be "linearized" by the naïve approach of 'cuspsToSectors'
 -- 
-gravGroupEasy :: Double
-  -> [(Planet, EclipticPosition)]
+gravGroupEasy :: HasEclipticLongitude a
+  => Double
+  -> [(Planet, a)]
   -> [HouseCusp]
-  -> Either String [(EclipticPosition, PlanetGlyphInfo)]
+  -> Either String [PlanetGlyphInfo]
 gravGroupEasy w ps s = gravGroup (w/2,w/2) ps (cuspsToSectors s)
 
 -- | Same semantics and warnings as 'gravGroup', but allows a couple of things for
@@ -145,16 +145,17 @@ gravGroupEasy w ps s = gravGroup (w/2,w/2) ps (cuspsToSectors s)
 -- With a non-empty list of sectors, and not allowing shifting, this is essentially
 -- a slightly slower version of 'gravGroup'.
 gravGroup2
-  :: (Double, Double)
+  :: HasEclipticLongitude a
+  => (Double, Double)
   -- ^ lwidth, rwidth
-  -> [(Planet, EclipticPosition)]
+  -> [(Planet, a)]
   -- ^ list of pre-calculated positions
   -> [Double]
   -- ^ list of "sectors" (e.g. house cusps + end of last cusp)
   -- (can be empty, indicating that we're working in a non-subdivided circle.)
   -> Bool
   -- ^ allow planets to be moved up or down a level?
-  -> Either String [(EclipticPosition, PlanetGlyphInfo)]
+  -> Either String [PlanetGlyphInfo]
 gravGroup2 sz positions sectors allowShift =
   unsafePerformIO $ do
     withArray (map (planetPositionToGlyph sz) positions) $ \grobs ->
@@ -172,29 +173,27 @@ gravGroup2 sz positions sectors allowShift =
             pure $ Left msg
           else do
             repositioned <- peekArray (fromIntegral  nob) grobs
-            let repositionedInfo = map glyphInfo repositioned
-                sortedInfo = sortBy (\a b -> planetCmp (glyphPlanet a) (glyphPlanet b)) repositionedInfo
-                sortedOriginal = sortBy (\a b -> planetCmp (fst a) (fst b)) positions
-            pure $ Right $ zipWith (\(_p, pos) glyph -> (pos, glyph)) sortedOriginal sortedInfo
+            pure . Right $ map glyphInfo repositioned
 
 
 -- | /Easy/ version of 'gravGroup2', same provisions as 'gravGroupEasy'
-gravGroup2Easy :: Double
-  -> [(Planet, EclipticPosition)]
+gravGroup2Easy :: HasEclipticLongitude a
+  => Double
+  -> [(Planet, a)]
   -> [HouseCusp]
   -> Bool
-  -> Either String [(EclipticPosition, PlanetGlyphInfo)]
+  -> Either String [PlanetGlyphInfo]
 gravGroup2Easy w ps s = gravGroup2 (w/2, w/2) ps (cuspsToSectors s)
 
 -- | Given dimensions, and a 'Planet' and 'EclipticPosition' pair,
 -- produce a "glyph" object suitable for the @grav_group@ functions.
-planetPositionToGlyph :: (Double, Double) -> (Planet, EclipticPosition) -> PlanetGlyph
-planetPositionToGlyph (lwidth, rwidth) (planet, EclipticPosition {lng}) = unsafePerformIO $ do
+planetPositionToGlyph :: HasEclipticLongitude  a => (Double, Double) -> (Planet, a) -> PlanetGlyph
+planetPositionToGlyph (lwidth, rwidth) (planet, pos) = unsafePerformIO $ do
   alloca $ \planetPtr -> do
     poke planetPtr planet
     pure $
       GravityObject {
-        pos =   realToFrac lng
+        pos =   realToFrac . getEclipticLongitude $ pos
       , lsize = realToFrac  lwidth
       , rsize = realToFrac  rwidth
       -- fields that will be initialized by the functions
@@ -211,18 +210,15 @@ planetPositionToGlyph (lwidth, rwidth) (planet, EclipticPosition {lng}) = unsafe
       }
 
 glyphInfo :: PlanetGlyph -> PlanetGlyphInfo
-glyphInfo GravityObject{ppos,sector_no,sequence_no, level_no, scale, dp} = unsafePerformIO $ do
+glyphInfo GravityObject{pos, ppos, sector_no, sequence_no, level_no, scale, dp} = unsafePerformIO $ do
   planet' <- peek dp
   pure $
     GlyphInfo {
-      placedPosition = realToFrac ppos
+      originalPosition = realToFrac  pos
+    , placedPosition = realToFrac ppos
     , sectorNumber = fromIntegral  sector_no
     , sequenceNumber = fromIntegral sequence_no
     , levelNumber = fromIntegral level_no
     , glyphScale = realToFrac scale
     , extraData = planet'
     }
-
-planetCmp :: Planet -> Planet -> Ordering
-planetCmp a b =
-  compare (fromEnum a) (fromEnum b)
