@@ -111,7 +111,7 @@ gravGroup sz positions sectors =
   unsafePerformIO $ do
     withArray (map (planetPositionToGlyph sz) positions) $ \grobs ->
       withArray (map realToFrac sectors) $ \sbdy ->
-        withCString "" $ \serr -> do
+        withCAString "" $ \serr -> do
           let nob = fromIntegral $ length positions
               nsectors = fromIntegral $ length sectors - 1
           retval <-
@@ -166,7 +166,7 @@ gravGroup2 sz positions sectors allowShift =
   in unsafePerformIO $ do
     withArray (map (planetPositionToGlyph sz) positions) $ \grobs ->
       withArray (map realToFrac sectors') $ \sbdy ->
-        withCString "" $ \serr -> do
+        withCAString "" $ \serr -> do
           let nob = fromIntegral $ length positions
               -- empty sector lists are allowed:
               nsectors = max 0 $ fromIntegral $ length sectors - 1

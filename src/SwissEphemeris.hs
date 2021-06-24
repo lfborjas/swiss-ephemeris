@@ -175,7 +175,7 @@ calculateObliquity time = do
 -- ones!
 calculateCoordinates' :: CalcFlag -> JulianTime -> PlanetNumber -> IO (Either String [Double])
 calculateCoordinates' options time planet =
-  allocaArray 6 $ \coords -> allocaArray 256 $ \serr -> do
+  allocaArray 6 $ \coords -> withCAString "" $ \serr -> do
     iflgret <-
       c_swe_calc_ut
         (realToFrac . unJulianTime $ time)
@@ -293,7 +293,7 @@ calculateHousePositionSimple sys time loc pos = do
 -- in those cases, see `calculateHousePositionSimple`.
 calculateHousePosition :: HouseSystem -> Double -> GeographicPosition -> ObliquityInformation -> EclipticPosition -> IO (Either String HousePosition)
 calculateHousePosition sys armc' geoCoords obliq eclipticCoords =
-  withArray [realToFrac $ lng eclipticCoords, realToFrac $ lat eclipticCoords] $ \xpin -> allocaArray 256 $ \serr -> do
+  withArray [realToFrac $ lng eclipticCoords, realToFrac $ lat eclipticCoords] $ \xpin -> withCAString "" $ \serr -> do
     housePos <-
       c_swe_house_pos
         (realToFrac armc')
