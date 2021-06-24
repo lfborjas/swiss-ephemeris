@@ -77,6 +77,7 @@ glyphPlanet = extraData
 -- approach for the sectors required by 'gravGroup',
 -- but one may choose something different.
 cuspsToSectors :: [HouseCusp] -> [Double]
+cuspsToSectors [] = []
 cuspsToSectors cusps =
   sortedCusps ++ [head sortedCusps + 360.0]
   where
@@ -110,7 +111,7 @@ gravGroup sz positions sectors =
   unsafePerformIO $ do
     withArray (map (planetPositionToGlyph sz) positions) $ \grobs ->
       withArray (map realToFrac sectors) $ \sbdy ->
-        allocaArray 256 $ \serr -> do
+        withCString "" $ \serr -> do
           let nob = fromIntegral $ length positions
               nsectors = fromIntegral $ length sectors - 1
           retval <-
@@ -160,10 +161,12 @@ gravGroup2
   -- ^ allow planets to be moved up or down a level?
   -> Either String [PlanetGlyphInfo]
 gravGroup2 sz positions sectors allowShift =
-  unsafePerformIO $ do
+  -- for empty sectors, we need to add an artificial "whole-circle" sector.
+  let sectors' = if null sectors then [0, 360.0] else sectors
+  in unsafePerformIO $ do
     withArray (map (planetPositionToGlyph sz) positions) $ \grobs ->
-      withArray (map realToFrac sectors) $ \sbdy ->
-        allocaArray 256 $ \serr -> do
+      withArray (map realToFrac sectors') $ \sbdy ->
+        withCString "" $ \serr -> do
           let nob = fromIntegral $ length positions
               -- empty sector lists are allowed:
               nsectors = max 0 $ fromIntegral $ length sectors - 1
