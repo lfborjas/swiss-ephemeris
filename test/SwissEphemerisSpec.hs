@@ -19,50 +19,50 @@ import Test.QuickCheck.Monadic
 ephePath :: FilePath
 ephePath = "./swedist/sweph_18"
 
-uncurry4  :: (a -> b -> c -> d -> e) -> (a, b, c, d) -> e
+uncurry4 :: (a -> b -> c -> d -> e) -> (a, b, c, d) -> e
 uncurry4 f (a, b, c, d) = f a b c d
 
 spec :: Spec
 spec = do
-  describe "julianDay" $ do
-    it "returns the julian day number given a gregorian date" $ do
-      julianDay 2020 11 6 15.773315995931625 `shouldBe` (JulianTime 2459160.1572215)
+  describe "julianDay" $
+    it "returns the julian day number given a gregorian date" $
+      julianDay 2020 11 6 15.773315995931625 `shouldBe` JulianTime 2459160.1572215
 
-  describe "gregorianDateTime" $ do
-    it "returns a tuple representing a gregorian date, given a julian day number" $ do
-      (gregorianDateTime $ JulianTime 2459160.1572215) `shouldBe` (2020, 11, 6, 15.773315995931625)
+  describe "gregorianDateTime" $
+    it "returns a tuple representing a gregorian date, given a julian day number" $
+      gregorianDateTime (JulianTime 2459160.1572215) `shouldBe` (2020, 11, 6, 15.773315995931625)
 
-  prop "date round trips: transforming a julian day to gregorian and back" $ do
+  prop "date round trips: transforming a julian day to gregorian and back" $
     forAll genJulian $ \jd ->
-      (uncurry4 julianDay $ gregorianDateTime (JulianTime jd)) == (JulianTime jd)
+      uncurry4 julianDay (gregorianDateTime (JulianTime jd)) == JulianTime jd
 
-  describe "eclipticToEquatorial" $ do
+  describe "eclipticToEquatorial" $
     it "converts between ecliptic and equatorial" $ do
-      let e = eclipticToEquatorial (ObliquityInformation (23.2) 0 0 0) $ EclipticPosition 285.6465775 (-0.0000826) 1 0 0 0
+      let e = eclipticToEquatorial (ObliquityInformation 23.2 0 0 0) $ EclipticPosition 285.6465775 (-0.0000826) 1 0 0 0
           equatorial = EquatorialPosition {rightAscension = 286.9471857576873, declination = -22.29312747773143, eqDistance = 1.0, ascensionSpeed = 0.0, declinationSpeed = 0.0, eqDistanceSpeed = 0.0}
-      (rightAscension e) `shouldBeApprox` (rightAscension equatorial)
-      (declination e) `shouldBeApprox` (declination equatorial)
+      rightAscension e `shouldBeApprox` rightAscension equatorial
+      declination e `shouldBeApprox` declination equatorial
 
-  describe "equatorialToEcliptic" $ do
+  describe "equatorialToEcliptic" $
     it "converts between equatorial and ecliptic" $ do
-      let e = equatorialToEcliptic (ObliquityInformation (23.2) 0 0 0) $ EquatorialPosition {rightAscension = 286.9471857576873, declination = -22.29312747773143, eqDistance = 1.0, ascensionSpeed = 0.0, declinationSpeed = 0.0, eqDistanceSpeed = 0.0}
+      let e = equatorialToEcliptic (ObliquityInformation 23.2 0 0 0) $ EquatorialPosition {rightAscension = 286.9471857576873, declination = -22.29312747773143, eqDistance = 1.0, ascensionSpeed = 0.0, declinationSpeed = 0.0, eqDistanceSpeed = 0.0}
           ecliptic = EclipticPosition 285.6465775 (-0.0000826) 1 0 0 0
-      (lng e) `shouldBeApprox` (lng ecliptic)
-      (lat e) `shouldBeApprox` (lat ecliptic)
+      lng e `shouldBeApprox` lng ecliptic
+      lat e `shouldBeApprox` lat ecliptic
 
-  describe "splitDegrees" $ do
+  describe "splitDegrees" $
     it "splits a given longitude into its components, not relative to the zodiac" $ do
       let longitude = 285.64723120365153
           split = LongitudeComponents {longitudeZodiacSign = Nothing, longitudeDegrees = 285, longitudeMinutes = 38, longitudeSeconds = 50, longitudeSecondsFraction = 3.233314550481481e-2, longitudeSignum = Just 1, longitudeNakshatra = Nothing}
-      (splitDegrees defaultSplitDegreesOptions longitude) `shouldBe` split
+      splitDegrees defaultSplitDegreesOptions longitude `shouldBe` split
 
-  describe "splitDegreesZodiac" $ do
+  describe "splitDegreesZodiac" $
     it "splits a given longitude into its components, relative to the nearest zodiac sign; rounds seconds, keeps degrees and sign." $ do
       let longitude = 285.64723120365153
           split = LongitudeComponents {longitudeZodiacSign = Just Capricorn, longitudeDegrees = 15, longitudeMinutes = 38, longitudeSeconds = 50, longitudeSecondsFraction = 0.0, longitudeSignum = Nothing, longitudeNakshatra = Nothing}
-      (splitDegreesZodiac longitude) `shouldBe` split
+      splitDegreesZodiac longitude `shouldBe` split
 
-  around_ (withoutEphemerides) $ do
+  around_ withoutEphemerides $ do
     describe "calculateEclipticPosition" $ do
       it "calculates ecliptic coordinates for the Sun for a specific day" $ do
         let time = julianDay 1989 1 6 0.0
@@ -117,7 +117,7 @@ spec = do
                 Placidus
 
         calcs <- calculateCuspsStrict Placidus time place
-        calcs `compareCalculations` (Right expectedCalculations)
+        calcs `compareCalculations` Right expectedCalculations
 
       it "fails when using a house system that is unable to calculate cusps near the poles" $ do
         let time = julianDay 1989 1 6 0.0
@@ -133,31 +133,30 @@ spec = do
             place = GeographicPosition {geoLat = 78.2232, geoLng = 15.6267}
             expected = CuspsCalculation {houseCusps = [190.88156009524067, 226.9336677703179, 262.9857754453951, 299.0378831204723, 322.9857754453951, 346.9336677703179, 10.881560095240673, 46.933667770317925, 82.98577544539512, 119.03788312047234, 142.98577544539512, 166.9336677703179], angles = Angles {ascendant = 190.88156009524067, mc = 119.03788312047234, armc = 121.17906552074543, vertex = 36.408617337292114, equatorialAscendant = 213.4074315205484, coAscendantKoch = 335.2547300150891, coAscendantMunkasey = 210.81731854391526, polarAscendant = 155.2547300150891}, systemUsed = Porphyrius}
         calcs <- calculateCuspsLenient Placidus time place
-        (systemUsed calcs) `shouldBe` Porphyrius
-        (Right calcs) `compareCalculations` (Right expected)
+        systemUsed calcs `shouldBe` Porphyrius
+        Right calcs `compareCalculations` Right expected
 
-      prop "calculates cusps and angles for a wide range of points in space and time, in all supported house systems. Note that it may fall back to Porphyrius for some exotic (or polar) points."
-        $
+      prop "calculates cusps and angles for a wide range of points in space and time, in all supported house systems. Note that it may fall back to Porphyrius for some exotic (or polar) points." $
         -- see: `House cusps beyond the polar circle` in https://www.astro.com/swisseph/swisseph.htm#_Toc46391722
         -- and:
         -- > Placidus and Koch house cusps as well as Gauquelin sectors cannot be computed beyond the polar circle.
         -- > In such cases, swe_houses() switches to Porphyry houses (each quadrant is divided into three equal parts) and returns the error code ERR.
         -- > In addition, Sunshine houses may fail, e.g. when required for a date which is outside the time range of our solar ephemeris. Here, also, Porphyry houses will be provided.
         -- from: https://www.astro.com/swisseph/swephprg.htm
-        forAll genCuspsQuery
-        $ \((la, lo), time, houseSystem) -> monadicIO $ do
-          calcs <- run $ calculateCusps houseSystem time (GeographicPosition {geoLat = la, geoLng = lo})
-          assert $ (systemUsed calcs) `elem` [houseSystem, Porphyrius]
-          assert $ (length $ houseCusps calcs) == 12
+        forAll genCuspsQuery $
+          \((la, lo), time, houseSystem) -> monadicIO $ do
+            calcs <- run $ calculateCusps houseSystem time (GeographicPosition {geoLat = la, geoLng = lo})
+            assert $ systemUsed calcs `elem` [houseSystem, Porphyrius]
+            assert $ length (houseCusps calcs) == 12
 
-      prop "calculates cusps and angles for points outside of the polar circles in the requested house system, no fallback."
-        $ forAll genCuspsNonPolarQuery
-        $ \((la, lo), time, houseSystem) -> monadicIO $ do
-          calcs <- run $ calculateCusps houseSystem time (GeographicPosition {geoLat = la, geoLng = lo})
-          assert $ (systemUsed calcs) == houseSystem
-          assert $ (length $ houseCusps calcs) == 12
+      prop "calculates cusps and angles for points outside of the polar circles in the requested house system, no fallback." $
+        forAll genCuspsNonPolarQuery $
+          \((la, lo), time, houseSystem) -> monadicIO $ do
+            calcs <- run $ calculateCusps houseSystem time (GeographicPosition {geoLat = la, geoLng = lo})
+            assert $ systemUsed calcs == houseSystem
+            assert $ length (houseCusps calcs) == 12
 
-    describe "calculateHousePositionSimple" $ do
+    describe "calculateHousePositionSimple" $
       it "calculates accurate house positions for some known planets" $ do
         let time = julianDay 1989 1 6 0.0
             place = GeographicPosition {geoLat = 14.06, geoLng = -87.13}
@@ -165,18 +164,18 @@ spec = do
             houseN = fmap houseNumber
             mkEcliptic = EclipticPosition 0 0 0 0 0 0
 
-        sunH <- housePos $ mkEcliptic {lng = 285.6465775, lat = (-0.0000826)}
-        moonH <- housePos $ mkEcliptic {lng = 262.4723493, lat = (-4.9055744)}
-        mercuryH <- housePos $ mkEcliptic {lng = 304.3135759, lat = (-1.3441786)}
-        venusH <- housePos $ mkEcliptic {lng = 264.0478768, lat = (0.6114330)}
-        marsH <- housePos $ mkEcliptic {lng = 22.7844912, lat = (0.6472527)}
-        jupiterH <- housePos $ mkEcliptic {lng = 56.4415899, lat = (-0.8785552)}
-        saturnH <- housePos $ mkEcliptic {lng = 276.1819323, lat = (0.7124667)}
-        uranusH <- housePos $ mkEcliptic {lng = 272.0516769, lat = (-0.2200407)}
-        neptuneH <- housePos $ mkEcliptic {lng = 280.1110192, lat = (0.9024311)}
-        plutoH <- housePos $ mkEcliptic {lng = 224.6817137, lat = (15.6296117)}
-        meanNH <- housePos $ mkEcliptic {lng = 337.5235158, lat = (0.0)}
-        chironH <- housePos $ mkEcliptic {lng = 93.5373174, lat = (-6.8493261)}
+        sunH <- housePos $ mkEcliptic {lng = 285.6465775, lat = -0.0000826}
+        moonH <- housePos $ mkEcliptic {lng = 262.4723493, lat = -4.9055744}
+        mercuryH <- housePos $ mkEcliptic {lng = 304.3135759, lat = -1.3441786}
+        venusH <- housePos $ mkEcliptic {lng = 264.0478768, lat = 0.6114330}
+        marsH <- housePos $ mkEcliptic {lng = 22.7844912, lat = 0.6472527}
+        jupiterH <- housePos $ mkEcliptic {lng = 56.4415899, lat = -0.8785552}
+        saturnH <- housePos $ mkEcliptic {lng = 276.1819323, lat = 0.7124667}
+        uranusH <- housePos $ mkEcliptic {lng = 272.0516769, lat = -0.2200407}
+        neptuneH <- housePos $ mkEcliptic {lng = 280.1110192, lat = 0.9024311}
+        plutoH <- housePos $ mkEcliptic {lng = 224.6817137, lat = 15.6296117}
+        meanNH <- housePos $ mkEcliptic {lng = 337.5235158, lat = 0.0}
+        chironH <- housePos $ mkEcliptic {lng = 93.5373174, lat = -6.8493261}
 
         houseN sunH `shouldBe` Right 6
         houseN moonH `shouldBe` Right 5
@@ -191,39 +190,39 @@ spec = do
         houseN meanNH `shouldBe` Right 8
         houseN chironH `shouldBe` Right 12
 
-    describe "calculateEquatorialPosition" $ do
+    describe "calculateEquatorialPosition" $
       it "calculates equatorial coordinates for the Sun for a specific date" $ do
         let time = julianDay 1989 1 6 0.0
             expectedPosition = Right (EquatorialPosition {rightAscension = 286.9771081985312, declination = -22.52537550693229, eqDistance = 0.9833448914987338, ascensionSpeed = 1.0963895541503408, declinationSpeed = 0.1184607330811988, eqDistanceSpeed = 1.736421046243553e-5})
         position <- calculateEquatorialPosition time Sun
         position `shouldBe` expectedPosition
 
-    describe "calculateObliquity" $ do
+    describe "calculateObliquity" $
       it "calculates obliquity of the ecliptic, and nutation, for a specific date" $ do
         let time = julianDay 1989 1 6 0.0
             expectedObliquity = Right (ObliquityInformation {eclipticObliquity = 23.44288555112768, eclipticMeanObliquity = 23.44070869609064, nutationLongitude = 1.9483531068634399e-3, nutationObliquity = 2.1768550370416455e-3})
         obliquity <- calculateObliquity time
         obliquity `shouldBe` expectedObliquity
 
-    describe "deltaTime" $ do
+    describe "deltaTime" $
       it "calculates the Delta T for a specific date" $ do
         let time = julianDay 1989 1 6 0.0
             expectedDeltaT = 6.517108007976064e-4
         deltaT <- deltaTime time
         deltaT `shouldBeApprox` expectedDeltaT
 
-  around_ (withEphemerides ephePath) $ do
+  around_ (withEphemerides ephePath) $
     context "with bundled ephemeris" $ do
-      prop "calculates ecliptic coordinates for any of the planets in a wide range of time."
-        $ forAll genCoordinatesQuery
-        $ \(time, planet) -> monadicIO $ do
-          coords <- run $ calculateEclipticPosition time planet
-          assert $ isRight coords
-      prop "is unable to calculate coordinates for times before or after the bundled ephemerides"
-        $ forAll genBadCoordinatesQuery
-        $ \(time, planet) -> monadicIO $ do
-          coords <- run $ calculateEclipticPosition time planet
-          assert $ isLeft coords
+      prop "calculates ecliptic coordinates for any of the planets in a wide range of time." $
+        forAll genCoordinatesQuery $
+          \(time, planet) -> monadicIO $ do
+            coords <- run $ calculateEclipticPosition time planet
+            assert $ isRight coords
+      prop "is unable to calculate coordinates for times before or after the bundled ephemerides" $
+        forAll genBadCoordinatesQuery $
+          \(time, planet) -> monadicIO $ do
+            coords <- run $ calculateEclipticPosition time planet
+            assert $ isLeft coords
 
 {- For reference, here's an official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
@@ -274,7 +273,7 @@ shouldBeApprox expected actual =
         [ "Failure:\n expected: ",
           show actual,
           " to be approximately equal to ",
-          (show expected)
+          show expected
         ]
 
 infix 1 `shouldBeApprox`
@@ -295,8 +294,7 @@ compareCalculations (Right (CuspsCalculation housesA anglesA sysA)) (Right (Cusp
   -- compare systems: note that for polar coordinates, it may be switched to Porphyry
   sysA `shouldBe` sysB
 
-  forM_ (zip housesA housesB) $ \(a, b) ->
-    a `shouldBeApprox` b
+  forM_ (zip housesA housesB) $ uncurry shouldBeApprox
 
   -- angles:
   ascendant anglesA `shouldBeApprox` ascendant anglesB
@@ -340,7 +338,7 @@ genBadCoordinatesQuery :: Gen (JulianTime, Planet)
 genBadCoordinatesQuery = do
   time <- genBadJulian
   -- TODO: does the library _really_ misbehave for all bodies, or just Chiron?
-  planet <- pure $ Chiron
+  let planet = Chiron
   return (JulianTime time, planet)
 
 genAnyCoords :: Gen (Double, Double)
@@ -358,7 +356,7 @@ genCuspsQuery = do
   -- Placidus and Koch _sometimes_ succeed, for certain locations, but are more likely to fail.
   -- Regiomontanus and Campanus also struggle to calculate some angles.
   house <- genHouseSystem
-  return (coords, (JulianTime time), house)
+  return (coords, JulianTime time, house)
 
 genCuspsNonPolarQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
 genCuspsNonPolarQuery = do
@@ -366,4 +364,4 @@ genCuspsNonPolarQuery = do
   anyLong <- choose (-180.0, 180.0)
   time <- genJulian
   house <- genHouseSystem
-  return ((nonPolarLat, anyLong), (JulianTime time), house)
+  return ((nonPolarLat, anyLong), JulianTime time, house)

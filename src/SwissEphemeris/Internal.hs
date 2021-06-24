@@ -9,10 +9,16 @@ module SwissEphemeris.Internal where
 
 import Data.Bits
 import Data.Char (ord)
-import Foreign (Int32)
+import Foreign (Int32, castPtr)
 import Foreign.C.Types
 import Foreign.SwissEphemeris
 import GHC.Generics
+import Foreign.Storable
+
+-- | For objects that can be placed along the ecliptic
+-- in a 1-dimensional "longitude-only" manner.
+class Eq a => HasEclipticLongitude a where
+  getEclipticLongitude :: a -> Double
 
 -- | All bodies for which a position can be calculated. Covers planets
 -- in the solar system, points between the Earth and the Moon, and
@@ -38,6 +44,18 @@ data Planet
   | Earth
   | Chiron
   deriving (Show, Eq, Ord, Enum, Generic)
+
+-- | When marshaling a @Planet@ to/from C,
+-- use the underlying integer @PlanetNumber@.
+instance Storable Planet where
+  sizeOf _ = sizeOf (undefined::CInt)
+  alignment = sizeOf
+  peek ptr = do
+    planetN <- peek $ castPtr ptr
+    pure $ numberToPlanet planetN
+  poke ptr p =
+    poke (castPtr ptr) (planetNumber p)
+
 
 -- | The major house systems. The underlying library supports many more, including the
 -- 36-cusp outlier Gauquelin.
@@ -151,6 +169,9 @@ data EclipticPosition = EclipticPosition
     distSpeed :: Double -- deg/day
   }
   deriving (Show, Eq, Generic)
+
+instance HasEclipticLongitude EclipticPosition where
+  getEclipticLongitude = lng
 
 -- | Represents a point on Earth, with negative values
 -- for latitude meaning South, and negative values for longitude
@@ -277,14 +298,14 @@ eclipticFromList :: [Double] -> EclipticPosition
 eclipticFromList = coordinatesFromList
 
 eclipticToList :: EclipticPosition -> [Double]
-eclipticToList (EclipticPosition sLng sLat c d e f) = (sLng : sLat : c : d : e : f : [])
+eclipticToList (EclipticPosition sLng sLat c d e f) = [sLng, sLat, c, d, e, f]
 
 equatorialFromList :: [Double] -> EquatorialPosition
 equatorialFromList (a : b : c : d : e : f : _) = EquatorialPosition a b c d e f
 equatorialFromList _ = EquatorialPosition 0 0 0 0 0 0
 
 equatorialToList :: EquatorialPosition -> [Double]
-equatorialToList (EquatorialPosition a b c d e f) = (a : b : c : d : e : f : [])
+equatorialToList (EquatorialPosition a b c d e f) = [a, b, c, d, e, f]
 
 obliquityNutationFromList :: [Double] -> ObliquityInformation
 obliquityNutationFromList (a : b : c : d : _ : _ : _) = ObliquityInformation a b c d
@@ -301,3 +322,7 @@ planetNumber :: Planet -> PlanetNumber
 planetNumber p = PlanetNumber $ CInt y
   where
     y = fromIntegral $ fromEnum p :: Int32
+
+numberToPlanet :: PlanetNumber -> Planet
+numberToPlanet (PlanetNumber (CInt n)) =
+  toEnum . fromIntegral $ n

@@ -42,7 +42,7 @@ To see actual results and more advanced usage, check out the tests. For some mor
 
 ## Notes
 
-All the code in the `csrc` folder comes directly from the [latest official tarball, v2.09.03](https://www.astro.com/ftp/swisseph/). 
+All the code in the `csrc` folder comes directly from the [latest official tarball (as of June 2021:) v2.10.01](https://www.astro.com/ftp/swisseph/). 
 
 The `swedist` folder includes the original documentation from the tarball in PDF (see the `doc`) folder, and a copy of ephemeris data files.
 
