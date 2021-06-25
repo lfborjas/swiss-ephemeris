@@ -115,7 +115,7 @@ gravGroup sz positions sectors =
       withArray (map realToFrac sectors) $ \sbdy ->
         allocaErrorMessage $ \serr -> do
           let nob = fromIntegral $ length positions
-              nsectors = fromIntegral $ length sectors - 1
+              nsectors = max 0 $ fromIntegral $ length sectors - 1
           retval <-
             c_grav_group grobs nob sbdy nsectors serr
 
