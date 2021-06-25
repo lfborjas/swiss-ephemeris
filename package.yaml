@@ -1,5 +1,5 @@
 name:                swiss-ephemeris
-version:             1.3.0.0
+version:             1.3.0.1
 github:              "lfborjas/swiss-ephemeris"
 license:             AGPL-3
 author:              "Luis Borjas Reyes"
@@ -8,6 +8,7 @@ maintainer:          "swiss-ephemeris@lfborjas.com"
 extra-source-files:
 - README.md
 - ChangeLog.md
+- swedist/sweph_18/*.se1
 
 # Metadata used when publishing your package
 synopsis:            Haskell bindings for the Swiss Ephemeris C library

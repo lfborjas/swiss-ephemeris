@@ -111,7 +111,7 @@ gravGroup sz positions sectors =
   unsafePerformIO $ do
     withArray (map (planetPositionToGlyph sz) positions) $ \grobs ->
       withArray (map realToFrac sectors) $ \sbdy ->
-        withCAString "" $ \serr -> do
+        allocaErrorMessage $ \serr -> do
           let nob = fromIntegral $ length positions
               nsectors = fromIntegral $ length sectors - 1
           retval <-
@@ -122,7 +122,8 @@ gravGroup sz positions sectors =
             pure $ Left msg
           else do
             repositioned <- peekArray (fromIntegral  nob) grobs
-            pure . Right $ map glyphInfo repositioned
+            glyphInfos <- mapM glyphInfo repositioned
+            pure . Right $ glyphInfos
 
 -- | /Easy/ version of 'gravGroup' that assumes:
 --
@@ -166,7 +167,7 @@ gravGroup2 sz positions sectors allowShift =
   in unsafePerformIO $ do
     withArray (map (planetPositionToGlyph sz) positions) $ \grobs ->
       withArray (map realToFrac sectors') $ \sbdy ->
-        withCAString "" $ \serr -> do
+        allocaErrorMessage $ \serr -> do
           let nob = fromIntegral $ length positions
               -- empty sector lists are allowed:
               nsectors = max 0 $ fromIntegral $ length sectors - 1
@@ -179,7 +180,8 @@ gravGroup2 sz positions sectors allowShift =
             pure $ Left msg
           else do
             repositioned <- peekArray (fromIntegral  nob) grobs
-            pure . Right $ map glyphInfo repositioned
+            glyphInfos <- mapM glyphInfo repositioned
+            pure . Right $ glyphInfos
 
 
 -- | /Easy/ version of 'gravGroup2', same provisions as 'gravGroupEasy'
@@ -215,8 +217,8 @@ planetPositionToGlyph (lwidth, rwidth) (planet, pos) = unsafePerformIO $ do
       , dp = planetPtr
       }
 
-glyphInfo :: PlanetGlyph -> PlanetGlyphInfo
-glyphInfo GravityObject{pos, lsize, rsize, ppos, sector_no, sequence_no, level_no, scale, dp} = unsafePerformIO $ do
+glyphInfo :: PlanetGlyph -> IO PlanetGlyphInfo
+glyphInfo GravityObject{pos, lsize, rsize, ppos, sector_no, sequence_no, level_no, scale, dp} = do
   planet' <- peek dp
   pure $
     GlyphInfo {
