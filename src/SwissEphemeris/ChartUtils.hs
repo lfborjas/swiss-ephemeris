@@ -27,7 +27,7 @@ import Foreign.SwissEphemerisExtras
 import SwissEphemeris.Internal
 import System.IO.Unsafe (unsafePerformIO)
 import Data.List ( sort )
-import Control.Monad (forM)
+import Control.Monad (forM, forM_)
 
 type PlanetGlyph = GravityObject Planet
 
@@ -223,7 +223,11 @@ withGrobs (lwidth, rwidth) positions f = do
      -- @EclipticPosition@
      , dp = planetPtr
      }
-  withArray grobList f
+  let ptrs = map dp grobList
+  rs <- withArray grobList f
+  -- free the pointers after the action is done...
+  forM_ ptrs free
+  pure rs
 
  
 
