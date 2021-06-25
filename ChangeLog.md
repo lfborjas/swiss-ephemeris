@@ -1,5 +1,10 @@
 # Changelog for swiss-ephemeris
 
+## NEXT
+
+* More memory safety paranoia: ensure that `gravGroup` functions have appropriately
+  scoped "extraData" pointers; was using an unsafe function before that somewhat inexplicably never failed, except for one time _maybe_ while doing unrelated testing.
+
 ## v1.3.0.1 
  
 A couple of memory safety patches:
