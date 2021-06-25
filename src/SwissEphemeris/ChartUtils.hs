@@ -27,6 +27,7 @@ import Foreign.SwissEphemerisExtras
 import SwissEphemeris.Internal
 import System.IO.Unsafe (unsafePerformIO)
 import Data.List ( sort )
+import Control.Monad (forM)
 
 type PlanetGlyph = GravityObject Planet
 
@@ -109,7 +110,7 @@ gravGroup
   -> Either String [PlanetGlyphInfo]
 gravGroup sz positions sectors =
   unsafePerformIO $ do
-    withArray (map (planetPositionToGlyph sz) positions) $ \grobs ->
+    withGrobs sz positions $ \grobs ->
       withArray (map realToFrac sectors) $ \sbdy ->
         allocaErrorMessage $ \serr -> do
           let nob = fromIntegral $ length positions
@@ -165,7 +166,7 @@ gravGroup2 sz positions sectors allowShift =
   -- for empty sectors, we need to add an artificial "whole-circle" sector.
   let sectors' = if null sectors then [0, 360.0] else sectors
   in unsafePerformIO $ do
-    withArray (map (planetPositionToGlyph sz) positions) $ \grobs ->
+    withGrobs sz positions $ \grobs ->
       withArray (map realToFrac sectors') $ \sbdy ->
         allocaErrorMessage $ \serr -> do
           let nob = fromIntegral $ length positions
@@ -193,29 +194,38 @@ gravGroup2Easy :: HasEclipticLongitude a
   -> Either String [PlanetGlyphInfo]
 gravGroup2Easy w ps s = gravGroup2 (w/2, w/2) ps (cuspsToSectors s)
 
--- | Given dimensions, and a 'Planet' and 'EclipticPosition' pair,
--- produce a "glyph" object suitable for the @grav_group@ functions.
-planetPositionToGlyph :: HasEclipticLongitude  a => (Double, Double) -> (Planet, a) -> PlanetGlyph
-planetPositionToGlyph (lwidth, rwidth) (planet, pos) = unsafePerformIO $ do
-  alloca $ \planetPtr -> do
-    poke planetPtr planet
+-- | Given glyph dimensions and a list of ecliptic positions for planets,
+-- execute the given computation with an array of @GravityObject@s,
+-- ensuring that no pointers escape scope.
+withGrobs 
+  :: HasEclipticLongitude a 
+  => (Double, Double) 
+  -> [(Planet, a)]
+  -> (Ptr PlanetGlyph -> IO b)
+  -> IO b
+withGrobs (lwidth, rwidth) positions f = do
+  grobList <- forM positions $ \(planet, pos) -> do
+    planetPtr <- new planet
     pure $
-      GravityObject {
-        pos =   realToFrac . getEclipticLongitude $ pos
-      , lsize = realToFrac  lwidth
-      , rsize = realToFrac  rwidth
-      -- fields that will be initialized by the functions
-      , ppos = 0.0
-      , sector_no = 0
-      , sequence_no = 0
-      , level_no = 0
-      , scale = 0.0
-      -- store a pointer to the planet enum (stored as an int)
-      -- as the "extra data" -- this allows us to remember which
-      -- planet this is, without having to schlep around the entire
-      -- @EclipticPosition@
-      , dp = planetPtr
-      }
+     GravityObject {
+       pos =   realToFrac . getEclipticLongitude $ pos
+     , lsize = realToFrac  lwidth
+     , rsize = realToFrac  rwidth
+     -- fields that will be initialized by the functions
+     , ppos = 0.0
+     , sector_no = 0
+     , sequence_no = 0
+     , level_no = 0
+     , scale = 0.0
+     -- store a pointer to the planet enum (stored as an int)
+     -- as the "extra data" -- this allows us to remember which
+     -- planet this is, without having to schlep around the entire
+     -- @EclipticPosition@
+     , dp = planetPtr
+     }
+  withArray grobList f
+
+ 
 
 glyphInfo :: PlanetGlyph -> IO PlanetGlyphInfo
 glyphInfo GravityObject{pos, lsize, rsize, ppos, sector_no, sequence_no, level_no, scale, dp} = do
