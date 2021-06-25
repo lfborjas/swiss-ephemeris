@@ -9,7 +9,7 @@ module SwissEphemeris.Internal where
 
 import Data.Bits
 import Data.Char (ord)
-import Foreign (Int32, castPtr)
+import Foreign (Int32, castPtr, allocaArray, Ptr)
 import Foreign.C.Types
 import Foreign.SwissEphemeris
 import GHC.Generics
@@ -326,3 +326,11 @@ planetNumber p = PlanetNumber $ CInt y
 numberToPlanet :: PlanetNumber -> Planet
 numberToPlanet (PlanetNumber (CInt n)) =
   toEnum . fromIntegral $ n
+
+-- | As per the programmers manual, error output strings
+-- should accommodate at most 256 characters:
+-- see @sweodef.h#266@ and the manual:
+-- https://www.astro.com/swisseph/swephprg.htm
+-- in e.g. 
+allocaErrorMessage :: Storable a => (Ptr a -> IO b) -> IO b
+allocaErrorMessage = allocaArray 256

@@ -181,7 +181,7 @@ calculateCoordinates' options time planet =
   -- It's a rather subtle bug that happens once in a blue moon, but we can't
   -- use a NUL-terminated string that may not have enough space allocated,
   -- which is what `withC[A]String`, used elsewhere, gives us.
-  allocaArray 6 $ \coords -> allocaArray 256 $ \serr -> do
+  allocaArray 6 $ \coords -> allocaErrorMessage $ \serr -> do
     iflgret <-
       c_swe_calc_ut
         (realToFrac . unJulianTime $ time)
@@ -299,7 +299,7 @@ calculateHousePositionSimple sys time loc pos = do
 -- in those cases, see `calculateHousePositionSimple`.
 calculateHousePosition :: HouseSystem -> Double -> GeographicPosition -> ObliquityInformation -> EclipticPosition -> IO (Either String HousePosition)
 calculateHousePosition sys armc' geoCoords obliq eclipticCoords =
-  withArray [realToFrac $ lng eclipticCoords, realToFrac $ lat eclipticCoords] $ \xpin -> withCAString "" $ \serr -> do
+  withArray [realToFrac $ lng eclipticCoords, realToFrac $ lat eclipticCoords] $ \xpin -> allocaErrorMessage $ \serr -> do
     housePos <-
       c_swe_house_pos
         (realToFrac armc')
