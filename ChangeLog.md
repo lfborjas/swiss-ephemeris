@@ -3,6 +3,7 @@
 ## NEXT
 
 * [dev] Attempt to rein in memory unsafety by keeping all pointer peeking in IO.
+* [dev] Always allocate 256 chars for error messages. 
 * [dev] Bundle test ephemeris into the hackage tarball, to allow hackage CI and nixOS to
   successfully run tests.
 

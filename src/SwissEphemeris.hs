@@ -175,12 +175,6 @@ calculateObliquity time = do
 -- ones!
 calculateCoordinates' :: CalcFlag -> JulianTime -> PlanetNumber -> IO (Either String [Double])
 calculateCoordinates' options time planet =
-  -- NOTE(luis) we _have_ to use `allocaArray` here because the swecalc
-  -- function in the underlying c may `strcpy` 256 chars into this pointer
-  -- which seems to create a segfault if it hadn't already allocated enough space.
-  -- It's a rather subtle bug that happens once in a blue moon, but we can't
-  -- use a NUL-terminated string that may not have enough space allocated,
-  -- which is what `withC[A]String`, used elsewhere, gives us.
   allocaArray 6 $ \coords -> allocaErrorMessage $ \serr -> do
     iflgret <-
       c_swe_calc_ut
