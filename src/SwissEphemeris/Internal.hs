@@ -332,5 +332,5 @@ numberToPlanet (PlanetNumber (CInt n)) =
 -- see @sweodef.h#266@ and the manual:
 -- https://www.astro.com/swisseph/swephprg.htm
 -- in e.g. 
-allocaErrorMessage :: Storable a => (Ptr a -> IO b) -> IO b
+allocaErrorMessage :: (Ptr CChar -> IO b) -> IO b
 allocaErrorMessage = allocaArray 256
