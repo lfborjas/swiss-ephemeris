@@ -197,11 +197,6 @@ struct ep4  {
 
 
 /******************************************
- globals exported by module ephe.c
-********************************************/
-extern FILE *ephfp;
-
-/******************************************
  functions exported by module ephe.c
 ********************************************/
 
@@ -246,6 +241,9 @@ struct ephe4_data {
 
 // one global struct for ephe4 state
 extern TLS struct ephe4_data ephe4d;
+
+/* explicitly set base directory for ep4 precalculated ephemeris. */
+ext_def(void) ephe4_set_ephe_path(char* path);
 
 #ifdef __cplusplus
 }
