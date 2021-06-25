@@ -27,7 +27,8 @@ import Foreign.SwissEphemerisExtras
 import SwissEphemeris.Internal
 import System.IO.Unsafe (unsafePerformIO)
 import Data.List ( sort )
-import Control.Monad (forM, forM_)
+import Control.Monad (forM)
+import Control.Exception (bracket)
 
 type PlanetGlyph = GravityObject Planet
 
@@ -122,7 +123,7 @@ gravGroup sz positions sectors =
             msg <- peekCAString serr
             pure $ Left msg
           else do
-            repositioned <- peekArray (fromIntegral  nob) grobs
+            repositioned <- peekArray (fromIntegral nob) grobs
             glyphInfos <- mapM glyphInfo repositioned
             pure . Right $ glyphInfos
 
@@ -180,7 +181,7 @@ gravGroup2 sz positions sectors allowShift =
             msg <- peekCAString serr
             pure $ Left msg
           else do
-            repositioned <- peekArray (fromIntegral  nob) grobs
+            repositioned <- peekArray (fromIntegral nob) grobs
             glyphInfos <- mapM glyphInfo repositioned
             pure . Right $ glyphInfos
 
@@ -197,39 +198,45 @@ gravGroup2Easy w ps s = gravGroup2 (w/2, w/2) ps (cuspsToSectors s)
 -- | Given glyph dimensions and a list of ecliptic positions for planets,
 -- execute the given computation with an array of @GravityObject@s,
 -- ensuring that no pointers escape scope.
-withGrobs 
-  :: HasEclipticLongitude a 
-  => (Double, Double) 
+withGrobs
+  :: HasEclipticLongitude a
+  => (Double, Double)
   -> [(Planet, a)]
   -> (Ptr PlanetGlyph -> IO b)
   -> IO b
 withGrobs (lwidth, rwidth) positions f = do
-  grobList <- forM positions $ \(planet, pos) -> do
-    planetPtr <- new planet
-    pure $
-     GravityObject {
-       pos =   realToFrac . getEclipticLongitude $ pos
-     , lsize = realToFrac  lwidth
-     , rsize = realToFrac  rwidth
-     -- fields that will be initialized by the functions
-     , ppos = 0.0
-     , sector_no = 0
-     , sequence_no = 0
-     , level_no = 0
-     , scale = 0.0
-     -- store a pointer to the planet enum (stored as an int)
-     -- as the "extra data" -- this allows us to remember which
-     -- planet this is, without having to schlep around the entire
-     -- @EclipticPosition@
-     , dp = planetPtr
-     }
-  let ptrs = map dp grobList
-  rs <- withArray grobList f
-  -- free the pointers after the action is done...
-  forM_ ptrs free
-  pure rs
+  -- we're using the least sophisticated of the strategies
+  -- here:
+  -- https://ro-che.info/articles/2017-08-06-manage-allocated-memory-haskell
+  -- or here: https://wiki.haskell.org/Bracket_pattern
+  -- but it seems to do the job
+  bracket
+    mkGrobList
+    freePlanetPtrs
+    (`withArray` f)
+  where
+    mkGrobList = forM positions $ \(planet, pos) -> do
+      planetPtr <- new planet
+      pure $
+       GravityObject {
+         pos =   realToFrac . getEclipticLongitude $ pos
+       , lsize = realToFrac lwidth
+       , rsize = realToFrac rwidth
+       -- fields that will be changed by the functions
+       , ppos = 0.0
+       , sector_no = 0
+       , sequence_no = 0
+       , level_no = 0
+       , scale = 0.0
+       -- store a pointer to the planet enum (stored as an int)
+       -- as the "extra data" -- this allows us to remember which
+       -- planet this is, without having to schlep around the entire
+       -- @EclipticPosition@
+       , dp = planetPtr
+       }
+    freePlanetPtrs = mapM_ (free . dp)
 
- 
+
 
 glyphInfo :: PlanetGlyph -> IO PlanetGlyphInfo
 glyphInfo GravityObject{pos, lsize, rsize, ppos, sector_no, sequence_no, level_no, scale, dp} = do
