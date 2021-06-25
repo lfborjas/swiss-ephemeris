@@ -1,5 +1,14 @@
 # Changelog for swiss-ephemeris
 
+## v1.3.0.1 
+ 
+A couple of memory safety patches:
+
+* Attempt to rein in memory unsafety by keeping all pointer peeking in IO for gravGroup fns.
+* Always allocate 256 chars for error messages. 
+* [dev] Bundle test ephemeris into the hackage tarball, to allow hackage CI and nixOS to
+  successfully run tests.
+
 ## v1.3.0.0 (2021-06-18)
 
 * **Drops support for base < 4.10**, which effectively excludes GHC versions less
