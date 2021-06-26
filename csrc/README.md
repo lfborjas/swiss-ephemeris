@@ -1,6 +1,6 @@
 ## Swiss Ephemeris C sources
 
-All files here are the ones provided by astrodienst. For the purposes
+All the files provided by astrodienst are here; for the purposes
 of the Haskell library, I've added the following derived files:
 
 * `dgravgroup.h/dgravgroup.c`: `double`-capable versions of `gravgroup.{c,h}`;
@@ -11,10 +11,13 @@ of the Haskell library, I've added the following derived files:
     `EP4_PATH` environment variable.
   * It uses a thread-safe global `struct` to track its current file pointer,
     and the aforementioned path.
-* `configurable_swephgen.c`
-* The target `swegen` has been added to the `Makefile`, to generate precalculated ephemeris, and test existing precalculated ephemeris files.
+* `configurable_swephgen.c`: includes a `main` function that can either generate a `sep4_` file, or run interactively to output ephemerides for specific dates. I've modified it to _only_ work with precalculated ephemerides -- the `*read` functions can be told to fall back to `swecalc` if the requested date is not precalculated. It also uses the `double`-capable `dephread2` function, instead of the `centisecond` one that the non-`configurable_` version invokes.
+* The target `swegen` has been added to the `Makefile`, to be able to generate precalculated ephemeris, and test existing precalculated ephemeris files.
 
-Example usage of the latter (244 is the Julian range that includes the 21st century):
+
+## Precalculated ephemeris
+
+Example usage of `swegen` (244 is the Julian range that includes ~1968-1995):
 
 ```sh
  ~/c/l/s/csrc > SE_EPHE_PATH="../swedist/sweph_18/" EP4_PATH=(PWD) ./swegen -f244 -t
@@ -38,13 +41,13 @@ ephgen test d=   2447532.5  dmy 6.1.1989 greg
 12      93 32'14.34"
 ```
 
-Omitting the `-t` flag will generate a `sep4_` file for the given starting year (`-f`). Each file contains 10,000 days of data; so `sep4_244` spans ephemeris from May 23 1968 to
-October 9 1995 (got that by converting both `2440000` and `2450000` in the [nasa tool](https://ssd.jpl.nasa.gov/tc.cgi#top)). The `-n` flag will generate N more files (e.g. 
+Omitting the `-t` flag will generate the `sep4_` file for the given starting year (`-f`). Each file contains 10,000 days of data; so `sep4_244` spans ephemeris from May 23 1968 to
+October 9 1995 (got that by converting both `2440000` and `2450000` in the [nasa tool](https://ssd.jpl.nasa.gov/tc.cgi#top)). The `-n` flag will generate N-1 additional files for the subsequent years (e.g. 
 `-n 4` would generate roughly a century of data.) In my architecture, a single file
 occupies about `384K` on disk.
 
-* N.B. (June 26, 2021) * I've updated the code to generate, and process, ephemerides for
-the moon's mean apogee (dark moon Lilith), as the 13th element in the array; here's an example run:
+**N.B. (June 26, 2021)** I've updated the code to generate, and process, ephemerides for
+the moon's mean apogee (dark moon Lilith), as the 14th element in the array; here's an example run:
 
 ```sh
 > SE_EPHE_PATH="/c/swiss-ephemeris/swedist/sweph_18/" EP4_PATH="/c/swiss-ephemeris/swedist/precalc/" ./swegen -f245 -t
@@ -68,3 +71,6 @@ ephgen test d=   2459391.5  dmy 26.6.2021 greg
 12      12 45'42.86"
 13      57 31'24.12"
 ```
+
+See commit [ed0f92b](https://github.com/lfborjas/swiss-ephemeris/commit/ed0f92be747949f92d02a8919f11566d07504b88) for this change, which can be useful guidance if one wants to
+add other bodies.
