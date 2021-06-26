@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP, ForeignFunctionInterface #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- |
--- Module.: Foreign.SweEphe4
+-- Module: Foreign.SweEphe4
 --
 -- Exposes functions to interact with the "ephe4" format of pre-calculated
 -- ephemeris. 
@@ -16,10 +17,10 @@ import Foreign.C.String
 
 -- | "placalc" style enum of precalculate-able bodies. 
 -- All are provided for convenience, but take note that
--- only planets up to 'lastBodyStored' are guaranteed to be present
--- via this FFI.
+-- only planets up to 'lastPlanet' are guaranteed to be present
+-- via this FFI in any files produced via the bundled source.
 newtype PlacalcPlanet = PlacalcPlanet
-  { unPlacalcPlanet :: CInt } deriving (Eq, Show)
+  { unPlacalcPlanet :: CInt } deriving (Eq, Show, Enum)
 
 #{enum PlacalcPlanet, PlacalcPlanet
 , pSun = PLACALC_SUN
