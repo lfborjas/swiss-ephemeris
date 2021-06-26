@@ -158,7 +158,7 @@ extern "C" {
 # define EP_NP (PLACALC_LILITH + 3)		/* total number of factors in ep4 */
 					/* sun .. lilith, ecl, nut */
 
-# define EP_ALL_PLANETS  ((1 << (PLACALC_LILITH + 1)) - 1)	/* bits 0..12 set */
+# define EP_ALL_PLANETS  ((1 << (PLACALC_LILITH + 1)) - 1)	/* bits 0..13 set */
 # define EP_CALC_N	(PLACALC_LILITH+1)	/* 14 planets, SUN .. PLACALC_LILITH */
 # define EP_ECL_INDEX  (PLACALC_LILITH + 1)	/* index for ecliptic centisec */
 # define EP_NUT_INDEX  (PLACALC_LILITH + 2)	/* index for nutation centisec */
