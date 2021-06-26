@@ -37,3 +37,8 @@ ephgen test d=   2447532.5  dmy 6.1.1989 greg
 11     336  5'38.87"
 12      93 32'14.34"
 ```
+
+Omitting the `-t` flag will generate a `sep4_` file for the given starting year (`-f`). Each file contains 10,000 days of data; so `sep4_244` spans ephemeris from May 23 1968 to
+October 9 1995 (got that by converting both `2440000` and `2450000` in the [nasa tool](https://ssd.jpl.nasa.gov/tc.cgi#top)). The `-n` flag will generate N more files (e.g. 
+`-n 4` would generate roughly a century of data.) In my architecture, a single file
+occupies about `384K` on disk.
