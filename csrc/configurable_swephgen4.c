@@ -188,7 +188,7 @@ int eph_test()
   char cal;
   int  p, jday, jmon, jyear;
   double al, jd;
-  centisec *cp;
+  double *cp;
   while (TRUE) {
     printf ("date ?");
     if (scanf ("%d%d%d", &jday,&jmon,&jyear) < 1) exit(1);
@@ -197,7 +197,7 @@ int eph_test()
     else
       cal = 'g';
     swe_date_conversion (jyear, jmon, jday, 0, cal, &jd);
-    if ((cp = ephread(jd, 0,0, errtext)) == NULL) {
+    if ((cp = dephread2(jd, 0,0, errtext)) == NULL) {
       fprintf (stderr,"%s: %s", arg0, errtext);
       exit (1);
     }
@@ -206,10 +206,10 @@ int eph_test()
       printf (" greg");
     else
       printf (" julian");
-    printf ("\n\tecliptic %s ", degstr(cp[EP_ECL_INDEX]*CS2DEG));
-    printf ("nutation %s\n", degstr(cp[EP_NUT_INDEX] * CS2DEG));
+    printf ("\n\tecliptic %s ", degstr(cp[EP_ECL_INDEX]));
+    printf ("nutation %s\n", degstr(cp[EP_NUT_INDEX]));
     for (p = 0; p <= PLACALC_CHIRON; p++) {
-      al = cp[p] * CS2DEG;
+      al = cp[p];
       printf ("%2d%18s\n", p, degstr(al));
     }
   }
