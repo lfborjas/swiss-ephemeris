@@ -166,7 +166,7 @@ centisec *ephread(double jd, int plalist, int flag, char *errtext)
   for (p = 0, pf = 1; p < EP_NP; p++, pf = pf << 1)
     if ((plalist & pf) != 0) {
       inpolq_l((int) ix, qod[p], jfract, &(lon[p][0]), &(out[p]), &clp);
-      if (p <= PLACALC_CHIRON) {	/* normalize all except ecl and nut */
+      if (p <= PLACALC_LILITH) {	/* normalize all except ecl and nut */
 	if (out[p] < 0)
 	  out[p] += DEG360;
 	else if (out[p] >= DEG360)
@@ -274,7 +274,7 @@ double *dephread2(double jd, int plalist, int flag, char *errtext)
   for (p = 0, pf = 1; p < EP_NP; p++, pf = pf << 1)
     if ((plalist & pf) != 0) {
       inpolq((int) ix, qod[p], jfract, &(lon[p][0]), &(out[p]), &lp);
-      if (p <= PLACALC_CHIRON) {	/* normalize all except ecl and nut */
+      if (p <= PLACALC_LILITH) {	/* normalize all except ecl and nut */
 	if (out[p] < 0)
 	  out[p] += 360.0;
 	else if (out[p] >= 360.0)
@@ -352,7 +352,7 @@ static int ephe4_unpack(int jdl, int plalist, centisec lon[][EPBS], int i0,char 
 #ifdef INTEL_BYTE_ORDER
   shortreorder((UCHAR *) &e, sizeof(struct ep4));
 #endif
-  for (p = PLACALC_SUN, pf = 1; p <= PLACALC_CHIRON; p++, pf = pf << 1) {
+  for (p = PLACALC_SUN, pf = 1; p <= PLACALC_LILITH; p++, pf = pf << 1) {
     if ((plalist & pf) == 0) continue; 
     l_ret = e.elo[p].p0m * 6000L + e.elo[p].p0s;	/* csec */
     d_ret = e.elo[p].pd1m * 6000L + e.elo[p].pd1s;	/* csec */
@@ -409,7 +409,7 @@ static int ephe4_unpack_d(int jdl, int plalist, double lon[][EPBS], int i0,char 
 #ifdef INTEL_BYTE_ORDER
   shortreorder((UCHAR *) &e, sizeof(struct ep4));
 #endif
-  for (p = PLACALC_SUN, pf = 1; p <= PLACALC_CHIRON; p++, pf = pf << 1) {
+  for (p = PLACALC_SUN, pf = 1; p <= PLACALC_LILITH; p++, pf = pf << 1) {
     if ((plalist & pf) == 0) continue; 
     l_ret = (e.elo[p].p0m * 6000 + e.elo[p].p0s) * CS2DEG;	
     d_ret = (e.elo[p].pd1m * 6000 + e.elo[p].pd1s) * CS2DEG;	

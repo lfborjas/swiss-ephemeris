@@ -149,19 +149,19 @@ extern "C" {
 
 /*
  * bits for plalist in ephread():
- * the planet flag bits SUN .. PLACALC_CHIRON, ECl, NUT can be set individually.
+ * the planet flag bits SUN .. PLACALC_LILITH, ECl, NUT can be set individually.
  * plalist = 0 is equivalent to all planets and ecl,nut
- * EP_ALL_PLANETS sets all planet bits SUN .. PLACALC_CHIRON
+ * EP_ALL_PLANETS sets all planet bits SUN .. PLACALC_LILITH
  * EP_ALL_BITS sets all bits.
  */
 
-# define EP_NP (PLACALC_CHIRON + 3)		/* total number of factors in ep4 */
-					/* sun .. chiron, ecl, nut */
+# define EP_NP (PLACALC_LILITH + 3)		/* total number of factors in ep4 */
+					/* sun .. lilith, ecl, nut */
 
-# define EP_ALL_PLANETS  ((1 << (PLACALC_CHIRON + 1)) - 1)	/* bits 0..12 set */
-# define EP_CALC_N	(PLACALC_CHIRON+1)	/* 13 planets, SUN .. PLACALC_CHIRON */
-# define EP_ECL_INDEX  (PLACALC_CHIRON + 1)	/* index for ecliptic centisec */
-# define EP_NUT_INDEX  (PLACALC_CHIRON + 2)	/* index for nutation centisec */
+# define EP_ALL_PLANETS  ((1 << (PLACALC_LILITH + 1)) - 1)	/* bits 0..12 set */
+# define EP_CALC_N	(PLACALC_LILITH+1)	/* 14 planets, SUN .. PLACALC_LILITH */
+# define EP_ECL_INDEX  (PLACALC_LILITH + 1)	/* index for ecliptic centisec */
+# define EP_NUT_INDEX  (PLACALC_LILITH + 2)	/* index for nutation centisec */
 # define EP_ECL_BIT   (1 << EP_ECL_INDEX)
 # define EP_NUT_BIT   (1 << EP_NUT_INDEX)
 # define EP_ALL_BITS   (EP_ALL_PLANETS|EP_ECL_BIT|EP_NUT_BIT)
@@ -192,7 +192,7 @@ struct ep4  {
   short ecl0s;		/*                      0.01" */
   short ecld1[NDB-1];	/* first differences 0.01", day 1..9 */
   short	nuts[NDB];	/* nutation in 0.01", day 0..9 */
-  struct  elon elo[PLACALC_CHIRON +1];	 	/* longitude sun...chiron */
+  struct  elon elo[PLACALC_LILITH +1];	 	/* longitude sun...chiron */
 };
 
 

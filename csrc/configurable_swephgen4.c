@@ -74,7 +74,7 @@ File names: ep4_243, ep4_244
 # include "swephexp.h"
 # include "configurable_sweephe4.h"
 
-# define EPHR_NPL (PLACALC_CHIRON + 1)
+# define EPHR_NPL (PLACALC_LILITH + 1)
 
 char *arg0;
 int32 	max_dd[EP_CALC_N];	/* remember maximum of second  dfifferences */
@@ -120,7 +120,7 @@ int eph4_pack (int32 jd, double (*l)[NDB], double ecliptic[],
     e.ecld1[i-1] =  swe_d2l(ecliptic[i] * DEG - w0);  
   for (i = 0; i < NDB; i++)
     e.nuts[i] = swe_d2l( nutation[i] * DEG );	/* int32 casted into short */
-  for (p = PLACALC_SUN; p <= PLACALC_CHIRON ; p++) {
+  for (p = PLACALC_SUN; p <= PLACALC_LILITH; p++) {
     ps = p;
     w0 = swe_d2l( l[ps][0] * DEG);
     d1 = swe_d2l( l[ps][1] * DEG - w0);
@@ -211,7 +211,7 @@ int eph_test()
       printf (" julian");
     printf ("\n\tecliptic %s ", degstr(cp[EP_ECL_INDEX]));
     printf ("nutation %s\n", degstr(cp[EP_NUT_INDEX]));
-    for (p = 0; p <= PLACALC_CHIRON; p++) {
+    for (p = 0; p <= PLACALC_LILITH; p++) {
       al = cp[p];
       printf ("%2d%18s\n", p, degstr(al));
     }
