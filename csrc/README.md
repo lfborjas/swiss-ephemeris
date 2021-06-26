@@ -42,3 +42,29 @@ Omitting the `-t` flag will generate a `sep4_` file for the given starting year 
 October 9 1995 (got that by converting both `2440000` and `2450000` in the [nasa tool](https://ssd.jpl.nasa.gov/tc.cgi#top)). The `-n` flag will generate N more files (e.g. 
 `-n 4` would generate roughly a century of data.) In my architecture, a single file
 occupies about `384K` on disk.
+
+* N.B. (June 26, 2021) * I've updated the code to generate, and process, ephemerides for
+the moon's mean apogee (dark moon Lilith), as the 13th element in the array; here's an example run:
+
+```sh
+> SE_EPHE_PATH="/c/swiss-ephemeris/swedist/sweph_18/" EP4_PATH="/c/swiss-ephemeris/swedist/precalc/" ./swegen -f245 -t
+date ?26      
+6
+2021
+ephgen test d=   2459391.5  dmy 26.6.2021 greg
+        ecliptic   23 26'13.98" nutation -  0  0'15.54"
+ 0      94 37'37.20"
+ 1     291 27'43.93"
+ 2      76 29'52.26"
+ 3     118 33'38.54"
+ 4     128 54'41.25"
+ 5     332  8'18.59"
+ 6     312 38'30.19"
+ 7      43 36' 2.55"
+ 8     353 11'59.27"
+ 9     296  4'20.21"
+10      69 32'18.99"
+11      70 37'57.56"
+12      12 45'42.86"
+13      57 31'24.12"
+```
