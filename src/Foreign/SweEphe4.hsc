@@ -14,6 +14,36 @@ import Foreign.C.String
 #include <swephexp.h>
 #include <configurable_sweephe4.h>
 
+-- | "placalc" style enum of precalculate-able bodies. 
+-- All are provided for convenience, but take note that
+-- only planets up to 'lastBodyStored' are guaranteed to be present
+-- via this FFI.
+newtype PlacalcPlanet = PlacalcPlanet
+  { unPlacalcPlanet :: CInt } deriving (Eq, Show)
+
+#{enum PlacalcPlanet, PlacalcPlanet
+, pSun = PLACALC_SUN
+, pMoon = PLACALC_MOON
+, pMercury = PLACALC_MERCURY
+, pVenus = PLACALC_VENUS
+, pMars = PLACALC_MARS
+, pJupiter = PLACALC_JUPITER
+, pSaturn = PLACALC_SATURN
+, pUranus = PLACALC_URANUS
+, pNeptune = PLACALC_NEPTUNE
+, pPluto = PLACALC_PLUTO
+, pMeanNode = PLACALC_MEAN_NODE
+, pTrueNode = PLACALC_TRUE_NODE
+, pChiron = PLACALC_CHIRON
+, pLilith = PLACALC_LILITH
+, pCeres = PLACALC_CERES
+, pPallas = PLACALC_PALLAS
+, pJuno = PLACALC_JUNO
+, pVesta = PLACALC_VESTA
+, pHeliocentricEarth = PLACALC_EARTHHEL
+, pParsFortunae = PLACALC_PFORTUNAE
+}
+
 -- | Options for requesting pre-calculated ephemeris;
 -- Unless the use case calls for it, it's cheap and fast to just
 -- `includeAll` (which should evaluate to @0@.)
@@ -48,6 +78,14 @@ nutationIndex = EpheConst #const EP_NUT_INDEX
 constToIndex :: EpheConst -> Int
 constToIndex = fromIntegral . unEpheConst 
 
+-- | The last planet that the current pre-calculated
+-- files will contain, if produced with the same sources
+-- in `csrc`. 
+-- You'll have to edit the C source
+-- and compile, then run the `swegen` target to re-produce
+-- files with more or fewer planets
+lastPlanet :: PlacalcPlanet
+lastPlanet = PlacalcPlanet . unEpheConst $ numberOfPlanets
 
 -- | Options for additional computations when reading.
 -- The authors recommend to always `includeSpeed`, since
