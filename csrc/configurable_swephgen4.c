@@ -197,7 +197,10 @@ int eph_test()
     else
       cal = 'g';
     swe_date_conversion (jyear, jmon, jday, 0, cal, &jd);
-    if ((cp = dephread2(jd, 0,0, errtext)) == NULL) {
+    // NOTE(luis) we're testing only pre-generated ephemeris, so
+    // we set the MUST_USE_EPHE bit -- otherwise, it'd automatically
+    // fall back to the regular ephemeris.
+    if ((cp = dephread2(jd, 0,0 | EP_BIT_MUST_USE_EPHE, errtext)) == NULL) {
       fprintf (stderr,"%s: %s", arg0, errtext);
       exit (1);
     }
