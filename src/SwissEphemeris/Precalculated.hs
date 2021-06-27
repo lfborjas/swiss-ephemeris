@@ -90,6 +90,10 @@ readEphemeris  :: NonEmpty PlanetListOption
   -> JulianTime
   -> IO (Either String Ephemeris)
 readEphemeris planetOptions calcOptions time = do
+  -- TODO(luis,) technically, we're /also/ able to exclude
+  -- planets from calculations; don't currently have a use for that,
+  -- but there should be a clean way to do that... or maybe we'll
+  -- literally have to include all planets in 'PlanetListOption'.
   let plalist =
         Just
           . foldPlanetListOptions
@@ -220,8 +224,10 @@ foldEpheCalcOptions :: [EpheCalcFlag] -> EpheCalcFlag
 foldEpheCalcOptions = EpheCalcFlag . foldr ((.|.) . unEpheCalcFlag) 0
 
 epheOptionToFlag :: EpheCalcOption -> EpheCalcFlag
-epheOptionToFlag IncludeSpeed = includeSpeed
-epheOptionToFlag MustUseStoredEphe = mustUseStoredEphe
+epheOptionToFlag = 
+  \case
+    IncludeSpeed -> includeSpeed
+    MustUseStoredEphe -> mustUseStoredEphe
 
 -------------------------------------------------------------------------
 -- UTILS FOR PLANET OPTS
@@ -237,45 +243,6 @@ planetListOptionToFlag =
     IncludeEcliptic -> includeEcliptic
     IncludeNutation -> includeNutation
     IncludeAll -> includeAll
-
-
-planetsAndOptionsToFlag :: [Planet] -> [PlanetListOption] -> PlanetListFlag
-planetsAndOptionsToFlag ps opts =
-  foldPlanetListOptions $ planets <> flags
-  where
-    planets = [planetsToListFlag ps]
-    flags   = map planetListOptionToFlag opts
-
-planetsToListFlag :: [Planet] -> PlanetListFlag
-planetsToListFlag ps =
-  PlanetListFlag $ foldl setBit zeroBits $ asOptions ps
-  where
-    asOptions :: [Planet] -> [Int]
-    asOptions = map (fromIntegral . unPlacalcPlanet . planetToPlanetOption)
-
-planetToPlanetOption :: Planet -> PlacalcPlanet
-planetToPlanetOption =
-  \case
-    Sun -> pSun
-    Moon -> pMoon
-    Mercury -> pMercury
-    Venus -> pVenus
-    Mars -> pMars
-    Jupiter -> pJupiter
-    Saturn -> pSaturn
-    Uranus -> pUranus
-    Neptune -> pNeptune
-    Pluto -> pPluto
-    MeanNode -> pMeanNode
-    TrueNode -> pTrueNode
-    Chiron -> pChiron
-    MeanApog -> pLilith
-    -- TODO(luis) this isn't _fully_ correct, because the zeroth
-    -- planet is the Sun; however, it's _monoidically_ innocuous;
-    -- however, we've ommitted some interesting celestial bodies:
-    -- Ceres, Pallas, Juno, Vesta, Heliocentric Earth and Pars Fortunae
-    -- we should add them here when we add them to the regular ephemeris.
-    _ -> PlacalcPlanet 0
 
 -- | An order-equivalent version of the 'PlacalcPlanet' enum
 placalcOrdering :: [Planet]
