@@ -36,16 +36,18 @@ import SwissEphemeris.Internal
       allocaErrorMessage )
 import GHC.Generics (Generic)
 import Data.Maybe (fromMaybe)
+import Data.List.NonEmpty (NonEmpty, toList, fromList)
+import Data.List (intersect)
 
 data EphemerisPosition = EphemerisPosition
   { ephePlanet :: !Planet
   , epheLongitude :: !Double
-  , epheSpeed :: !Double
+  , epheSpeed :: !(Maybe Double)
   } deriving (Eq, Show, Generic)
 
 data Ephemeris = Ephemeris
-  { epheEcliptic :: !Double
-  , epheNutation :: !Double
+  { epheEcliptic :: !(Maybe Double)
+  , epheNutation :: !(Maybe Double)
   , ephePositions :: ![EphemerisPosition]
   } deriving (Eq, Show, Generic)
 
@@ -71,75 +73,90 @@ setEphe4Path path =
 
 -- | Given a list of 'PlanetListOption', a list of
 -- 'EpheCalcOption' and a 'JulianTime', try to get an
--- 'Ephemeris' from a precalculated file on disk.
--- 
--- Note that sending empty lists of options defaults to:
--- 
--- * Getting positions /and/ speeds for all planets
--- * Including ecliptic and nutation
--- * Allowing falling back to non-stored ephemeris calculations
---   if out of range.
+-- 'Ephemeris' from a precalculated file on disk, or, if
+-- allowed in the specified options, fall back to regular Swiss
+-- Ephemeris calculations, using the current ephemeris mode.
 -- 
 -- The authors of Swiss Ephemeris encourage always requesting all
--- planets, since they're stored in contiguous blocks anyway, and
--- maintain that including speed adds a negligible overhead that's
--- seldom worth omitting. 
+-- planets, ecliptic and nutation since they're stored in contiguous blocks anyway,
+-- and the implementation calculates speeds /always/ so omitting speed
+-- isn't worthwhile apart from data hygiene.
 --
 -- Make sure you set the @EP4_PATH@ environment variable, or call
 -- 'setEphe4Path' before calling this function, otherwise the
 -- underlying library will try to locate the files in @ /home/ephe/ @.
-readEphemeris  :: [PlanetListOption]
-  -> [EpheCalcOption]
+readEphemeris  :: NonEmpty PlanetListOption
+  -> NonEmpty EpheCalcOption
   -> JulianTime
   -> IO (Either String Ephemeris)
 readEphemeris planetOptions calcOptions time = do
   let plalist =
-        if null planetOptions
-          then Nothing
-          else Just
-           . foldPlanetListOptions
-           . map planetListOptionToFlag
-           $ planetOptions
+        Just
+          . foldPlanetListOptions
+          . map planetListOptionToFlag
+          . toList
+          $ planetOptions
       flag =
-        if null calcOptions
-          then Nothing
-          else Just
-            . foldEpheCalcOptions
-            . map epheOptionToFlag
-            $ calcOptions
+        Just
+          . foldEpheCalcOptions
+          . map epheOptionToFlag
+          . toList
+          $ calcOptions
   ephe <- readEphemerisRaw plalist flag time
-  pure $ mkEphemeris <$> ephe
+  pure $ mkEphemeris planetOptions calcOptions <$> ephe
 
-mkEphemeris :: [Double] -> Ephemeris
-mkEphemeris results =
-  Ephemeris { 
-    epheEcliptic = ecl, 
-    epheNutation = nut, 
+mkEphemeris
+  :: NonEmpty PlanetListOption
+  -> NonEmpty EpheCalcOption
+  -> [Double]
+  -> Ephemeris
+mkEphemeris planetOptions calcOptions results =
+  Ephemeris {
+    epheEcliptic = ecl `givenPlanetOptions` [IncludeEcliptic, IncludeAll],
+    epheNutation = nut `givenPlanetOptions` [IncludeNutation, IncludeAll],
     ephePositions = ps
   }
   where
+    givenPlanetOptions val opts =
+      if hasPlanetOptions opts then Just val else Nothing
+    hasPlanetOptions = not . null . intersect (toList planetOptions)
+    givenCalcOptions val opts =
+      if hasCalcOptions opts then Just val else Nothing
+    hasCalcOptions   = not . null . intersect (toList calcOptions)
+
     unConst = fromIntegral . unEpheConst
     singleFactors = unConst numberOfFactors
     (factors, speeds) = splitAt singleFactors results
     ecl = factors !! unConst eclipticIndex
-    nut = factors !! unConst nutationIndex 
+    nut = factors !! unConst nutationIndex
     ps = zipWith3 mkEphePos factors speeds placalcOrdering
     mkEphePos planetPos planetSpeed planet' =
       EphemerisPosition{
         ephePlanet = planet'
+      -- TODO(luis) /technically/, we should only include the longitude
+      -- if the planet was supposed to be included; but I always ask
+      -- for all planets; it's really only worth it for cases where one
+      -- wants to allow the fallback and thus limit /that/ calculation.
       , epheLongitude = planetPos
-      , epheSpeed = planetSpeed
+      , epheSpeed = planetSpeed `givenCalcOptions` [IncludeSpeed]
       }
 
 -- | A version of 'readEphemeris' that always gets all planets,
--- always includes speed, and allows falling back to non-stored
+-- ecliptic and nutation, always includes speed, 
+-- and allows falling back to non-stored
 -- @swe_calc@ for dates/planets outside of the stored range.
 readEphemerisSimple :: JulianTime -> IO (Either String Ephemeris)
-readEphemerisSimple = readEphemeris [] []
+readEphemerisSimple = 
+  readEphemeris 
+    (fromList [IncludeAll]) 
+    (fromList [IncludeSpeed])
 
 -- | A version of 'readEphemerisSimple' that does /not/ allow fallback.
 readEphemerisSimpleNoFallback :: JulianTime -> IO (Either String Ephemeris)
-readEphemerisSimpleNoFallback = readEphemeris [] [IncludeSpeed, MustUseStoredEphe]
+readEphemerisSimpleNoFallback = 
+  readEphemeris 
+    (fromList [IncludeAll])
+    (fromList [IncludeSpeed, MustUseStoredEphe])
 
 -- | Lower-level version of 'readEphemeris':
 -- 
@@ -150,11 +167,17 @@ readEphemerisSimpleNoFallback = readEphemeris [] [IncludeSpeed, MustUseStoredEph
 --   elements are the planets, ecliptic and nutation; and the rest are speeds.
 --   (the underlying library /always/ returns the full array, but if planets
 --    ecliptic, nutation or ommitted, they won't be included.)
+-- * The underlying implementation uses a @static@ array, which means that
+--   between invocations, quantities that are not calculated again linger (e.g.
+--   you asked for all planets, all speeds, ecliptic and nutation in one pass,
+--   and then only ask for certain planets, no speeds, no ecl/nut: 
+--   **the previous values for these will be there!**) I've left it as-is here,
+--   but made the behavior more predictable in 'readEphemeris'.
 --
 -- Due to the somewhat leaky/tricky nature of the underlying interface, this
 -- function is provided merely for experimental usage -- you very likely want
 -- 'readEphemeris' -- unless you don't like the record types it returns!
-readEphemerisRaw 
+readEphemerisRaw
   :: Maybe PlanetListFlag
   -> Maybe EpheCalcFlag
   -> JulianTime
@@ -254,7 +277,7 @@ planetToPlanetOption =
     -- we should add them here when we add them to the regular ephemeris.
     _ -> PlacalcPlanet 0
 
--- | A list-version of the 'planetToPlanetOption' mapping
+-- | An order-equivalent version of the 'PlacalcPlanet' enum
 placalcOrdering :: [Planet]
 placalcOrdering = [
     Sun ,
