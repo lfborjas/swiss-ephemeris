@@ -71,7 +71,7 @@ TLS struct ephe4_data ephe4d = {
     NULL,  // no ephfp yet
     ""     // no base path yet
 };
-const int qod[EP_NP] = {5, 5, 5, 5, 5, 3, 3, 3, 3, 3, 3, 5, 3, 3, 3};
+const int qod[EP_NP] = {5, 5, 5, 5, 5, 3, 3, 3, 3, 3, 3, 5, 3, 3, 3, 3};
 
 static void inpolq_l(int n, int o, double p, centisec *x,
                      centisec *axu, centisec *adxu);

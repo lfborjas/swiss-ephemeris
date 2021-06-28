@@ -192,7 +192,7 @@ struct ep4  {
   short ecl0s;		/*                      0.01" */
   short ecld1[NDB-1];	/* first differences 0.01", day 1..9 */
   short	nuts[NDB];	/* nutation in 0.01", day 0..9 */
-  struct  elon elo[PLACALC_LILITH +1];	 	/* longitude sun...chiron */
+  struct  elon elo[PLACALC_LILITH +1];	 	/* longitude sun...lilith */
 };
 
 
