@@ -120,4 +120,4 @@ genInRangeJulian :: Gen Double
 -- however, due to interpolation, for some dates the underlying
 -- library _may_ try to peek into the next block, which we don't
 -- bundle intentionally.
-genInRangeJulian = choose (2440000.0, 2449990.0)
+genInRangeJulian = choose (2440005.0, 2449990.0)
