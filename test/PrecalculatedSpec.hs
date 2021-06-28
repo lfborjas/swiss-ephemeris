@@ -4,7 +4,7 @@ module PrecalculatedSpec (spec) where
 
 import Data.Either (isLeft, isRight)
 import Data.Vector (fromList)
-import Foreign.SweEphe4 (includeAll, includeSpeed)
+import Foreign.SweEphe4 (includeAll, includeSpeed, mustUseStoredEphe, EpheCalcFlag (unEpheCalcFlag, EpheCalcFlag))
 import SwissEphemeris
 import SwissEphemeris.Precalculated
 import System.Directory
@@ -27,36 +27,30 @@ withEphe4Path act = do
 withFallback :: IO () -> IO ()
 withFallback act = do
   fullPath <- makeAbsolute ephe4Path
-  setEphemeridesPath ephePath
-  setEphe4Path fullPath
-  act
+  withEphemerides ephePath $ do
+    setEphe4Path fullPath
+    act
+
+speedButNoFallback :: EpheCalcFlag
+speedButNoFallback = foldEpheCalcOptions [includeSpeed, mustUseStoredEphe]
 
 spec :: Spec
 spec = do
   describe "readEphemerisRaw" $ do
-    context "with no stored ephemeris and no fallback ephemeris" $ do
-      modifyMaxSuccess (const 10) $
-        prop "it fails even for in-range Julian days" $
-          forAll genInRangeJulian $
-            \time -> monadicIO $ do
-              ephe <- run $ readEphemerisRaw includeAll includeSpeed (JulianTime time)
-              assert $ isLeft ephe
-
     context "with stored ephemeris, but no fallback ephemeris" $ do
       around_ withEphe4Path $ do
         prop "it is able to read ephemeris for in-range days" $
           forAll genInRangeJulian $
             \time -> monadicIO $ do
-              ephe <- run $ readEphemerisRaw includeAll includeSpeed $ JulianTime time
+              ephe <- run $ readEphemerisRaw includeAll speedButNoFallback $ JulianTime time
               assert $ isRight ephe
 
-        -- modifyMaxSuccess (const 10) $
-        --   prop "it is unable to read ephemeris for out-of-range days" $
-        --     forAll genOutOfRangeJulian $
-        --       \time -> monadicIO $ do
-        --         ephe <- run $ readEphemerisRaw includeAll includeSpeed $ JulianTime time
-        --         Debug.traceM $ fromLeft "" ephe
-        --         assert $ isLeft ephe
+        modifyMaxSuccess (const 10) $
+          prop "it is unable to read ephemeris for out-of-range days" $
+            forAll genOutOfRangeJulian $
+              \time -> monadicIO $ do
+                ephe <- run $ readEphemerisRaw includeAll speedButNoFallback $ JulianTime time
+                assert $ isLeft ephe
 
     xcontext "with stored ephemeris, and fallback ephemeris" $ do
       around_ withFallback $ do

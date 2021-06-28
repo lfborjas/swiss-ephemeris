@@ -36,7 +36,10 @@ module SwissEphemeris.Precalculated (
   readEphemerisEasy,
   -- * Low-level read functions
   readEphemerisRaw,
-  readEphemerisRawNoFallback
+  readEphemerisRawNoFallback,
+  -- * Low-level utils
+  foldEpheCalcOptions,
+  foldPlanetListOptions
 )where
 
 import Foreign ( peekArray, nullPtr, Bits((.|.)) )
