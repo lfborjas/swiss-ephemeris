@@ -16,7 +16,7 @@ jobs:
         cabal: ['3.2']
         os: [ubuntu-latest, macos-latest]
     env:
-      CONFIG: "--enable-tests --enable-benchmarks --test-show-details=streaming"
+      CONFIG: "--enable-tests --enable-benchmarks --test-show-details=direct"
     steps:
       - uses: actions/checkout@v2
       - uses: haskell/actions/setup@v1
@@ -35,6 +35,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.ghc }}-
       - run: cabal v2-build $CONFIG
-      - run: cabal v2-test $CONFIG
+      - run: cabal new-test --verbose=3 $CONFIG
       - run: cabal v2-haddock $CONFIG
       - run: cabal v2-sdist
