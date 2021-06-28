@@ -2,9 +2,8 @@
 
 module PrecalculatedSpec (spec) where
 
-import Data.Either (fromLeft, isLeft, isRight)
+import Data.Either (isLeft, isRight)
 import Data.Vector (fromList)
-import qualified Debug.Trace as Debug
 import Foreign.SweEphe4 (includeAll, includeSpeed)
 import SwissEphemeris
 import SwissEphemeris.Precalculated
@@ -77,7 +76,7 @@ spec = do
       it "fails to read when the Julian date is out of range, and no fallback is allowed" $ do
         ephe <- readEphemerisEasy False (julianDay 2021 6 6 0.0)
         fullPath <- makeAbsolute ephe4Path
-        let errorMessage = Left $ "eph4_posit: file " ++ fullPath ++ "/sep4_245 does not exist!"
+        let errorMessage = Left $ "eph4_posit: file " ++ fullPath ++ "/sep4_245 does not exist\n"
         ephe `shouldBe` errorMessage
         
       it "reads ephemeris for a Julian date out of range, with fallback" $ do
