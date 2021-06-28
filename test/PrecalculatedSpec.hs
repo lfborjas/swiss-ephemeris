@@ -45,12 +45,12 @@ spec = do
               ephe <- run $ readEphemerisRaw includeAll speedButNoFallback $ JulianTime time
               assert $ isRight ephe
 
-        modifyMaxSuccess (const 10) $
-          prop "it is unable to read ephemeris for out-of-range days" $
-            forAll genOutOfRangeJulian $
-              \time -> monadicIO $ do
-                ephe <- run $ readEphemerisRaw includeAll speedButNoFallback $ JulianTime time
-                assert $ isLeft ephe
+        -- modifyMaxSuccess (const 10) $
+        --   prop "it is unable to read ephemeris for out-of-range days" $
+        --     forAll genOutOfRangeJulian $
+        --       \time -> monadicIO $ do
+        --         ephe <- run $ readEphemerisRaw includeAll speedButNoFallback $ JulianTime time
+        --         assert $ isLeft ephe
 
     xcontext "with stored ephemeris, and fallback ephemeris" $ do
       around_ withFallback $ do
