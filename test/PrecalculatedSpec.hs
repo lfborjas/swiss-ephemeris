@@ -4,7 +4,7 @@ module PrecalculatedSpec (spec) where
 
 import Data.Either (isLeft, isRight)
 import Data.Vector (fromList)
-import Foreign.SweEphe4 (includeAll, includeSpeed, mustUseStoredEphe, EpheCalcFlag (unEpheCalcFlag, EpheCalcFlag))
+import Foreign.SweEphe4 (includeAll, includeSpeed, mustUseStoredEphe, EpheCalcFlag)
 import SwissEphemeris
 import SwissEphemeris.Precalculated
 import System.Directory
