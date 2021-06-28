@@ -22,6 +22,7 @@ ephePath = "./swedist/sweph_18"
 withEphe4Path :: IO () -> IO ()
 withEphe4Path act = do
   fullPath <- makeAbsolute ephe4Path
+  putStrLn fullPath
   setEphe4Path fullPath >> act
 
 withFallback :: IO () -> IO ()
