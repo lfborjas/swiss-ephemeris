@@ -22,7 +22,6 @@ ephePath = "./swedist/sweph_18"
 withEphe4Path :: IO () -> IO ()
 withEphe4Path act = do
   fullPath <- makeAbsolute ephe4Path
-  putStrLn fullPath
   setEphe4Path fullPath >> act
 
 withFallback :: IO () -> IO ()
@@ -36,10 +35,9 @@ speedButNoFallback :: EpheCalcFlag
 speedButNoFallback = foldEpheCalcOptions [includeSpeed, mustUseStoredEphe]
 
 spec :: Spec
-spec = do
+spec = around_ withFallback $ do
   describe "readEphemerisRaw" $ do
     context "with stored ephemeris, but no fallback ephemeris" $ do
-      around_ withEphe4Path $ do
         modifyMaxSuccess (const 10) $
           prop "it is unable to read ephemeris for out-of-range days" $
             forAll genOutOfRangeJulian $
@@ -54,8 +52,7 @@ spec = do
               assert $ isRight ephe
 
         
-    xcontext "with stored ephemeris, and fallback ephemeris" $ do
-      around_ withFallback $ do
+    context "with stored ephemeris, and fallback ephemeris" $ do
         prop "it is able to read ephemeris for in-range days" $
           forAll genInRangeJulian $
             \time -> monadicIO $ do
@@ -69,7 +66,6 @@ spec = do
               assert $ isRight ephe
 
   describe "readEphemerisEasy" $ do
-    around_ withFallback $ do
       it "fails to read when the Julian date is out of range, and no fallback is allowed" $ do
         ephe <- readEphemerisEasy False (julianDay 2021 6 6 0.0)
         fullPath <- makeAbsolute ephe4Path
