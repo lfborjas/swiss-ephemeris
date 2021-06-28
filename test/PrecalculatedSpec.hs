@@ -2,7 +2,7 @@
 
 module PrecalculatedSpec (spec) where
 
-import Data.Either (isLeft, isRight, fromLeft)
+import Data.Either (isLeft, isRight)
 import Data.Vector (fromList)
 import Foreign.SweEphe4 (includeAll, includeSpeed)
 import SwissEphemeris
@@ -12,7 +12,6 @@ import Test.Hspec
 import Test.Hspec.QuickCheck (modifyMaxSuccess, prop)
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
-import qualified Debug.Trace as Debug
 
 ephe4Path :: FilePath
 ephe4Path = "./swedist/precalc"
@@ -51,13 +50,13 @@ spec = do
               ephe <- run $ readEphemerisRaw includeAll includeSpeed $ JulianTime time
               assert $ isRight ephe
 
-        modifyMaxSuccess (const 10) $
-          prop "it is unable to read ephemeris for out-of-range days" $
-            forAll genOutOfRangeJulian $
-              \time -> monadicIO $ do
-                ephe <- run $ readEphemerisRaw includeAll includeSpeed $ JulianTime time
-                Debug.traceM $ fromLeft "" ephe
-                assert $ isLeft ephe
+        -- modifyMaxSuccess (const 10) $
+        --   prop "it is unable to read ephemeris for out-of-range days" $
+        --     forAll genOutOfRangeJulian $
+        --       \time -> monadicIO $ do
+        --         ephe <- run $ readEphemerisRaw includeAll includeSpeed $ JulianTime time
+        --         Debug.traceM $ fromLeft "" ephe
+        --         assert $ isLeft ephe
 
     xcontext "with stored ephemeris, and fallback ephemeris" $ do
       around_ withFallback $ do
