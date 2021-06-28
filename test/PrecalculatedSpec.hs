@@ -39,19 +39,20 @@ spec = do
   describe "readEphemerisRaw" $ do
     context "with stored ephemeris, but no fallback ephemeris" $ do
       around_ withEphe4Path $ do
+        modifyMaxSuccess (const 10) $
+          prop "it is unable to read ephemeris for out-of-range days" $
+            forAll genOutOfRangeJulian $
+              \time -> monadicIO $ do
+                ephe <- run $ readEphemerisRaw includeAll speedButNoFallback $ JulianTime time
+                assert $ isLeft ephe
+
         prop "it is able to read ephemeris for in-range days" $
           forAll genInRangeJulian $
             \time -> monadicIO $ do
               ephe <- run $ readEphemerisRaw includeAll speedButNoFallback $ JulianTime time
               assert $ isRight ephe
 
-        -- modifyMaxSuccess (const 10) $
-        --   prop "it is unable to read ephemeris for out-of-range days" $
-        --     forAll genOutOfRangeJulian $
-        --       \time -> monadicIO $ do
-        --         ephe <- run $ readEphemerisRaw includeAll speedButNoFallback $ JulianTime time
-        --         assert $ isLeft ephe
-
+        
     xcontext "with stored ephemeris, and fallback ephemeris" $ do
       around_ withFallback $ do
         prop "it is able to read ephemeris for in-range days" $
