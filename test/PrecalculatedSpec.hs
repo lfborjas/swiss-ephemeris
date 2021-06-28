@@ -46,7 +46,7 @@ spec = around_ withFallback $ do
           forAll genInRangeJulian $
             \time -> monadicIO $ do
               ephe <- run $ readEphemerisRaw includeAll speedButNoFallback $ JulianTime time
-              Debug.traceM "goblin 2"
+              Debug.traceM $ "goblin 2" ++ show ephe
               assert $ isRight ephe
 
         
@@ -55,14 +55,12 @@ spec = around_ withFallback $ do
           forAll genInRangeJulian $
             \time -> monadicIO $ do
               ephe <- run $ readEphemerisRaw includeAll includeSpeed $ JulianTime time
-              Debug.traceM "goblin 3"
               assert $ isRight ephe
 
         prop "it is also able to read ephemeris for out-of-range days" $
           forAll genOutOfRangeJulian $
             \time -> monadicIO $ do
               ephe <- run $ readEphemerisRaw includeAll includeSpeed $ JulianTime time
-              Debug.traceM "goblin 4"
               assert $ isRight ephe
 
   describe "readEphemerisEasy" $ do
