@@ -12,7 +12,6 @@ import Test.Hspec
 import Test.Hspec.QuickCheck (modifyMaxSuccess, prop)
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
-import qualified Debug.Trace as Debug
 
 ephe4Path :: FilePath
 ephe4Path = "./swedist/precalc"

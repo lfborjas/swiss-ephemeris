@@ -519,7 +519,15 @@ int eph4_posit(int jlong, AS_BOOL writeflag, char *errtext)
 {
   int filenr;
   long posit;
-  static int open_filenr = -10000;
+  /* NOTE(luis): making this `__thread` (thread-local)
+    since it would otherwise mislead `fseek`: if it is set
+    as a valid file number, but the global file pointer
+    isn't set yet (e.g. another thread set it,) then
+    it would try to `fseek` on a NULL file pointer.
+    I could put this in `ephe4d`, but didn't want to mess
+    with the logic here _too_ much.
+  */
+  static TLS int open_filenr = -10000;
   char fname[AS_MAXCH], s[AS_MAXCH], *sp;
   int nchars;
 
