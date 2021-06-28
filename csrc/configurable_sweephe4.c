@@ -563,18 +563,20 @@ int eph4_posit(int jlong, AS_BOOL writeflag, char *errtext)
     {
       if (errtext != NULL)
       {
-        
+
         if (!writeflag)
         {
           nchars = snprintf(errtext, AS_MAXCH, "eph4_posit: file %s does not exist\n", fname);
-          if (nchars >= AS_MAXCH){
+          if (nchars >= AS_MAXCH)
+          {
             sprintf(errtext, "eph4_posit: file does not exist\n");
           }
         }
         else
         {
           nchars = snprintf(errtext, AS_MAXCH, "eph4_posit: could not create file %s\n", fname);
-          if (nchars >= AS_MAXCH){
+          if (nchars >= AS_MAXCH)
+          {
             sprintf(errtext, "eph4_posit: file does not exist\n");
           }
         }
