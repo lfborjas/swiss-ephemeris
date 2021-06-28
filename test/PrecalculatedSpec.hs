@@ -42,7 +42,7 @@ spec = do
               ephe <- run $ readEphemerisRaw includeAll includeSpeed (JulianTime time)
               assert $ isLeft ephe
 
-    xcontext "with stored ephemeris, but no fallback ephemeris" $ do
+    context "with stored ephemeris, but no fallback ephemeris" $ do
       around_ withEphe4Path $ do
         prop "it is able to read ephemeris for in-range days" $
           forAll genInRangeJulian $
