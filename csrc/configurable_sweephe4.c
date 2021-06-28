@@ -520,7 +520,7 @@ int eph4_posit(int jlong, AS_BOOL writeflag, char *errtext)
   int filenr;
   long posit;
   static int open_filenr = -10000;
-  char fname[AS_MAXCH], s[80], *sp;
+  char fname[AS_MAXCH*2], s[AS_MAXCH*2], *sp;
 
   /* ensure that we've set the base path. */
   if (!ephe4d.ephe4_path_is_set)
