@@ -520,7 +520,8 @@ int eph4_posit(int jlong, AS_BOOL writeflag, char *errtext)
   int filenr;
   long posit;
   static int open_filenr = -10000;
-  char fname[AS_MAXCH*2], s[AS_MAXCH*2], *sp;
+  char fname[AS_MAXCH], s[AS_MAXCH], *sp;
+  int nchars;
 
   /* ensure that we've set the base path. */
   if (!ephe4d.ephe4_path_is_set)
@@ -554,13 +555,20 @@ int eph4_posit(int jlong, AS_BOOL writeflag, char *errtext)
     {
       if (errtext != NULL)
       {
+        
         if (!writeflag)
         {
-          sprintf(errtext, "eph4_posit: file %s does not exist\n", fname);
+          nchars = snprintf(errtext, AS_MAXCH, "eph4_posit: file %s does not exist\n", fname);
+          if (nchars >= AS_MAXCH){
+            sprintf(errtext, "eph4_posit: file does not exist\n");
+          }
         }
         else
         {
-          sprintf(errtext, "eph4_posit: could not create file %s\n", fname);
+          nchars = snprintf(errtext, AS_MAXCH, "eph4_posit: could not create file %s\n", fname);
+          if (nchars >= AS_MAXCH){
+            sprintf(errtext, "eph4_posit: file does not exist\n");
+          }
         }
       }
       return (ERR);

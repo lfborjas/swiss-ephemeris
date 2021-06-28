@@ -19,11 +19,6 @@ ephe4Path = "./swedist/precalc"
 ephePath :: FilePath
 ephePath = "./swedist/sweph_18"
 
-withEphe4Path :: IO () -> IO ()
-withEphe4Path act = do
-  fullPath <- makeAbsolute ephe4Path
-  setEphe4Path fullPath >> act
-
 withFallback :: IO () -> IO ()
 withFallback act = do
   fullPath <- makeAbsolute ephe4Path
