@@ -34,7 +34,7 @@ withFallback act = do
 spec :: Spec
 spec = do
   describe "readEphemerisRaw" $ do
-    context "with no stored ephemeris and no fallback ephemeris" $ do
+    xcontext "with no stored ephemeris and no fallback ephemeris" $ do
       modifyMaxSuccess (const 10) $
         prop "it fails even for in-range Julian days" $
           forAll genInRangeJulian $
@@ -42,7 +42,7 @@ spec = do
               ephe <- run $ readEphemerisRaw includeAll includeSpeed (JulianTime time)
               assert $ isLeft ephe
 
-    context "with stored ephemeris, but no fallback ephemeris" $ do
+    xcontext "with stored ephemeris, but no fallback ephemeris" $ do
       around_ withEphe4Path $ do
         prop "it is able to read ephemeris for in-range days" $
           forAll genInRangeJulian $
@@ -72,14 +72,14 @@ spec = do
               assert $ isRight ephe
 
   describe "readEphemerisEasy" $ do
-    around_ withEphe4Path $ do
+    around_ withFallback $ do
       it "fails to read when the Julian date is out of range, and no fallback is allowed" $ do
         ephe <- readEphemerisEasy False (julianDay 2021 6 6 0.0)
         fullPath <- makeAbsolute ephe4Path
         let errorMessage = Left $ "eph4_posit: file " ++ fullPath ++ "/sep4_245 does not exist\n"
         ephe `shouldBe` errorMessage
         
-      xit "reads ephemeris for a Julian date out of range, with fallback" $ do
+      it "reads ephemeris for a Julian date out of range, with fallback" $ do
         ephe <- readEphemerisEasy True (julianDay 2021 6 6 0.0)
         ephe `shouldSatisfy` isRight
   
