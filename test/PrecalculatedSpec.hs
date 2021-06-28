@@ -34,7 +34,7 @@ withFallback act = do
 spec :: Spec
 spec = do
   describe "readEphemerisRaw" $ do
-    xcontext "with no stored ephemeris and no fallback ephemeris" $ do
+    context "with no stored ephemeris and no fallback ephemeris" $ do
       modifyMaxSuccess (const 10) $
         prop "it fails even for in-range Julian days" $
           forAll genInRangeJulian $
