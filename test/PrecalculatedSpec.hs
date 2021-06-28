@@ -12,6 +12,7 @@ import Test.Hspec
 import Test.Hspec.QuickCheck (modifyMaxSuccess, prop)
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
+import qualified Debug.Trace as Debug
 
 ephe4Path :: FilePath
 ephe4Path = "./swedist/precalc"
@@ -38,12 +39,14 @@ spec = around_ withFallback $ do
             forAll genOutOfRangeJulian $
               \time -> monadicIO $ do
                 ephe <- run $ readEphemerisRaw includeAll speedButNoFallback $ JulianTime time
+                Debug.traceM "goblin 1"
                 assert $ isLeft ephe
 
         prop "it is able to read ephemeris for in-range days" $
           forAll genInRangeJulian $
             \time -> monadicIO $ do
               ephe <- run $ readEphemerisRaw includeAll speedButNoFallback $ JulianTime time
+              Debug.traceM "goblin 2"
               assert $ isRight ephe
 
         
@@ -52,12 +55,14 @@ spec = around_ withFallback $ do
           forAll genInRangeJulian $
             \time -> monadicIO $ do
               ephe <- run $ readEphemerisRaw includeAll includeSpeed $ JulianTime time
+              Debug.traceM "goblin 3"
               assert $ isRight ephe
 
         prop "it is also able to read ephemeris for out-of-range days" $
           forAll genOutOfRangeJulian $
             \time -> monadicIO $ do
               ephe <- run $ readEphemerisRaw includeAll includeSpeed $ JulianTime time
+              Debug.traceM "goblin 4"
               assert $ isRight ephe
 
   describe "readEphemerisEasy" $ do
@@ -65,10 +70,12 @@ spec = around_ withFallback $ do
         ephe <- readEphemerisEasy False (julianDay 2021 6 6 0.0)
         fullPath <- makeAbsolute ephe4Path
         let errorMessage = Left $ "eph4_posit: file " ++ fullPath ++ "/sep4_245 does not exist\n"
+        Debug.traceM "goblin 5"
         ephe `shouldBe` errorMessage
         
       it "reads ephemeris for a Julian date out of range, with fallback" $ do
         ephe <- readEphemerisEasy True (julianDay 2021 6 6 0.0)
+        Debug.traceM "goblin 6"
         ephe `shouldSatisfy` isRight
   
       it "reads all the ephemeris for a Julian date in range, no fallback" $ do
@@ -98,6 +105,7 @@ spec = around_ withFallback $ do
                     epheNutation = 1.9472222222222224e-3,
                     ephePositions = expectedPositions
                   }
+        Debug.traceM "goblin 7"
         ephe `shouldBe` expectedEphe
 
 genOutOfRangeJulian :: Gen Double
