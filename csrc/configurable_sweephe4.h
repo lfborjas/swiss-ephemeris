@@ -245,6 +245,19 @@ extern TLS struct ephe4_data ephe4d;
 /* explicitly set base directory for ep4 precalculated ephemeris. */
 ext_def(void) ephe4_set_ephe_path(char* path);
 
+// ADDED(lfborjas) 6/28/2021:
+/* Write the pre-stored ephemeris file for a given block of 10,000 days
+   e.g. `244` will start at julian day '2440000.0' and write until '2450000.0'.
+   Note that due to interpolation, some dates may not be available unless the previous
+   or next blocks exist; if you're planning to work with the full range, write
+   the surrounding files too. Make sure to set_swe_ephe_path before working
+   with this function, and to close if appropriate to your use case.
+   NOTE: don't call it with repeated `fnr`s, as it may lead to a file corruption.
+   This function is expected to be called for either one file, or a monotonically
+   increasing sequence of files.
+*/
+ext_def(int) ephe4_write_file(int fnr, char *errtext);
+
 #ifdef __cplusplus
 }
 #endif

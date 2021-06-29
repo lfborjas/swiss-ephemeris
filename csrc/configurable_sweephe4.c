@@ -859,3 +859,154 @@ void CALL_CONV ephe4_set_ephe_path(char *path)
   ephe4d.ephe4_path_is_set = TRUE;
   strcpy(ephe4d.ephe4path, s);
 }
+
+static int split(w, m, min, sec)
+    int32 w; /* position in seconds/m */
+int m;       /* factor for seconds */
+short *min,  /* storage for degrees and minutes */
+    *sec;    /* storage for seconds * m */
+{
+  if (w >= 0)
+  {
+    *sec = w % (60 * m);
+    *min = w / (60 * m);
+  }
+  else
+  {
+    *sec = -(-w % (60 * m));
+    *min = -(-w / (60 * m));
+  }
+  return OK;
+}
+
+/*************************************************************
+Pack positions of 10 days and write to file
+The longitude is packed with second differences in such a way,
+that the accumulating rounding erros do not exceed half of
+the last stored digit, i.e. 0.05" moon, 0.005" other planets
+**************************************************************/
+static int eph4_pack_opt(int32 jd, double (*l)[NDB], double ecliptic[],
+                  double nutation[], AS_BOOL verbose)
+{
+  int i, p, ps;
+  int32 d1, d2, dd, d_ret, w0, w_ret;
+  double err;
+  struct ep4 e;
+  static TLS int32 max_dd[EP_CALC_N];
+  static TLS double max_err[EP_CALC_N];
+
+  e.j_10000 = jd / 10000.0;
+  e.j_rest = jd - 10000.0 * e.j_10000;
+  w0 = swe_d2l(ecliptic[0] * DEG);
+  split(w0, 100, &e.ecl0m, &e.ecl0s);
+  for (i = 1; i < NDB; i++)
+    e.ecld1[i - 1] = swe_d2l(ecliptic[i] * DEG - w0);
+  for (i = 0; i < NDB; i++)
+    e.nuts[i] = swe_d2l(nutation[i] * DEG); /* int32 casted into short */
+  for (p = PLACALC_SUN; p <= PLACALC_LILITH; p++)
+  {
+    ps = p;
+    w0 = swe_d2l(l[ps][0] * DEG);
+    d1 = swe_d2l(l[ps][1] * DEG - w0);
+    if (d1 >= DEG180)
+      d1 -= DEG360;
+    else if (d1 <= -DEG180)
+      d1 += DEG360;
+    split(w0, 100, &e.elo[p].p0m, &e.elo[p].p0s);
+    split(d1, 100, &e.elo[p].pd1m, &e.elo[p].pd1s);
+    d_ret = d1;         /* recalculated diff */
+    w_ret = w0 + d_ret; /* recalculated position */
+    for (i = 2; i < NDB; i++)
+    {
+      d2 = swe_d2l(l[ps][i] * DEG - w_ret);
+      if (d2 >= DEG180)
+        d2 -= DEG360;
+      else if (d2 <= -DEG180)
+        d2 += DEG360;
+      dd = d2 - d_ret; /* second difference */
+      if (p == PLACALC_MOON || p == PLACALC_MERCURY)
+        dd = swe_d2l(dd / 10.0); /* moon only 0.1" */
+      if (verbose && abs(dd) > abs(max_dd[ps]))
+        max_dd[ps] = dd;
+      e.elo[p].pd2[i - 2] = dd;
+      if (p == PLACALC_MOON || p == PLACALC_MERCURY)
+        d_ret += e.elo[p].pd2[i - 2] * 10L;
+      else
+        d_ret += e.elo[p].pd2[i - 2];
+      w_ret += d_ret;
+      if (verbose)
+      {
+        err = swe_difdeg2n(w_ret / 360000.0, l[ps][i]); /* error */
+        if (fabs(err) > fabs(max_err[ps]))
+          max_err[ps] = err;
+      }
+    }
+  } /* for p */
+#ifdef INTEL_BYTE_ORDER
+  shortreorder((UCHAR *)&e, sizeof(struct ep4));
+#endif
+  fwrite(&e, sizeof(struct ep4), 1, ephe4d.ephfp);
+  return (OK);
+}
+
+int CALL_CONV ephe4_write_file(int fnr, char *errtext)
+{
+  int day, n, p;
+  char serr[AS_MAXCH];
+  double l[EP_CALC_N][NDB], ecliptic[NDB], nutation[NDB];
+  double jd0, jd;
+  double x[6];
+  int32 jlong;
+  //int fnr = -10000;
+  int32 iflagret;
+
+  if (errtext != NULL)
+  {
+    *errtext = '\0';
+  }
+  
+  if (fnr < -20 || fnr > 300)
+  {
+    snprintf(errtext, AS_MAXCH, "invalid starting file number %d", fnr);
+    return (ERR);
+  }
+
+  jd0 = EP4_NDAYS * fnr + 0.5;
+  jlong = floor(jd0);
+  if (eph4_posit(jlong, TRUE, errtext) != OK)
+  {
+    return (ERR);
+  }
+  for (n = 0; n < EP4_NDAYS; n += NDB, jd0 += NDB)
+  {
+    for (day = 0; day < NDB; day++)
+    { /* compute positions for 10 days */
+      jd = jd0 + day;
+      for (p = PLACALC_SUN; p <= EP_CALC_N; p++)
+      {
+        if ((iflagret = swe_calc(jd, ephe_plac2swe(p), 0, x, serr)) == ERR)
+        {
+          swe_close();
+          snprintf(errtext, AS_MAXCH, "error in swe_calc(): %s", serr);
+          return (ERR);
+        }
+        l[p][day] = x[0];
+      }
+      if ((iflagret = swe_calc(jd, SE_ECL_NUT, 0, x, serr)) == ERR)
+      {
+        swe_close();
+        snprintf(errtext, AS_MAXCH, "error in swe_calc(): %s", serr);
+        return (ERR);
+      }
+      ecliptic[day] = x[0];
+      nutation[day] = x[2];
+    }
+    jlong = floor(jd0);
+    // NOTE(luis) not sure if the `verbose` option is even useful here
+    eph4_pack_opt(jlong, l, ecliptic, nutation, FALSE);
+  }
+  fclose(ephe4d.ephfp);
+  ephe4d.ephfp = NULL;
+  //swe_close();
+  return (OK);
+}

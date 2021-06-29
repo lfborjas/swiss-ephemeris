@@ -19,6 +19,7 @@ module SwissEphemeris.Precalculated (
   -- * Constituent types
   EphemerisPosition(..),
   Ephemeris(..),
+  EphemerisBlockNumber,
   
   -- * Options 
   -- ** Options for additional computations
@@ -27,6 +28,7 @@ module SwissEphemeris.Precalculated (
   PlanetListOption(..),
   -- * Convenience functions
   forPlanet,
+  mkEphemerisBlockNumber,
   -- * Setup functions
   setEphe4Path,
   -- * High-level read functions
@@ -37,6 +39,8 @@ module SwissEphemeris.Precalculated (
   -- * Low-level read functions
   readEphemerisRaw,
   readEphemerisRawNoFallback,
+  -- * Generating new ephemeris files
+  writeEphemeris,
   -- * Low-level utils
   foldEpheCalcOptions,
   foldPlanetListOptions
@@ -73,7 +77,7 @@ import Foreign.SweEphe4
       pMeanNode,
       pTrueNode,
       pChiron,
-      pLilith )
+      pLilith, c_ephe4_write_file )
 import SwissEphemeris.Internal
     ( JulianTime(unJulianTime),
       Planet(MeanApog, Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn,
@@ -111,6 +115,17 @@ data PlanetListOption
   | IncludeNutation
   | IncludeAll
   deriving (Eq, Show, Enum, Generic)
+  
+newtype EphemerisBlockNumber = EphemerisBlockNumber Int 
+
+-- | Construct a valid ephemeris block number. As per the
+-- underlying library, all times between Julian day @-200000.0@
+-- and @3000000.0@ are valid. Note that depending on which
+-- ephemeris files you have, your effective range may be smaller.
+mkEphemerisBlockNumber :: Int -> Maybe EphemerisBlockNumber
+mkEphemerisBlockNumber n
+  | n > -20 || n < 300 = Just . EphemerisBlockNumber $ n 
+  | otherwise = Nothing
 
 -- | For extreme data locality, we schlep around unboxed vectors.
 -- Note that the higher level functions return regular 'Vector's,
@@ -345,6 +360,30 @@ readEphemerisRawNoFallback =
     calculateAll = PlanetListFlag  0
     addSpeedNoFallback =
       foldEpheCalcOptions $ map epheOptionToFlag [IncludeSpeed, MustUseStoredEphe]
+
+-- | Persist a 10,000 day block of ephemeris to disk, given a julian prefix.
+-- 
+-- This is a highly side-effectful function:
+--
+-- * It assumes you've set usable paths to both the @sep4@ files and
+--   usable ephemeris. A @Left@ value will be returned otherwise.
+-- * It is /not/ friendly to repeated invocations: if you happen to run
+--   it in sequence with the same block number, undefined behavior may arise
+--   where the file is still "open" as far as the underlying library is concerned,
+--   because it keeps its own cursor, but the file descriptior will be closed. We
+--   can fix that, but it introduces a divergence in the code that I'd rather just
+--   warn about for the time being.
+writeEphemeris :: EphemerisBlockNumber -> IO (Either String EphemerisBlockNumber)
+writeEphemeris bn@(EphemerisBlockNumber n) = do
+  allocaErrorMessage $ \serr -> do
+    retval <-
+      c_ephe4_write_file (fromIntegral n) serr
+    
+    if retval < 0 then do
+      err <- peekCAString serr
+      pure $ Left err
+    else
+      pure $ Right bn
 
 
 unConst :: EpheConst -> Int

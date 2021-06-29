@@ -128,3 +128,13 @@ foreign import ccall unsafe "configurable_sweephe4.h dephread2"
               -- ^ @char* errtext@ -- at least 256 characters for error message
               -> IO (Ptr CDouble)
               -- ^ array of the calculated data
+
+-- | Write one block of 10,000 day ephemeris to disk. Both valid base
+-- paths for ephe4 stored ephemeris, and base ephemeris, should be set.
+foreign import ccall unsafe "configurable_sweephe4.h ephe4_write_file"
+  c_ephe4_write_file :: CInt
+                     -- ^ @fnr@: three-digit prefix of the starting day
+                     -> CString
+                     -- ^ @errtext@: error/warning message
+                     -> IO CInt
+                     -- ^ error code.
