@@ -14,12 +14,13 @@
 -- by setting the `EP4_PATH` environment variable to a valid directory path,
 -- or via the 'setEph4Path' function.
 --
--- @since 1.3.1.0
+-- @since 1.4.0.0
 module SwissEphemeris.Precalculated
   ( -- * Constituent types
     EphemerisPosition (..),
     Ephemeris (..),
     EphemerisBlockNumber,
+    EpheVector,
 
     -- * Options
 
@@ -118,13 +119,20 @@ import SwissEphemeris.Internal
 
 data EphemerisPosition a = EphemerisPosition
   { ephePlanet :: !Planet,
+    -- ^ the 'Planet' this position corresponds to
     epheLongitude :: !a,
+    -- ^ longitude in @a@ units (by default, degrees)
+    -- you can use your own @mkEphemeris@-style function;
+    -- two are provided here, one to produce 'Double',
+    -- another to produce 'Maybe Double'.
     epheSpeed :: !a
+    -- ^ ecliptic speed in @a@ units.
   }
   deriving (Eq, Show, Generic)
 
 data Ephemeris a = Ephemeris
   { epheDate :: !JulianTime,
+    -- ^ julian time for this ephemeris
     epheEcliptic :: !a,
     epheNutation :: !a,
     ephePositions :: !(V.Vector (EphemerisPosition a))
@@ -159,7 +167,9 @@ instance Bounded EphemerisBlockNumber where
 
 -- | The enum instance is a bit silly, but it enables us to
 -- use some syntactic sugar, like:
--- >>> take 4 $ [EphemerisBlockNumber 244..]
+-- @
+--   take 4 $ [EphemerisBlockNumber 244..]
+-- @
 instance Enum EphemerisBlockNumber where
   toEnum = EphemerisBlockNumber
   fromEnum (EphemerisBlockNumber i) = i
