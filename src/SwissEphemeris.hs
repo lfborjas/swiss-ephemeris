@@ -17,54 +17,54 @@
 -- There's a wealth of other calculations possible with the underlying library, however,
 -- please refer to their documentation and the bundled sources for ideas!
 module SwissEphemeris
-  ( -- classes for general concepts
+  ( -- * Classes for general concepts
     HasEclipticLongitude(..),
-    -- fundamental aliases/newtypes
+    -- * Fundamental aliases/newtypes
     JulianTime (..),
     SiderealTime (..),
     HouseCusp,
-    -- fundamental enumerations
+    -- * Fundamental enumerations
     SplitDegreesOption (..),
     Planet (..),
     HouseSystem (..),
     ZodiacSignName (..),
     NakshatraName (..),
-    -- coordinate/position systems
+    -- * Coordinate/position systems
     EclipticPosition (..),
     EquatorialPosition (..),
     GeographicPosition (..),
     HousePosition (..),
-    -- information about the ecliptic at a point in time.
+    -- * Information about the ecliptic at a point in time.
     ObliquityInformation (..),
     Angles (..),
     CuspsCalculation (..),
     LongitudeComponents (..),
-    -- management of data files
+    -- * Management of data files
     setEphemeridesPath,
     setNoEphemeridesPath,
     closeEphemerides,
     withEphemerides,
     withoutEphemerides,
-    -- core calculations
+    -- * Core calculations
     calculateEclipticPosition,
     calculateEquatorialPosition,
     calculateObliquity,
     calculateCusps,
     calculateCuspsLenient,
     calculateCuspsStrict,
-    -- utility: coordinate transformation
+    -- * Utilities for coordinate transformation
     equatorialToEcliptic,
     eclipticToEquatorial,
-    -- utilities for sidereal information
+    -- * Utilities for sidereal information
     calculateSiderealTime,
     calculateSiderealTimeSimple,
     calculateHousePosition,
     calculateHousePositionSimple,
-    -- utilities for time calculations:
+    -- * Utilities for time calculations:
     julianDay,
     gregorianDateTime,
     deltaTime,
-    -- utilities for angles:
+    -- * Utilities for display/splitting:
     defaultSplitDegreesOptions,
     splitDegrees,
     splitDegreesZodiac,

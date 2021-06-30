@@ -16,7 +16,8 @@
 --
 -- @since 1.4.0.0
 module SwissEphemeris.Precalculated
-  ( -- * Constituent types
+  ( -- * About Precalculated Ephemeris
+    -- $precalc
     EphemerisPosition (..),
     Ephemeris (..),
     EphemerisBlockNumber,
@@ -117,6 +118,82 @@ import SwissEphemeris.Internal
     allocaErrorMessage,
   )
 
+{- $precalc
+   Pre-calculated Ephemeris are disk-persisted binary blocks of 10,000 days
+   of positions each. They store planetary data in a space-efficient format,
+   to the slight detriment of precision. Positions for all planets in the sol
+   system (including Pluto, but excluding the heliocentric position of the Earth,)
+   as well as the mean lunar apogee ("Black Moon Lilith",) the Mean and True [North]
+   lunar nodes, and the asteroid Chiron as well as Ecliptic and Nutation for the day
+   are stored in contiguous blocks.
+
+   Even though only midnight data
+   is actually stored (e.g. @2440000.5@,) the underlying library will
+   use a fast interpolation method to approximate any julian date requested of it,
+   it also uses that interpolation method to approximate the speeds of planets,
+   which are /not/ stored.
+   
+   The file format is designed for fast sequential access: a file pointer and
+   cursor survive invocations, and a buffer of 20 days of positions is maintained
+   in-memory, so requesting all days in a year will benefit vastly from memory
+   residency and outpace random access or actual ephemeris calculations. Some
+   care has been put into thread-safety, but the original implementation was /not/
+   thread safe, so even though I've run a lot of @valgrind@ after adding some
+   thread-local guardrails, here may be dragons if you do heavy threaded access
+   or heavy non-sequential querying. The regular 'SwissEphemeris' is battle-tested
+   for safety and speed, so use that for most use cases that don't need to quickly
+   examine large intervals of contiguous time quickly, which is the narrow province
+   of this module.
+   
+   Deferring to the original authors' for more details:
+
+   == /Note from @sweephe4.h@/
+   
+   The design of ephemeris type ep4:
+   In all ASYS and transit application of stored ephemerides
+   except Progressed Declinations Type 56 we need only the
+   longitudes of the planets or nodes.
+   The old EP3 format contains also latitudes, and uses ephemeris time.
+   Therefore we define a new ephemeris format, which is capable of
+   replacing EP3, when some ASYS programs are changed.
+   The ASYS programs requiring different data can receive them
+   by asking the calcserv module.
+   
+   We therefore store now a daily ephemeris with only logitudes, ecl and nut.
+   The ephemeris is computed and stored for midnight ephemeris time, i.e.
+   for @jd = 2400000.5, 2400001.5@ etc.
+   In the ephemeris record for this date, only floor(jd) is kept.
+   
+   In many cases universal time (UT) is desired, not ephemeris time.
+   Because computation with our current computers is very cheap for
+   everything except trigonometrci functions, we can afford to
+   build a good interpolation into the ephemeris package.
+   
+   The user can request from ephread() ephemeris positions for
+   any (double) jd, not only for midnight ephemeris time.
+   Inside the package the same quick Everett 5th-order interpolator
+   is used as in placalc.
+   It delivers positions within 0.01" for all planets except moon, mercury
+   and true node. Moon and Mercury suffer, because their positions are
+   stored only with a precision of 0.1"; true node suffers because
+   it oscillates quickly with the fastest moon terms.
+   The maximum observed differences between placalc and ephread for 12.00 noon
+   are 0.25" for moon and true node and 0.1" for Mercury; in 80% of the days
+   the differences are less than 0.1". This is significantly better than
+   the implemented precision of the placalc package itself.
+   
+   The Everett interpolator delivers without any additional cost also
+   the speed of the planets. This speed is very much better than the
+   speed derived for the inner planets from the mean orbits.
+   
+   The returned data from ephread are in an array of centisec,
+   with ecl and nut behind the planets.
+   The default, @pflag = 0@, returns all.
+   The speeds are returned in the second half of the array;
+   the speed is always there, even when the speed bit has not been set.
+-}
+
+-- | The ecliptic longitude data of a given 'Planet' 
 data EphemerisPosition a = EphemerisPosition
   { ephePlanet :: !Planet,
     -- ^ the 'Planet' this position corresponds to
@@ -130,6 +207,8 @@ data EphemerisPosition a = EphemerisPosition
   }
   deriving (Eq, Show, Generic)
 
+-- | The positions of all planets for a given time,
+-- plus ecliptic and nutation.
 data Ephemeris a = Ephemeris
   { epheDate :: !JulianTime,
     -- ^ julian time for this ephemeris
@@ -146,6 +225,10 @@ data EpheCalcOption
   | MustUseStoredEphe
   deriving (Eq, Show, Enum, Generic)
 
+-- | Whether to include all planets, ecliptic, nutation,
+-- or all of the above. The underlying library also allows
+-- for bit flags to disable selecting some planets; I haven't
+-- though of a way to model that ergonomically.
 data PlanetListOption
   = IncludeAllPlanets
   | IncludeEcliptic
@@ -153,6 +236,13 @@ data PlanetListOption
   | IncludeAll
   deriving (Eq, Show, Enum, Generic)
 
+-- | Up to three-digit numbers assigned to each
+-- 10,000 day block of ephemeris data; any given
+-- number will be padded with zeroes internally
+-- to make up a Julian date, at midnight
+-- e.g. @EphemerisBlocknumber 244@
+-- corresponds to @jd = 2440000.5@, i.e.
+-- @1968-May-23 12:00:00 UTC@
 newtype EphemerisBlockNumber
   = EphemerisBlockNumber Int
   deriving (Eq, Show)
@@ -219,7 +309,7 @@ setEphe4Path path =
 --
 -- Make sure you set the @EP4_PATH@ environment variable, or call
 -- 'setEphe4Path' before calling this function, otherwise the
--- underlying library will try to locate the files in @ /home/ephe/ @.
+-- underlying library will try to locate the files in @/home/ephe/@.
 readEphemeris ::
   ( NonEmpty PlanetListOption ->
     NonEmpty EpheCalcOption ->
@@ -474,6 +564,7 @@ epheOptionToFlag =
 -- but it should be doable!
 -------------------------------------------------------------------------
 
+-- | Fold any given planet flags into one datum with the combined flags set.
 foldPlanetListOptions :: [PlanetListFlag] -> PlanetListFlag
 foldPlanetListOptions = PlanetListFlag . foldr ((.|.) . unPlanetListFlag) 0
 
