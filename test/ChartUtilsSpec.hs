@@ -55,7 +55,7 @@ spec = do
       let positions = [(Mars, Lng 274.5), (Venus, Lng 275.0)]
           sectors = []
           grouped = gravGroupEasy 5.0 positions sectors
-      grouped `shouldBe` Left "grav_group: -1 sectors."
+      grouped `shouldBe` Left "grav_group: 0 sectors."
 
     it "downscales glyphs in narrow sectors" $ do
       -- [{pos: 274.5, lsize:2.5, rsize: 2.5, dp: "Mars"}, {pos: 275.0, lsize: 2.5, rsize: 2.5, dp: "Venus"}];
