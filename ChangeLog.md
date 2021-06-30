@@ -1,9 +1,11 @@
 # Changelog for swiss-ephemeris
 
-## NEXT
+## v1.3.0.2
 
 * More memory safety paranoia: ensure that `gravGroup` functions have appropriately
   scoped "extraData" pointers; was using an unsafe function before that somewhat inexplicably never failed, except for one time _maybe_ while doing unrelated testing.
+* Fix empty sector handling for `gravGroup`: it now correctly reports that zero-length
+  sectors are not supported.
 
 ## v1.3.0.1 
  
