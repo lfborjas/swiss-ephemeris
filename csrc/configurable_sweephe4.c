@@ -114,10 +114,10 @@ void shortreorder(UCHAR *p, int n)
 ****************************************************/
 centisec *ephread(double jd, int plalist, int flag, char *errtext)
 {
-  static int jdbase = INVALID_BASE;
-  static int lastplalist = 0;
-  static centisec lon[EP_NP][EPBS]; /* buffer for 20 days unpacked ephe */
-  static centisec out[2 * EP_NP];   /* buffer for return longitude
+  static TLS int jdbase = INVALID_BASE;
+  static TLS int lastplalist = 0;
+  static TLS centisec lon[EP_NP][EPBS]; /* buffer for 20 days unpacked ephe */
+  static TLS centisec out[2 * EP_NP];   /* buffer for return longitude
 					   and return speed */
   int p, pf;
   int ix, jdlong, iflagret;
@@ -237,10 +237,10 @@ err_exit:
 // same in double
 double *dephread2(double jd, int plalist, int flag, char *errtext)
 {
-  static int jdbase = INVALID_BASE;
-  static int lastplalist = 0;
-  static double lon[EP_NP][EPBS]; // buffer for 20 days unpacked ephe
-  static double out[2 * EP_NP];   // buffer for return longitude and return speed
+  static TLS int jdbase = INVALID_BASE;
+  static TLS int lastplalist = 0;
+  static TLS double lon[EP_NP][EPBS]; // buffer for 20 days unpacked ephe
+  static TLS double out[2 * EP_NP];   // buffer for return longitude and return speed
   int p, pf;
   int ix, jdlong, iflagret;
   double lp;
@@ -612,10 +612,10 @@ static void inpolq_l(int n, int o, double p, centisec *x, centisec *axu, centise
  * adxu pointer for storage of dx/dt  
  */
 {
-  static double q, q2, q3, q4, q5,
+  static TLS double q, q2, q3, q4, q5,
       p2, p3, p4, p5,
       u, u0, u1, u2;
-  static double lastp = 9999;
+  static TLS double lastp = 9999;
   double rl, rlp;
   centisec dm2, dm1, d0, dp1, dp2,
       d2m1, d20, d2p1, d2p2,
@@ -707,8 +707,8 @@ static int inpolq(int n, int o, double p, double *x, double *axu, double *adxu)
 // *axu	pointer for storage of result
 // *adxu pointer for storage of dx/dt
 {
-  static double q, q2, q3, q4, q5, p2, p3, p4, p5, u, u0, u1, u2;
-  static double lastp = 9999.0;
+  static TLS double q, q2, q3, q4, q5, p2, p3, p4, p5, u, u0, u1, u2;
+  static TLS double lastp = 9999.0;
   double dm2, dm1, d0, dp1, dp2,
       d2m1, d20, d2p1, d2p2,
       d30, d3p1, d3p2,
