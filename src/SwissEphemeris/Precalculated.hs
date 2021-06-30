@@ -29,6 +29,7 @@ module SwissEphemeris.Precalculated (
   -- * Convenience functions
   forPlanet,
   mkEphemerisBlockNumber,
+  extractEphemerisBlockNumber,
   -- * Setup functions
   setEphe4Path,
   -- * High-level read functions
@@ -116,7 +117,25 @@ data PlanetListOption
   | IncludeAll
   deriving (Eq, Show, Enum, Generic)
   
-newtype EphemerisBlockNumber = EphemerisBlockNumber Int 
+newtype EphemerisBlockNumber = 
+  EphemerisBlockNumber Int 
+  deriving (Eq, Show)
+
+-- | The 'Bounded' instance for 'EphemerisBlockNumber' comes from
+-- the underlying library's limits; not sure if it's an absolute
+-- range for Swiss Ephemeris itself, or just for the ephemeris
+-- /they/ use to precalculate.
+instance Bounded EphemerisBlockNumber where
+  minBound = EphemerisBlockNumber $ -20
+  maxBound = EphemerisBlockNumber 300
+  
+-- | The enum instance is a bit silly, but it enables us to
+-- use some syntactic sugar, like:
+-- >>> take 4 $ [EphemerisBlockNumber 244..]
+instance Enum EphemerisBlockNumber where
+  toEnum = EphemerisBlockNumber
+  fromEnum (EphemerisBlockNumber i) = i
+
 
 -- | Construct a valid ephemeris block number. As per the
 -- underlying library, all times between Julian day @-200000.0@
@@ -126,6 +145,10 @@ mkEphemerisBlockNumber :: Int -> Maybe EphemerisBlockNumber
 mkEphemerisBlockNumber n
   | n > -20 || n < 300 = Just . EphemerisBlockNumber $ n 
   | otherwise = Nothing
+  
+-- | Get the 'Int' inside an 'EphemerisBlockNumber'
+extractEphemerisBlockNumber :: EphemerisBlockNumber -> Int
+extractEphemerisBlockNumber (EphemerisBlockNumber n) = n
 
 -- | For extreme data locality, we schlep around unboxed vectors.
 -- Note that the higher level functions return regular 'Vector's,
