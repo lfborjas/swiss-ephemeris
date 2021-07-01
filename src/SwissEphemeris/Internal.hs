@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- |
 -- Module: SwissEphemeris.Internal
@@ -145,7 +146,19 @@ data SplitDegreesOption
 -- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847871 8. Date and time conversion functions>
 -- also cf. @julianDay@
 newtype JulianTime = JulianTime {unJulianTime :: Double}
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Num, Fractional, Real, RealFrac, Enum)
+
+{-
+instance Enum JulianTime where
+  fromEnum = floor
+  toEnum   = fromIntegral
+  succ     = (+1)
+  pred     = subtract 1
+  enumFrom (JulianTime a) = fmap JulianTime (enumFrom a)
+  enumFromTo (JulianTime a) (JulianTime b) = fmap JulianTime (enumFromTo a b)
+  enumFromThen (JulianTime a) (JulianTime b) = fmap JulianTime (enumFromThen a b)
+  enumFromThenTo (JulianTime a) (JulianTime b) (JulianTime c) = fmap JulianTime (enumFromThenTo a b c)
+-}
 
 -- | Represents an instant in sidereal time
 newtype SiderealTime = SiderealTime {unSiderealTime :: Double}

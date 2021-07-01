@@ -61,6 +61,8 @@ module SwissEphemeris
     calculateHousePosition,
     calculateHousePositionSimple,
     -- * Utilities for time calculations:
+    midnight,
+    noon,
     julianDay,
     gregorianDateTime,
     deltaTime,
@@ -113,6 +115,17 @@ withoutEphemerides =
   bracket_
     setNoEphemeridesPath
     closeEphemerides
+
+-- | 'JulianTime's are canonically at midnight when there's
+-- no fractional part.
+midnight :: JulianTime -> JulianTime
+midnight (JulianTime d) = toEnum . floor $ d
+
+-- | The canonical mid-day for a 'JulianTime'
+noon :: JulianTime -> JulianTime
+noon = (+ 0.5) . midnight
+
+
 
 -- | Given year, month and day as `Int` and a time as `Double`, return
 -- a single floating point number representing absolute `JulianTime`.
