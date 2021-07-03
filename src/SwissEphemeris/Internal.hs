@@ -140,6 +140,18 @@ data SplitDegreesOption
   | KeepSign
   | KeepDegrees
   deriving (Eq, Show, Enum, Generic)
+  
+-- | Calendar options
+data CalendarOption
+  = GregorianCal
+  | JulianCal
+  deriving (Eq, Show)
+  
+data EphemerisOption
+  = UseSwissEphemeris
+  | UseJPLEphemeris
+  | UseMoshierEphemeris
+  deriving (Eq, Show)
 
 -- | Represents an instant in Julian time.
 -- see:
@@ -335,3 +347,12 @@ numberToPlanet (PlanetNumber (CInt n)) =
 -- in e.g. 
 allocaErrorMessage :: (Ptr CChar -> IO b) -> IO b
 allocaErrorMessage = allocaArray 256
+
+calendarOptionToFlag :: CalendarOption -> GregFlag
+calendarOptionToFlag GregorianCal = gregorian 
+calendarOptionToFlag JulianCal    = julian 
+
+ephemerisOptionToFlag :: EphemerisOption -> EpheFlag
+ephemerisOptionToFlag UseSwissEphemeris   = useSwissEph 
+ephemerisOptionToFlag UseJPLEphemeris     = useJplEph 
+ephemerisOptionToFlag UseMoshierEphemeris = useMoshierEph 
