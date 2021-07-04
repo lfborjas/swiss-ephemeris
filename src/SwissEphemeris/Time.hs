@@ -36,7 +36,17 @@ module SwissEphemeris.Time (
   utcToJulianUT,
   utcToJulian,
   julianUTToUTC,
-  julianToUTC
+  julianToUTC,
+  -- * Delta Time
+  addDeltaTime,
+  subtractDeltaTime,
+  unsafeDeltaTime,
+  deltaTime,
+  safeDeltaTime,
+  deltaTimeSE,
+  universalToTerrestrial,
+  universalToTerrestrialSafe,
+  universalToTerrestrialSE
 ) where
 
 import Foreign.SwissEphemeris
@@ -46,7 +56,7 @@ import Data.Time
 import System.IO.Unsafe (unsafePerformIO)
 import Foreign
 import Foreign.C.String
-import Control.Monad.Fail (MonadFail)
+import Control.Monad.Fail (MonadFail(..))
 
 data TimeStandard
   = TT
@@ -70,12 +80,6 @@ data TimeStandard
 newtype JulianDay (s :: TimeStandard) =
   MkJulianDay { getJulianDay :: Double }
   deriving (Eq, Show, Enum)
-
-newtype DeltaTime = DT { getDeltaTime :: Double }
-  deriving (Eq, Show)
-  
-mkDeltaTime :: Real a => a -> DeltaTime
-mkDeltaTime = DT . realToFrac
 
 -- | A type that encodes an attempt to convert between
 -- temporal types. 
@@ -145,6 +149,16 @@ julianNoon (MkJulianDay d) = toEnum . floor $ d
 -- day.
 julianMidnight :: JulianDay ts -> JulianDay ts
 julianMidnight = MkJulianDay . subtract 0.5 . getJulianDay . julianNoon
+
+-- | Add time to catch up UT to TT; doesn't make sense
+-- for other time standards.
+addDeltaTime :: JulianDay 'UT1 -> Double -> JulianDay 'TT
+addDeltaTime (MkJulianDay jd) dt = MkJulianDay (jd + dt)
+
+-- | Subtract time to 'slow down' TT to UT; doesn't make
+-- sense for other time standards.
+subtractDeltaTime :: JulianDay 'TT -> Double -> JulianDay 'UT1
+subtractDeltaTime (MkJulianDay jd) dt = MkJulianDay (jd - dt)
 
 -------------------------------------------------------------------------------
 -- Generic UT functions
@@ -349,9 +363,9 @@ julianUT1ToUTC ut1 = do
 -- Delta Time
 -------------------------------------------------------------------------------
 
-unsafeDeltaTime :: JulianDay 'UT1 -> IO DeltaTime
+unsafeDeltaTime :: JulianDay 'UT1 -> IO Double
 unsafeDeltaTime (MkJulianDay jd) =
-  mkDeltaTime <$> c_swe_deltat (realToFrac jd)
+  realToFrac <$> c_swe_deltat (realToFrac jd)
   
 -- | Somewhat naïve delta time calculation: if no ephemeris
 -- mode has been selected, it will use the default tidal
@@ -359,12 +373,12 @@ unsafeDeltaTime (MkJulianDay jd) =
 -- otherwise, it will use whatever ephemeris is currently set.
 -- It's considered unsafe since switching ephemeris modes will
 -- result in an incongruent delta time. See 'safeDeltaTime'
-deltaTime :: JulianDay 'UT1 -> IO DeltaTime
+deltaTime :: JulianDay 'UT1 -> IO Double
 deltaTime = unsafeDeltaTime
 
 -- | Same as 'deltaTime', but fails if the given 'EphemerisOption'
 -- doesn't agree with the current ephemeris mode.
-safeDeltaTime :: MonadFail m => EphemerisOption -> JulianDay 'UT1 -> IO (m DeltaTime)
+safeDeltaTime :: MonadFail m => EphemerisOption -> JulianDay 'UT1 -> IO (m Double)
 safeDeltaTime epheOption (MkJulianDay jd) = 
   allocaErrorMessage $ \serr -> do
     dt <- c_swe_deltat_ex (realToFrac jd) (ephemerisOptionToFlag epheOption) serr
@@ -372,19 +386,24 @@ safeDeltaTime epheOption (MkJulianDay jd) =
       err <- peekCAString serr
       return $ fail err
     else do
-      return . pure . mkDeltaTime $ dt
+      return . pure . realToFrac $ dt
+
+deltaTimeSE :: MonadFail m => JulianDay 'UT1 -> IO (m Double)
+deltaTimeSE = safeDeltaTime UseSwissEphemeris
 
 universalToTerrestrial :: JulianDay 'UT1 -> IO (JulianDay 'TT)
-universalToTerrestrial jdut@(MkJulianDay j) = do
-  DT deltaT <- unsafeDeltaTime jdut
-  pure $ MkJulianDay (j + deltaT)
+universalToTerrestrial jdut = do
+  deltaT <- unsafeDeltaTime jdut
+  pure $ addDeltaTime jdut deltaT
   
-{-
-universalToTerrestrialSafe :: EphemerisOption -> JulianDay 'UT1 -> IO (m (JulianDay 'TT))
-universalToTerrestrialSafe eo jdut@(MkJulianDay j) = do
+
+universalToTerrestrialSafe :: MonadFail m => EphemerisOption -> JulianDay 'UT1 -> IO (m (JulianDay 'TT))
+universalToTerrestrialSafe eo jdut = do
   deltaT <- safeDeltaTime eo jdut
-  pure (getDeltaTime deltaT)
--}
+  pure $ addDeltaTime jdut <$> deltaT
+  
+universalToTerrestrialSE :: MonadFail m => JulianDay 'UT1 -> IO (m (JulianDay 'TT))
+universalToTerrestrialSE = universalToTerrestrialSafe UseSwissEphemeris 
 
 
 -------------------------------------------------------------------------------
