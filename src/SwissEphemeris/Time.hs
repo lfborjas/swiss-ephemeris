@@ -71,6 +71,12 @@ newtype JulianDay (s :: TimeStandard) =
   MkJulianDay { getJulianDay :: Double }
   deriving (Eq, Show, Enum)
 
+newtype DeltaTime = DT { getDeltaTime :: Double }
+  deriving (Eq, Show)
+  
+mkDeltaTime :: Real a => a -> DeltaTime
+mkDeltaTime = DT . realToFrac
+
 -- | A type that encodes an attempt to convert between
 -- temporal types. 
 newtype ConversionResult dt =
@@ -342,6 +348,43 @@ julianUT1ToUTC ut1 = do
 -------------------------------------------------------------------------------
 -- Delta Time
 -------------------------------------------------------------------------------
+
+unsafeDeltaTime :: JulianDay 'UT1 -> IO DeltaTime
+unsafeDeltaTime (MkJulianDay jd) =
+  mkDeltaTime <$> c_swe_deltat (realToFrac jd)
+  
+-- | Somewhat naïve delta time calculation: if no ephemeris
+-- mode has been selected, it will use the default tidal
+-- acceleration value as per the DE431 JPL ephemeris,
+-- otherwise, it will use whatever ephemeris is currently set.
+-- It's considered unsafe since switching ephemeris modes will
+-- result in an incongruent delta time. See 'safeDeltaTime'
+deltaTime :: JulianDay 'UT1 -> IO DeltaTime
+deltaTime = unsafeDeltaTime
+
+-- | Same as 'deltaTime', but fails if the given 'EphemerisOption'
+-- doesn't agree with the current ephemeris mode.
+safeDeltaTime :: MonadFail m => EphemerisOption -> JulianDay 'UT1 -> IO (m DeltaTime)
+safeDeltaTime epheOption (MkJulianDay jd) = 
+  allocaErrorMessage $ \serr -> do
+    dt <- c_swe_deltat_ex (realToFrac jd) (ephemerisOptionToFlag epheOption) serr
+    if dt < 0 then do
+      err <- peekCAString serr
+      return $ fail err
+    else do
+      return . pure . mkDeltaTime $ dt
+
+universalToTerrestrial :: JulianDay 'UT1 -> IO (JulianDay 'TT)
+universalToTerrestrial jdut@(MkJulianDay j) = do
+  DT deltaT <- unsafeDeltaTime jdut
+  pure $ MkJulianDay (j + deltaT)
+  
+{-
+universalToTerrestrialSafe :: EphemerisOption -> JulianDay 'UT1 -> IO (m (JulianDay 'TT))
+universalToTerrestrialSafe eo jdut@(MkJulianDay j) = do
+  deltaT <- safeDeltaTime eo jdut
+  pure (getDeltaTime deltaT)
+-}
 
 
 -------------------------------------------------------------------------------
