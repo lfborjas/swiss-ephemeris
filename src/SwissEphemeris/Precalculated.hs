@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- |
 -- Module: SwissEphemeris.Precalculated
@@ -239,38 +240,63 @@ data PlanetListOption
 -- | Up to three-digit numbers assigned to each
 -- 10,000 day block of ephemeris data; any given
 -- number will be padded with zeroes internally
--- to make up a Julian date, at midnight
+-- to make up a Julian date, at midnight.
 -- e.g. @EphemerisBlocknumber 244@
 -- corresponds to @jd = 2440000.5@, i.e.
 -- @1968-May-23 12:00:00 UTC@
 newtype EphemerisBlockNumber
   = EphemerisBlockNumber Int
-  deriving (Eq, Show)
+  deriving (Eq, Show, Ord)
 
 -- | The 'Bounded' instance for 'EphemerisBlockNumber' comes from
--- the underlying library's limits; not sure if it's an absolute
--- range for Swiss Ephemeris itself, or just for the ephemeris
--- /they/ use to precalculate.
+-- the underlying library's older limits; as reported in the manual:
+-- [section 2.1.1 three ephemerides](https://www.astro.com/swisseph/swisseph.htm#_Toc58931065)
+-- As of the time of writing, the range was from
+-- @JD -3026604.5@ to @JD 7857139.5@ 
+-- (i.e. 11 Aug 13000 BCE (-12999) Jul. to 7 Jan 16800 CE Greg.) 
+-- However, the underlying C code expects to work in a much smaller range:
+-- from @JD -200000.0@ to @JD 3000000.0@, which is "merely"
+-- from @6 Jun 5261 BCE@ to @15 Aug 3501 CE@; indicating that pre-calculated
+-- ephemeris are more suited for transits/astrology than more serious astronomical
+-- studies. I haven't dug into /why/ that limit has been kept other than
+-- the fact that it's old code, so it surely is possible to extend it.
 instance Bounded EphemerisBlockNumber where
   minBound = EphemerisBlockNumber $ -20
   maxBound = EphemerisBlockNumber 300
-
--- | The enum instance is a bit silly, but it enables us to
--- use some syntactic sugar, like:
--- @
---   take 4 $ [EphemerisBlockNumber 244..]
--- @
+  
+-- | Implements a lawful 'Bounded' 'Enum'
 instance Enum EphemerisBlockNumber where
+  succ en@(EphemerisBlockNumber n) = 
+    if en == maxBound then 
+      error "max bound reached"
+    else
+      EphemerisBlockNumber (succ n)
+  pred en@(EphemerisBlockNumber n) = 
+    if en == minBound  then
+      error "min bound reached"
+    else
+      EphemerisBlockNumber (pred n)
   toEnum = EphemerisBlockNumber
-  fromEnum (EphemerisBlockNumber i) = i
+  fromEnum (EphemerisBlockNumber n) = n
+  enumFrom x = enumFromTo x maxBound
+  enumFromThen x y = enumFromThenTo x y maxBound
+  enumFromTo (EphemerisBlockNumber n) (EphemerisBlockNumber m) =
+    fmap EphemerisBlockNumber (enumFromTo n m)
+  enumFromThenTo (EphemerisBlockNumber n) (EphemerisBlockNumber n') (EphemerisBlockNumber m) =
+    fmap EphemerisBlockNumber (enumFromThenTo n n' m)
+  
 
 -- | Construct a valid ephemeris block number. As per the
 -- underlying library, all times between Julian day @-200000.0@
 -- and @3000000.0@ are valid. Note that depending on which
--- ephemeris files you have, your effective range may be smaller.
+-- ephemeris files you have, your effective range may be smaller,
+-- or bigger. This is provided as a common denominator, but to get
+-- the /real/ range of your ephemeris, check out the @swe_get_current_file_data@
+-- function. 
+-- (cf. [section 2.6 of the manual](https://www.astro.com/swisseph/swephprg.htm#_Toc71121146))
 mkEphemerisBlockNumber :: Int -> Maybe EphemerisBlockNumber
 mkEphemerisBlockNumber n
-  | n > -20 || n < 300 = Just . EphemerisBlockNumber $ n
+  | n > extractEphemerisBlockNumber minBound && n < extractEphemerisBlockNumber maxBound = Just . EphemerisBlockNumber $ n
   | otherwise = Nothing
 
 -- | Get the 'Int' inside an 'EphemerisBlockNumber'

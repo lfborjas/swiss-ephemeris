@@ -26,6 +26,7 @@ module SwissEphemeris.Time (
   -- * Impure conversion typeclasses
   ToJulianDay(..),
   FromJulianDay(..),
+  -- ** Wrapper for fail-able conversions
   ConversionResult,
   getConversionResult,
   -- * Pure utility functions
@@ -95,11 +96,11 @@ type JulianDayUT1 = JulianDay 'UT1
 -- | A type that encodes an attempt to convert between
 -- temporal types. 
 newtype ConversionResult dt =
-  ConversionResult { getConversionResult :: Either String dt}
+  ConversionResult { getConversionResult :: Either String dt }
   deriving (Show, Functor, Applicative, Monad)
 
 instance Fail.MonadFail ConversionResult where
-  fail err = ConversionResult $ Left err
+  fail = ConversionResult . Left 
 
 
 -- | Conversion from a temporal value of type @from@
