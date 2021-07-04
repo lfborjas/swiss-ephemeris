@@ -46,6 +46,7 @@ import Data.Time
 import System.IO.Unsafe (unsafePerformIO)
 import Foreign
 import Foreign.C.String
+import Control.Monad.Fail (MonadFail)
 
 data TimeStandard
   = TT
@@ -91,7 +92,7 @@ class MonadFail m => ToJulianDay m jd from where
 
 instance MonadFail m => ToJulianDay m 'UT UTCTime where
   toJulianDay = return . pure . utcToJulianUT
-  
+
 instance MonadFail m => ToJulianDay m 'UT1 UTCTime where
   toJulianDay = utcToJulianUT1
 
@@ -100,15 +101,19 @@ instance MonadFail m => ToJulianDay m 'TT UTCTime where
 
 -- | Conversion from a 'JulianDay' in the 'TimeStandard'
 -- @jd@ to a temporal value of type @to@
--- It's bound to IO _and_ a containing functor since
--- in the general case, we need to interact with
--- the outside world, and may fail, when consulting
--- the necessary data.
+-- It's bound to IO since historical data may need to be consulted;
+-- however, as per the underlying library, it /cannot/ fail.
 class FromJulianDay jd to where
-  fromJulianDay :: JulianDay jd -> to
+  fromJulianDay :: JulianDay jd -> IO to
 
 instance FromJulianDay 'UT UTCTime where
-  fromJulianDay = julianUTToUTC
+  fromJulianDay = pure . julianUTToUTC
+  
+instance FromJulianDay 'UT1 UTCTime where
+  fromJulianDay = julianUT1ToUTC
+  
+instance FromJulianDay 'TT UTCTime where
+  fromJulianDay = julianTTToUTC
 
 -------------------------------------------------------------------------------
 -- UTILS
@@ -217,7 +222,6 @@ julianUTToUTC jd =
     dt = picosecondsToDiffTime $ round $ h * picosecondsInHour
 
 {-# DEPRECATED julianToUTC "Use 'julianUTToUTC', or a 'fromJulian' implementation" #-}
-
 julianToUTC :: JulianDay 'UT -> UTCTime
 julianToUTC = julianUTToUTC
 
@@ -231,7 +235,7 @@ splitUTC (UTCTime day time) =
     tod = timeToTimeOfDay time
 
 -------------------------------------------------------------------------------
--- Generic UTC->(UT1,TT) functions
+-- UTC->(UT1,TT) functions
 -------------------------------------------------------------------------------
 
 utcToJulianDays :: MonadFail m => UTCTime -> IO (m (JulianDay 'TT, JulianDay 'UT1))
@@ -267,8 +271,72 @@ utcToJulianUT1 ut =
 
 
 -------------------------------------------------------------------------------
--- Generic (UT1,TT) -> UTC functions
+-- (UT1,TT) -> UTC functions
 -------------------------------------------------------------------------------
+
+gregorianFromJulianDayTT :: JulianDay 'TT -> IO (Integer, Int, Int, TimeOfDay)
+gregorianFromJulianDayTT (MkJulianDay tt) = do
+  alloca $ \jyear -> alloca $ \jmon -> alloca $ \jday -> alloca
+    $ \jhour -> alloca $ \jmin -> alloca $ \jsec -> do
+      _ <-
+        c_swe_jdet_to_utc
+          (realToFrac tt)
+          gregorian
+          jyear
+          jmon
+          jday
+          jhour
+          jmin
+          jsec
+      year <- peek jyear
+      month <- peek jmon
+      day <- peek jday
+      hour <- peek jhour
+      minute <- peek jmin
+      second <- peek jsec
+      return
+        ( fromIntegral year,
+          fromIntegral month,
+          fromIntegral day,
+          TimeOfDay (fromIntegral hour) (fromIntegral minute) (realToFrac second)
+        )
+
+gregorianFromJulianDayUT1 :: JulianDay 'UT1 -> IO (Integer, Int, Int, TimeOfDay)
+gregorianFromJulianDayUT1 (MkJulianDay ut1) = do
+  alloca $ \jyear -> alloca $ \jmon -> alloca $ \jday -> alloca
+    $ \jhour -> alloca $ \jmin -> alloca $ \jsec -> do
+      _ <-
+        c_swe_jdut1_to_utc
+          (realToFrac ut1)
+          gregorian
+          jyear
+          jmon
+          jday
+          jhour
+          jmin
+          jsec
+      year <- peek jyear
+      month <- peek jmon
+      day <- peek jday
+      hour <- peek jhour
+      minute <- peek jmin
+      second <- peek jsec
+      return
+        ( fromIntegral year,
+          fromIntegral month,
+          fromIntegral day,
+          TimeOfDay (fromIntegral hour) (fromIntegral minute) (realToFrac second)
+        )
+
+julianTTToUTC :: JulianDay 'TT -> IO UTCTime
+julianTTToUTC tt = do
+  (y, m, d, tod) <- gregorianFromJulianDayTT tt
+  pure $ UTCTime (fromGregorian y m d) (timeOfDayToTime tod)
+  
+julianUT1ToUTC :: JulianDay 'UT1 -> IO UTCTime
+julianUT1ToUTC ut1 = do
+  (y, m, d, tod) <- gregorianFromJulianDayUT1 ut1
+  pure $ UTCTime (fromGregorian y m d) (timeOfDayToTime tod)
 
 
 -------------------------------------------------------------------------------
