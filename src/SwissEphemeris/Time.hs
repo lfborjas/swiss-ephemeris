@@ -1,8 +1,8 @@
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 -- |
 -- Module: SwissEphemeris.Time
@@ -14,94 +14,96 @@
 -- and Swiss Ephemeris time values.
 --
 -- @since 1.4.0.0
+module SwissEphemeris.Time
+  ( -- * The many faces of time
+    TimeStandard (..),
+    JulianDay,
+    JulianDayUT,
+    JulianDayTT,
+    JulianDayUT1,
+    getJulianDay,
 
-module SwissEphemeris.Time (
-  -- * The many faces of time
-  TimeStandard(..),
-  JulianDay,
-  JulianDayUT,
-  JulianDayTT,
-  JulianDayUT1,
-  getJulianDay,
-  -- * Impure conversion typeclasses
-  ToJulianDay(..),
-  FromJulianDay(..),
-  -- ** Wrapper for fail-able conversions
-  ConversionResult,
-  getConversionResult,
-  -- * Pure utility functions
-  coerceUT,
-  julianNoon,
-  julianMidnight,
-  -- ** Pure conversion functions
-  gregorianFromJulianDayUT,
-  julianDay,
-  gregorianToJulianDayUT,
-  gregorianDateTime,
-  utcToJulianUT,
-  utcToJulian,
-  julianUTToUTC,
-  julianToUTC,
-  -- * Delta Time
-  addDeltaTime,
-  subtractDeltaTime,
-  unsafeDeltaTime,
-  deltaTime,
-  safeDeltaTime,
-  deltaTimeSE,
-  universalToTerrestrial,
-  universalToTerrestrialSafe,
-  universalToTerrestrialSE
-) where
+    -- * Impure conversion typeclasses
+    ToJulianDay (..),
+    FromJulianDay (..),
 
-import Foreign.SwissEphemeris
-import SwissEphemeris.Internal
+    -- ** Wrapper for fail-able conversions
+    ConversionResult,
+    getConversionResult,
 
-import Data.Time
-import System.IO.Unsafe (unsafePerformIO)
-import Foreign
-import Foreign.C.String
+    -- * Pure utility functions
+    coerceUT,
+    julianNoon,
+    julianMidnight,
+
+    -- ** Pure conversion functions
+    gregorianFromJulianDayUT,
+    julianDay,
+    gregorianToJulianDayUT,
+    gregorianDateTime,
+    utcToJulianUT,
+    utcToJulian,
+    julianUTToUTC,
+    julianToUTC,
+
+    -- * Delta Time
+    addDeltaTime,
+    subtractDeltaTime,
+    unsafeDeltaTime,
+    deltaTime,
+    safeDeltaTime,
+    deltaTimeSE,
+    universalToTerrestrial,
+    universalToTerrestrialSafe,
+    universalToTerrestrialSE,
+  )
+where
 
 import qualified Control.Monad.Fail as Fail
+import Data.Time
+import Foreign
+import Foreign.C.String
+import Foreign.SwissEphemeris
+import SwissEphemeris.Internal
+import System.IO.Unsafe (unsafePerformIO)
 
 data TimeStandard
-  = TT
-  -- ^ Terrestrial Time (successor to Ephemeris Time)
-  | UT1
-  -- ^ Universal Time, explicitly in its @UT1@ form.
-  | UT
-  -- ^ Universal Time, in any of its forms; depending
-  -- on how it was constructed (in most cases, UTC)
-    deriving (Eq, Show)
+  = -- | Terrestrial Time (successor to Ephemeris Time)
+    TT
+  | -- | Universal Time, explicitly in its @UT1@ form.
+    UT1
+  | -- | Universal Time, in any of its forms; depending
+    -- on how it was constructed (in most cases, UTC)
+    UT
+  deriving (Eq, Show)
 
 -- A @JulianDay@ can have different provenances, witnessed
 -- by its accompanying phantom type:
 --
 -- * It could've been converted, purely, from a UTC value,
---   as such, its witness is 'UTC'
+--   as such, its witness is 'UT'
 -- * It could'be been produced by consulting tidal/leap second
 --   information, as done by the Swiss Ephemeris library,
 --   in which case it's 'TT' (aka, somewhat wrongly, as Ephemeris
 --   time,) or 'UT1'.
-newtype JulianDay (s :: TimeStandard) =
-  MkJulianDay { getJulianDay :: Double }
+newtype JulianDay (s :: TimeStandard) = MkJulianDay {getJulianDay :: Double}
   deriving (Eq, Show, Enum)
 
 -- Aliases for those who dislike datakinds
 
-type JulianDayTT  = JulianDay 'TT
-type JulianDayUT  = JulianDay 'UT
-type JulianDayUT1 = JulianDay 'UT1 
+type JulianDayTT = JulianDay 'TT
+
+type JulianDayUT = JulianDay 'UT
+
+type JulianDayUT1 = JulianDay 'UT1
 
 -- | A type that encodes an attempt to convert between
--- temporal types. 
-newtype ConversionResult dt =
-  ConversionResult { getConversionResult :: Either String dt }
+-- temporal types.
+newtype ConversionResult dt = ConversionResult {getConversionResult :: Either String dt}
   deriving (Show, Functor, Applicative, Monad)
 
 instance Fail.MonadFail ConversionResult where
-  fail = ConversionResult . Left 
-
+  fail = ConversionResult . Left
 
 -- | Conversion from a temporal value of type @from@
 -- to a 'JulianDay' in the 'TimeStandard' @jd@.
@@ -130,10 +132,10 @@ class FromJulianDay jd to where
 
 instance FromJulianDay 'UT UTCTime where
   fromJulianDay = pure . julianUTToUTC
-  
+
 instance FromJulianDay 'UT1 UTCTime where
   fromJulianDay = julianUT1ToUTC
-  
+
 instance FromJulianDay 'TT UTCTime where
   fromJulianDay = julianTTToUTC
 
@@ -220,7 +222,7 @@ gregorianDateTime :: JulianDay 'UT -> (Int, Int, Int, Double)
 gregorianDateTime jd =
   (fromIntegral y, m, d, h)
   where
-   (y, m, d, h) = gregorianFromJulianDayUT jd
+    (y, m, d, h) = gregorianFromJulianDayUT jd
 
 picosecondsInHour :: Double
 picosecondsInHour = 3600 * 1e12
@@ -280,25 +282,26 @@ splitUTC (UTCTime day time) =
 utcToJulianDays :: Fail.MonadFail m => UTCTime -> IO (m (JulianDay 'TT, JulianDay 'UT1))
 utcToJulianDays ut =
   let (y, m, d, TimeOfDay h mn s) = splitUTC ut
-  in allocaArray 2 $ \dret -> allocaErrorMessage $ \serr -> do
-    retval <-
-      c_swe_utc_to_jd
-        (fromIntegral y)
-        (fromIntegral m)
-        (fromIntegral d)
-        (fromIntegral h)
-        (fromIntegral mn)
-        (realToFrac s)
-        gregorian
-        dret
-        serr
+   in allocaArray 2 $ \dret -> allocaErrorMessage $ \serr -> do
+        retval <-
+          c_swe_utc_to_jd
+            (fromIntegral y)
+            (fromIntegral m)
+            (fromIntegral d)
+            (fromIntegral h)
+            (fromIntegral mn)
+            (realToFrac s)
+            gregorian
+            dret
+            serr
 
-    if retval < 0 then do
-      msg <- peekCAString serr
-      return $ Fail.fail msg
-    else do
-      (tt:ut1:_) <- peekArray 2 dret
-      return $ pure (MkJulianDay . realToFrac $ tt, MkJulianDay . realToFrac  $ ut1)
+        if retval < 0
+          then do
+            msg <- peekCAString serr
+            return $ Fail.fail msg
+          else do
+            (tt : ut1 : _) <- peekArray 2 dret
+            return $ pure (MkJulianDay . realToFrac $ tt, MkJulianDay . realToFrac $ ut1)
 
 utcToJulianTT :: Fail.MonadFail m => UTCTime -> IO (m (JulianDay 'TT))
 utcToJulianTT ut =
@@ -308,15 +311,14 @@ utcToJulianUT1 :: Fail.MonadFail m => UTCTime -> IO (m (JulianDay 'UT1))
 utcToJulianUT1 ut =
   fmap snd <$> utcToJulianDays ut
 
-
 -------------------------------------------------------------------------------
 -- (UT1,TT) -> UTC functions
 -------------------------------------------------------------------------------
 
 gregorianFromJulianDayTT :: JulianDay 'TT -> IO (Integer, Int, Int, TimeOfDay)
 gregorianFromJulianDayTT (MkJulianDay tt) = do
-  alloca $ \jyear -> alloca $ \jmon -> alloca $ \jday -> alloca
-    $ \jhour -> alloca $ \jmin -> alloca $ \jsec -> do
+  alloca $ \jyear -> alloca $ \jmon -> alloca $ \jday -> alloca $
+    \jhour -> alloca $ \jmin -> alloca $ \jsec -> do
       _ <-
         c_swe_jdet_to_utc
           (realToFrac tt)
@@ -342,8 +344,8 @@ gregorianFromJulianDayTT (MkJulianDay tt) = do
 
 gregorianFromJulianDayUT1 :: JulianDay 'UT1 -> IO (Integer, Int, Int, TimeOfDay)
 gregorianFromJulianDayUT1 (MkJulianDay ut1) = do
-  alloca $ \jyear -> alloca $ \jmon -> alloca $ \jday -> alloca
-    $ \jhour -> alloca $ \jmin -> alloca $ \jsec -> do
+  alloca $ \jyear -> alloca $ \jmon -> alloca $ \jday -> alloca $
+    \jhour -> alloca $ \jmin -> alloca $ \jsec -> do
       _ <-
         c_swe_jdut1_to_utc
           (realToFrac ut1)
@@ -371,12 +373,11 @@ julianTTToUTC :: JulianDay 'TT -> IO UTCTime
 julianTTToUTC tt = do
   (y, m, d, tod) <- gregorianFromJulianDayTT tt
   pure $ UTCTime (fromGregorian y m d) (timeOfDayToTime tod)
-  
+
 julianUT1ToUTC :: JulianDay 'UT1 -> IO UTCTime
 julianUT1ToUTC ut1 = do
   (y, m, d, tod) <- gregorianFromJulianDayUT1 ut1
   pure $ UTCTime (fromGregorian y m d) (timeOfDayToTime tod)
-
 
 -------------------------------------------------------------------------------
 -- Delta Time
@@ -385,7 +386,7 @@ julianUT1ToUTC ut1 = do
 unsafeDeltaTime :: JulianDay 'UT1 -> IO Double
 unsafeDeltaTime (MkJulianDay jd) =
   realToFrac <$> c_swe_deltat (realToFrac jd)
-  
+
 -- | Somewhat naïve delta time calculation: if no ephemeris
 -- mode has been selected, it will use the default tidal
 -- acceleration value as per the DE431 JPL ephemeris,
@@ -398,14 +399,15 @@ deltaTime = unsafeDeltaTime
 -- | Same as 'deltaTime', but fails if the given 'EphemerisOption'
 -- doesn't agree with the current ephemeris mode.
 safeDeltaTime :: Fail.MonadFail m => EphemerisOption -> JulianDay 'UT1 -> IO (m Double)
-safeDeltaTime epheOption (MkJulianDay jd) = 
+safeDeltaTime epheOption (MkJulianDay jd) =
   allocaErrorMessage $ \serr -> do
     dt <- c_swe_deltat_ex (realToFrac jd) (ephemerisOptionToFlag epheOption) serr
-    if dt < 0 then do
-      err <- peekCAString serr
-      return $ Fail.fail err
-    else do
-      return . pure . realToFrac $ dt
+    if dt < 0
+      then do
+        err <- peekCAString serr
+        return $ Fail.fail err
+      else do
+        return . pure . realToFrac $ dt
 
 deltaTimeSE :: Fail.MonadFail m => JulianDay 'UT1 -> IO (m Double)
 deltaTimeSE = safeDeltaTime UseSwissEphemeris
@@ -414,21 +416,18 @@ universalToTerrestrial :: JulianDay 'UT1 -> IO (JulianDay 'TT)
 universalToTerrestrial jdut = do
   deltaT <- unsafeDeltaTime jdut
   pure $ addDeltaTime jdut deltaT
-  
 
 universalToTerrestrialSafe :: Fail.MonadFail m => EphemerisOption -> JulianDay 'UT1 -> IO (m (JulianDay 'TT))
 universalToTerrestrialSafe eo jdut = do
   deltaT <- safeDeltaTime eo jdut
   pure $ addDeltaTime jdut <$> deltaT
-  
+
 universalToTerrestrialSE :: Fail.MonadFail m => JulianDay 'UT1 -> IO (m (JulianDay 'TT))
-universalToTerrestrialSE = universalToTerrestrialSafe UseSwissEphemeris 
-
+universalToTerrestrialSE = universalToTerrestrialSafe UseSwissEphemeris
 
 -------------------------------------------------------------------------------
--- Sidereal Time 
+-- Sidereal Time
 -------------------------------------------------------------------------------
-
 
 {- NOTES:
 
