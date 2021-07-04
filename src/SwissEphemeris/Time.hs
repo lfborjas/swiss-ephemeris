@@ -19,6 +19,10 @@ module SwissEphemeris.Time (
   -- * The many faces of time
   TimeStandard(..),
   JulianDay,
+  JulianDayUT,
+  JulianDayTT,
+  JulianDayUT1,
+  getJulianDay,
   -- * Impure conversion typeclasses
   ToJulianDay(..),
   FromJulianDay(..),
@@ -80,6 +84,12 @@ data TimeStandard
 newtype JulianDay (s :: TimeStandard) =
   MkJulianDay { getJulianDay :: Double }
   deriving (Eq, Show, Enum)
+
+-- Aliases for those who dislike datakinds
+
+type JulianDayTT  = JulianDay 'TT
+type JulianDayUT  = JulianDay 'UT
+type JulianDayUT1 = JulianDay 'UT1 
 
 -- | A type that encodes an attempt to convert between
 -- temporal types. 
@@ -227,7 +237,11 @@ utcToJulianUT (UTCTime day time) =
     (y, m, d) = toGregorian day
     h = (1 / picosecondsInHour) * fromIntegral (diffTimeToPicoseconds time)
 
-{-# DEPRECATED utcToJulian "Use 'utcToJulianUT' instead." #-}
+-- | See 'utcToJulianUT' -- this function is provided
+-- for convenience in contexts where the ~1s accuracy gain
+-- is not worth the more complicated type signature of
+-- 'toJulian', but you'll get a "lesser" JulianDay
+-- that's only as precise as its input.
 utcToJulian :: UTCTime -> JulianDay 'UT
 utcToJulian = utcToJulianUT
 
@@ -241,7 +255,10 @@ julianUTToUTC jd =
     day = fromGregorian (fromIntegral y) m d
     dt = picosecondsToDiffTime $ round $ h * picosecondsInHour
 
-{-# DEPRECATED julianToUTC "Use 'julianUTToUTC', or a 'fromJulian' implementation" #-}
+-- | See 'julianUTToUTC' -- this function is provided
+-- for convenience in contexts where a slightly innacurate
+-- JulianDay is worth it to stay in a pure context, otherwise,
+-- see 'fromJulian'.
 julianToUTC :: JulianDay 'UT -> UTCTime
 julianToUTC = julianUTToUTC
 
