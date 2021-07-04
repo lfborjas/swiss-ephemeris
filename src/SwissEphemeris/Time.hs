@@ -22,6 +22,8 @@ module SwissEphemeris.Time
     JulianDayTT,
     JulianDayUT1,
     getJulianDay,
+    SiderealTime,
+    getSiderealTime,
 
     -- * Impure conversion typeclasses
     ToJulianDay (..),
@@ -56,6 +58,10 @@ module SwissEphemeris.Time
     universalToTerrestrial,
     universalToTerrestrialSafe,
     universalToTerrestrialSE,
+    
+    -- * Sidereal time
+    julianToSiderealSimple,
+    julianToSidereal
   )
 where
 
@@ -96,6 +102,10 @@ type JulianDayTT = JulianDay 'TT
 type JulianDayUT = JulianDay 'UT
 
 type JulianDayUT1 = JulianDay 'UT1
+
+-- TODO(luis) move @SiderealTime@ here
+getSiderealTime :: SiderealTime -> Double
+getSiderealTime = unSiderealTime
 
 -- | A type that encodes an attempt to convert between
 -- temporal types.
@@ -428,6 +438,24 @@ universalToTerrestrialSE = universalToTerrestrialSafe UseSwissEphemeris
 -------------------------------------------------------------------------------
 -- Sidereal Time
 -------------------------------------------------------------------------------
+--
+-- | Given `JulianTime`, get `SiderealTime`. May consult ephemerides data, hence it being in IO,
+-- will have to calculate obliquity at the given julian time, so it'll be slightly slower than
+-- `calculateSiderealTime`.
+julianToSiderealSimple :: JulianDay 'UT1 -> IO SiderealTime
+julianToSiderealSimple (MkJulianDay jt) = do
+  sidTime <- c_swe_sidtime (realToFrac jt)
+  pure . SiderealTime $ realToFrac sidTime
+
+-- | Given a `JulianTime` and `ObliquityInformation`, calculate the equivalent `SiderealTime`.
+-- prefer it over `calculateSiderealTimeSimple` if you already obtained `ObliquityInformation`
+-- for another calculation.
+julianToSidereal :: JulianDay 'UT1 -> ObliquityInformation -> IO SiderealTime
+julianToSidereal (MkJulianDay jt) on = do
+  let obliq = realToFrac $ eclipticObliquity on
+      nut = realToFrac $ nutationLongitude on
+  sidTime <- c_swe_sidtime0 (realToFrac jt) obliq nut
+  pure . SiderealTime $ realToFrac sidTime
 
 {- NOTES:
 
