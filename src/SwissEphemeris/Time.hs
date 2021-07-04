@@ -22,6 +22,8 @@ module SwissEphemeris.Time (
   -- * Impure conversion typeclasses
   ToJulianDay(..),
   FromJulianDay(..),
+  ConversionResult,
+  getConversionResult,
   -- * Pure utility functions
   coerceUT,
   julianNoon,
@@ -68,23 +70,32 @@ newtype JulianDay (s :: TimeStandard) =
   MkJulianDay { getJulianDay :: Double }
   deriving (Eq, Show, Enum)
 
+-- | A type that encodes an attempt to convert between
+-- temporal types. 
+newtype ConversionResult dt =
+  ConversionResult { getConversionResult :: Either String dt}
+  deriving (Show, Functor, Applicative, Monad)
+
+instance MonadFail ConversionResult where
+  fail err = ConversionResult $ Left err
+
 
 -- | Conversion from a temporal value of type @from@
 -- to a 'JulianDay' in the 'TimeStandard' @jd@.
--- It's bound to IO _and_ a containing functor since
+-- It's bound to IO _and_ a containing 'MonadFail' since
 -- in the general case, we need to interact with
 -- the outside world, and may fail, when consulting
 -- the necessary data.
-class Functor m => ToJulianDay m jd from where
+class MonadFail m => ToJulianDay m jd from where
   toJulianDay :: from -> IO (m (JulianDay jd))
 
-instance ToJulianDay (Either String) 'UT UTCTime where
-  toJulianDay = pure . Right . utcToJulianUT
-
-instance ToJulianDay (Either String) 'UT1 UTCTime where
+instance MonadFail m => ToJulianDay m 'UT UTCTime where
+  toJulianDay = return . pure . utcToJulianUT
+  
+instance MonadFail m => ToJulianDay m 'UT1 UTCTime where
   toJulianDay = utcToJulianUT1
 
-instance ToJulianDay (Either String) 'TT UTCTime where
+instance MonadFail m => ToJulianDay m 'TT UTCTime where
   toJulianDay = utcToJulianTT
 
 -- | Conversion from a 'JulianDay' in the 'TimeStandard'
@@ -206,6 +217,7 @@ julianUTToUTC jd =
     dt = picosecondsToDiffTime $ round $ h * picosecondsInHour
 
 {-# DEPRECATED julianToUTC "Use 'julianUTToUTC', or a 'fromJulian' implementation" #-}
+
 julianToUTC :: JulianDay 'UT -> UTCTime
 julianToUTC = julianUTToUTC
 
@@ -222,7 +234,7 @@ splitUTC (UTCTime day time) =
 -- Generic UTC->(UT1,TT) functions
 -------------------------------------------------------------------------------
 
-utcToJulianDays :: UTCTime -> IO (Either String (JulianDay 'TT, JulianDay 'UT1))
+utcToJulianDays :: MonadFail m => UTCTime -> IO (m (JulianDay 'TT, JulianDay 'UT1))
 utcToJulianDays ut =
   let (y, m, d, TimeOfDay h mn s) = splitUTC ut
   in allocaArray 2 $ \dret -> allocaErrorMessage $ \serr -> do
@@ -240,16 +252,16 @@ utcToJulianDays ut =
 
     if retval < 0 then do
       msg <- peekCAString serr
-      pure $ Left msg
+      return $ fail msg
     else do
       (tt:ut1:_) <- peekArray 2 dret
-      pure $ Right (MkJulianDay . realToFrac $ tt, MkJulianDay . realToFrac  $ ut1)
+      return $ pure (MkJulianDay . realToFrac $ tt, MkJulianDay . realToFrac  $ ut1)
 
-utcToJulianTT :: UTCTime -> IO (Either String (JulianDay 'TT))
+utcToJulianTT :: MonadFail m => UTCTime -> IO (m (JulianDay 'TT))
 utcToJulianTT ut =
   fmap fst <$> utcToJulianDays ut
 
-utcToJulianUT1 :: UTCTime -> IO (Either String (JulianDay 'UT1))
+utcToJulianUT1 :: MonadFail m => UTCTime -> IO (m (JulianDay 'UT1))
 utcToJulianUT1 ut =
   fmap snd <$> utcToJulianDays ut
 
@@ -267,3 +279,44 @@ utcToJulianUT1 ut =
 -------------------------------------------------------------------------------
 -- Sidereal Time 
 -------------------------------------------------------------------------------
+
+
+{- NOTES:
+
+Given the following UTCTime:
+2021-07-03 23:05:54.696005 UTC
+
+if we ask for a UT JD:
+jd <- toJulianDay now :: (IO (Maybe (JulianDay 'UT)))
+
+we get:
+Just (MkJulianDay {getJulianDay = 2459399.4624386113})
+
+plugging into the nasa conversion tool (https://ssd.jpl.nasa.gov/tc.cgi#top)
+they say:
+2021-Jul-03 23:05:54.7
+
+a ut1:
+Just (MkJulianDay {getJulianDay = 2459399.46243737})
+for Nasa:
+2021-Jul-03 23:05:54.58
+
+and a TT:
+Just (MkJulianDay {getJulianDay = 2459399.463239352})
+
+for Nasa:
+2021-Jul-03 23:07:03.88
+
+if we use the deltaT function for the UT1 ts:
+deltaTime (JulianTime 2459399.46243737)
+we get:
+8.019823376913656e-4
+
+and then:
+2459399.46243737 + 8.019823376913656e-4
+should give us TT?
+the result is:
+2459399.463239352
+
+which is exactly TT!!!
+-}

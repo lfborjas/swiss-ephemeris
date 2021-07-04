@@ -262,7 +262,7 @@ foreign import ccall unsafe "swephexp.h swe_jdet_to_utc"
                       -- ^ sec
                       -> IO ()
                       
-foreign import ccall unsafe "swephexp.h swe_jut1_to_utc"
+foreign import ccall unsafe "swephexp.h swe_jdut1_to_utc"
     c_swe_jut1_to_utc :: CDouble
                       -- ^ JD
                       -> GregFlag
