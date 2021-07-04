@@ -34,8 +34,8 @@ module SwissEphemeris.Time (
   julianMidnight,
   -- ** Pure conversion functions
   gregorianFromJulianDayUT,
-  gregorianToJulianDayUT,
   julianDay,
+  gregorianToJulianDayUT,
   gregorianDateTime,
   utcToJulianUT,
   utcToJulian,
@@ -60,7 +60,8 @@ import Data.Time
 import System.IO.Unsafe (unsafePerformIO)
 import Foreign
 import Foreign.C.String
-import Control.Monad.Fail (MonadFail(..))
+
+import qualified Control.Monad.Fail as Fail
 
 data TimeStandard
   = TT
@@ -97,7 +98,7 @@ newtype ConversionResult dt =
   ConversionResult { getConversionResult :: Either String dt}
   deriving (Show, Functor, Applicative, Monad)
 
-instance MonadFail ConversionResult where
+instance Fail.MonadFail ConversionResult where
   fail err = ConversionResult $ Left err
 
 
@@ -107,16 +108,16 @@ instance MonadFail ConversionResult where
 -- in the general case, we need to interact with
 -- the outside world, and may fail, when consulting
 -- the necessary data.
-class MonadFail m => ToJulianDay m jd from where
+class Fail.MonadFail m => ToJulianDay m jd from where
   toJulianDay :: from -> IO (m (JulianDay jd))
 
-instance MonadFail m => ToJulianDay m 'UT UTCTime where
+instance Fail.MonadFail m => ToJulianDay m 'UT UTCTime where
   toJulianDay = return . pure . utcToJulianUT
 
-instance MonadFail m => ToJulianDay m 'UT1 UTCTime where
+instance Fail.MonadFail m => ToJulianDay m 'UT1 UTCTime where
   toJulianDay = utcToJulianUT1
 
-instance MonadFail m => ToJulianDay m 'TT UTCTime where
+instance Fail.MonadFail m => ToJulianDay m 'TT UTCTime where
   toJulianDay = utcToJulianTT
 
 -- | Conversion from a 'JulianDay' in the 'TimeStandard'
@@ -275,7 +276,7 @@ splitUTC (UTCTime day time) =
 -- UTC->(UT1,TT) functions
 -------------------------------------------------------------------------------
 
-utcToJulianDays :: MonadFail m => UTCTime -> IO (m (JulianDay 'TT, JulianDay 'UT1))
+utcToJulianDays :: Fail.MonadFail m => UTCTime -> IO (m (JulianDay 'TT, JulianDay 'UT1))
 utcToJulianDays ut =
   let (y, m, d, TimeOfDay h mn s) = splitUTC ut
   in allocaArray 2 $ \dret -> allocaErrorMessage $ \serr -> do
@@ -293,16 +294,16 @@ utcToJulianDays ut =
 
     if retval < 0 then do
       msg <- peekCAString serr
-      return $ fail msg
+      return $ Fail.fail msg
     else do
       (tt:ut1:_) <- peekArray 2 dret
       return $ pure (MkJulianDay . realToFrac $ tt, MkJulianDay . realToFrac  $ ut1)
 
-utcToJulianTT :: MonadFail m => UTCTime -> IO (m (JulianDay 'TT))
+utcToJulianTT :: Fail.MonadFail m => UTCTime -> IO (m (JulianDay 'TT))
 utcToJulianTT ut =
   fmap fst <$> utcToJulianDays ut
 
-utcToJulianUT1 :: MonadFail m => UTCTime -> IO (m (JulianDay 'UT1))
+utcToJulianUT1 :: Fail.MonadFail m => UTCTime -> IO (m (JulianDay 'UT1))
 utcToJulianUT1 ut =
   fmap snd <$> utcToJulianDays ut
 
@@ -395,17 +396,17 @@ deltaTime = unsafeDeltaTime
 
 -- | Same as 'deltaTime', but fails if the given 'EphemerisOption'
 -- doesn't agree with the current ephemeris mode.
-safeDeltaTime :: MonadFail m => EphemerisOption -> JulianDay 'UT1 -> IO (m Double)
+safeDeltaTime :: Fail.MonadFail m => EphemerisOption -> JulianDay 'UT1 -> IO (m Double)
 safeDeltaTime epheOption (MkJulianDay jd) = 
   allocaErrorMessage $ \serr -> do
     dt <- c_swe_deltat_ex (realToFrac jd) (ephemerisOptionToFlag epheOption) serr
     if dt < 0 then do
       err <- peekCAString serr
-      return $ fail err
+      return $ Fail.fail err
     else do
       return . pure . realToFrac $ dt
 
-deltaTimeSE :: MonadFail m => JulianDay 'UT1 -> IO (m Double)
+deltaTimeSE :: Fail.MonadFail m => JulianDay 'UT1 -> IO (m Double)
 deltaTimeSE = safeDeltaTime UseSwissEphemeris
 
 universalToTerrestrial :: JulianDay 'UT1 -> IO (JulianDay 'TT)
@@ -414,12 +415,12 @@ universalToTerrestrial jdut = do
   pure $ addDeltaTime jdut deltaT
   
 
-universalToTerrestrialSafe :: MonadFail m => EphemerisOption -> JulianDay 'UT1 -> IO (m (JulianDay 'TT))
+universalToTerrestrialSafe :: Fail.MonadFail m => EphemerisOption -> JulianDay 'UT1 -> IO (m (JulianDay 'TT))
 universalToTerrestrialSafe eo jdut = do
   deltaT <- safeDeltaTime eo jdut
   pure $ addDeltaTime jdut <$> deltaT
   
-universalToTerrestrialSE :: MonadFail m => JulianDay 'UT1 -> IO (m (JulianDay 'TT))
+universalToTerrestrialSE :: Fail.MonadFail m => JulianDay 'UT1 -> IO (m (JulianDay 'TT))
 universalToTerrestrialSE = universalToTerrestrialSafe UseSwissEphemeris 
 
 
