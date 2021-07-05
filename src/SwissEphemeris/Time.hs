@@ -103,9 +103,9 @@ type JulianDayUT = JulianDay 'UT
 
 type JulianDayUT1 = JulianDay 'UT1
 
--- TODO(luis) move @SiderealTime@ here
-getSiderealTime :: SiderealTime -> Double
-getSiderealTime = unSiderealTime
+-- | Represents an instant in sidereal time
+newtype SiderealTime = SiderealTime {getSiderealTime:: Double}
+  deriving (Show, Eq, Ord)
 
 -- | A type that encodes an attempt to convert between
 -- temporal types. 
@@ -461,7 +461,7 @@ universalToTerrestrialSE = universalToTerrestrialSafe UseSwissEphemeris
 -- Sidereal Time
 -------------------------------------------------------------------------------
 --
--- | Given `JulianTime`, get `SiderealTime`. May consult ephemerides data, hence it being in IO,
+-- | Given `JulianDay`, get `SiderealTime`. May consult ephemerides data, hence it being in IO,
 -- will have to calculate obliquity at the given julian time, so it'll be slightly slower than
 -- `calculateSiderealTime`.
 julianToSiderealSimple :: JulianDay 'UT1 -> IO SiderealTime
@@ -469,7 +469,7 @@ julianToSiderealSimple (MkJulianDay jt) = do
   sidTime <- c_swe_sidtime (realToFrac jt)
   pure . SiderealTime $ realToFrac sidTime
 
--- | Given a `JulianTime` and `ObliquityInformation`, calculate the equivalent `SiderealTime`.
+-- | Given a `JulianDay` and `ObliquityInformation`, calculate the equivalent `SiderealTime`.
 -- prefer it over `calculateSiderealTimeSimple` if you already obtained `ObliquityInformation`
 -- for another calculation.
 julianToSidereal :: JulianDay 'UT1 -> ObliquityInformation -> IO SiderealTime
@@ -506,7 +506,7 @@ for Nasa:
 2021-Jul-03 23:07:03.88
 
 if we use the deltaT function for the UT1 ts:
-deltaTime (JulianTime 2459399.46243737)
+deltaTime jdut1 -- (JulianDay 2459399.46243737)
 we get:
 8.019823376913656e-4
 

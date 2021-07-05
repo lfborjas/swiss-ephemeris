@@ -9,46 +9,17 @@ import Test.Hspec
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
-import Data.Time.Format.ISO8601
 import Data.Time
-import Data.Maybe (fromJust, isJust)
+import Data.Maybe (isJust)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Arbitrary ()
-
-ephePath :: FilePath
-ephePath = "./swedist/sweph_18"
+import Utils ( ephePath, mkUTC, civilTime )
 
 withEphemeris :: IO () -> IO ()
 withEphemeris act = do
   fullPath <- makeAbsolute ephePath
   withEphemerides fullPath $ do
     act
-
-mkUTC :: String -> UTCTime
-mkUTC  = fromJust . iso8601ParseM
-
--- | Generate an arbitrary 'UTCTime' before the time of writing these
--- tests. Due to the nature of leap seconds, we can't assert authoritatively
--- that producing a julian day from a utc time will not fail: if
--- a new leap second is documented and this library hasn't been updated,
--- conversion /will/ fail and it can /only/ be resolved by updating
--- the Swiss Ephemeris version (and thus updating this library,) or
--- providing a file with additional leap seconds. See
--- [8.3.  Handling of leap seconds and the file seleapsec.txt](https://www.astro.com/swisseph/swephprg.htm#_Toc71121195).
--- [Known leap seconds](https://www.ietf.org/timezones/data/leap-seconds.list)
--- should, however, work with no complaints from the library.
-civilTime :: Gen UTCTime
-civilTime =
-  arbitrary `suchThat` isNotLeapSecond
-  where
-    -- The `arbitrary` instance for `UTCTime` will produce fake
-    -- leap seconds such as @-5779-06-16T23:59:60Z@, which is
-    -- _not_ a valid leap second, even if it's a valid 'UTCTime';
-    -- the C library doesn't like fake leap seconds.
-    isNotLeapSecond (UTCTime _ time) =
-      sec < 60
-      where
-        TimeOfDay _ _ sec = timeToTimeOfDay time
 
 leapSeconds :: Gen UTCTime
 leapSeconds = 

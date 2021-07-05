@@ -98,7 +98,7 @@ import Foreign.SweEphe4
   )
 import GHC.Generics (Generic)
 import SwissEphemeris.Internal
-  ( JulianTime (unJulianTime),
+  ( 
     Planet
       ( Chiron,
         Jupiter,
@@ -117,6 +117,7 @@ import SwissEphemeris.Internal
       ),
     allocaErrorMessage,
   )
+import SwissEphemeris.Time
 
 {- $precalc
    Pre-calculated Ephemeris are disk-persisted binary blocks of 10,000 days
@@ -210,7 +211,7 @@ data EphemerisPosition a = EphemerisPosition
 -- | The positions of all planets for a given time,
 -- plus ecliptic and nutation.
 data Ephemeris a = Ephemeris
-  { epheDate :: !JulianTime,
+  { epheDate :: !JulianDayUT1,
     -- ^ julian time for this ephemeris
     epheEcliptic :: !a,
     epheNutation :: !a,
@@ -321,7 +322,7 @@ setEphe4Path path =
   withCString path $ \baseEphe4Path -> c_ephe4_set_ephe_path baseEphe4Path
 
 -- | Given a function to convert a vector of doubles to a type for ephemeris,
--- a list of 'PlanetListOption', a list of 'EpheCalcOption' and a 'JulianTime',
+-- a list of 'PlanetListOption', a list of 'EpheCalcOption' and a 'JulianDay',
 -- try to get ephemeris data from a precalculated file on disk, or, if
 -- allowed in the specified options, fall back to regular Swiss
 -- Ephemeris calculations, using the current ephemeris mode.
@@ -338,13 +339,13 @@ setEphe4Path path =
 readEphemeris ::
   ( NonEmpty PlanetListOption ->
     NonEmpty EpheCalcOption ->
-    JulianTime ->
+    JulianDayUT1  ->
     EpheVector ->
     a
   ) ->
   NonEmpty PlanetListOption ->
   NonEmpty EpheCalcOption ->
-  JulianTime ->
+  JulianDayUT1  ->
   IO (Either String a)
 readEphemeris mkEphemeris planetOptions calcOptions time = do
   -- TODO(luis,) technically, we're /also/ able to exclude
@@ -371,7 +372,7 @@ readEphemeris mkEphemeris planetOptions calcOptions time = do
 readEphemerisStrict ::
   NonEmpty PlanetListOption ->
   NonEmpty EpheCalcOption ->
-  JulianTime ->
+  JulianDayUT1  ->
   IO (Either String (Ephemeris (Maybe Double)))
 readEphemerisStrict = readEphemeris mkEphemerisStrict
 
@@ -380,7 +381,7 @@ readEphemerisStrict = readEphemeris mkEphemerisStrict
 readEphemerisSimple ::
   NonEmpty PlanetListOption ->
   NonEmpty EpheCalcOption ->
-  JulianTime ->
+  JulianDayUT1  ->
   IO (Either String (Ephemeris Double))
 readEphemerisSimple = readEphemeris mkEphemerisSimple
 
@@ -395,7 +396,7 @@ readEphemerisSimple = readEphemeris mkEphemerisSimple
 -- material difference is that if it has to fall back to the underlying ephemeris,
 -- it _will_ skip calculating any specified planets or speeds. I personally
 -- use the "no fallback" version.
-readEphemerisEasy :: Bool -> JulianTime -> IO (Either String (Ephemeris Double))
+readEphemerisEasy :: Bool -> JulianDayUT1  -> IO (Either String (Ephemeris Double))
 readEphemerisEasy allowFallback =
   readEphemerisSimple
     (IncludeAll :| [])
@@ -413,7 +414,7 @@ readEphemerisEasy allowFallback =
 mkEphemerisStrict ::
   NonEmpty PlanetListOption ->
   NonEmpty EpheCalcOption ->
-  JulianTime ->
+  JulianDayUT1  ->
   EpheVector ->
   Ephemeris (Maybe Double)
 mkEphemerisStrict planetOptions calcOptions time results' =
@@ -451,7 +452,7 @@ mkEphemerisStrict planetOptions calcOptions time results' =
 mkEphemerisSimple ::
   NonEmpty PlanetListOption ->
   NonEmpty EpheCalcOption ->
-  JulianTime ->
+  JulianDayUT1  ->
   EpheVector ->
   Ephemeris Double
 mkEphemerisSimple _ _ time results' =
@@ -503,13 +504,20 @@ mkEphemerisSimple _ _ time results' =
 readEphemerisRaw ::
   PlanetListFlag ->
   EpheCalcFlag ->
-  JulianTime ->
+  JulianDayUT1  ->
   IO (Either String EpheVector)
-readEphemerisRaw plalist flag time =
+readEphemerisRaw plalist flag timeUT1 =
   allocaErrorMessage $ \serr -> do
+    -- NOTE(luis) this should be fine in _most_ cases,
+    -- but do keep in mind that if you're switching ephemeris
+    -- modes (e.g. from Moshier to SwissEph,) this deltaTime
+    -- /will/ be incorrect. Ideally, we could update the
+    -- underlying library to use @swe_calc_ut@ instead of
+    -- @swe_calc@, but today's not that day.
+    timeTT <- universalToTerrestrial timeUT1
     ephe <-
       c_dephread2
-        (realToFrac . unJulianTime $ time)
+        (realToFrac . getJulianDay $ timeTT)
         plalist
         flag
         serr
@@ -528,7 +536,7 @@ readEphemerisRaw plalist flag time =
 -- | For the most basic case: read ephemeris without falling back
 -- to the non-stored variant, and always include speeds, all planets,
 -- ecliptic and nutation.
-readEphemerisRawNoFallback :: JulianTime -> IO (Either String EpheVector)
+readEphemerisRawNoFallback :: JulianDayUT1  -> IO (Either String EpheVector)
 readEphemerisRawNoFallback =
   readEphemerisRaw calculateAll addSpeedNoFallback
   where

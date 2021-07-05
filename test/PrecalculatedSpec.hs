@@ -12,12 +12,11 @@ import Test.Hspec
 import Test.Hspec.QuickCheck (modifyMaxSuccess, prop)
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
+import Data.Time (UTCTime)
+import Utils
 
 ephe4Path :: FilePath
 ephe4Path = "./swedist/precalc"
-
-ephePath :: FilePath
-ephePath = "./swedist/sweph_18"
 
 withFallback :: IO () -> IO ()
 withFallback act = do
@@ -37,13 +36,13 @@ spec = around_ withFallback $ do
           prop "it is unable to read ephemeris for out-of-range days" $
             forAll genOutOfRangeJulian $
               \time -> monadicIO $ do
-                ephe <- run $ readEphemerisRaw includeAll speedButNoFallback $ JulianTime time
+                ephe <- run $ readEphemerisRaw includeAll speedButNoFallback time
                 assert $ isLeft ephe
 
         prop "it is able to read ephemeris for in-range days" $
           forAll genInRangeJulian $
             \time -> monadicIO $ do
-              ephe <- run $ readEphemerisRaw includeAll speedButNoFallback $ JulianTime time
+              ephe <- run $ readEphemerisRaw includeAll speedButNoFallback time
               assert $ isRight ephe
 
         
@@ -51,32 +50,28 @@ spec = around_ withFallback $ do
         prop "it is able to read ephemeris for in-range days" $
           forAll genInRangeJulian $
             \time -> monadicIO $ do
-              ephe <- run $ readEphemerisRaw includeAll includeSpeed $ JulianTime time
+              ephe <- run $ readEphemerisRaw includeAll includeSpeed time
               assert $ isRight ephe
-
-        it "works for a weird time that failed another time" $ do
-          ephe <- readEphemerisRaw includeAll includeSpeed (JulianTime 2450614.646993673)
-          ephe `shouldSatisfy` isRight
 
         prop "it is also able to read ephemeris for out-of-range days" $
           forAll genOutOfRangeJulian $
             \time -> monadicIO $ do
-              ephe <- run $ readEphemerisRaw includeAll includeSpeed $ JulianTime time
+              ephe <- run $ readEphemerisRaw includeAll includeSpeed time
               assert $ isRight ephe
 
   describe "readEphemerisEasy" $ do
       it "fails to read when the Julian date is out of range, and no fallback is allowed" $ do
-        ephe <- readEphemerisEasy False (julianDay 2021 6 6 0.0)
+        ephe <- readEphemerisEasy False (mkJulian 2021 6 6 0.0)
         fullPath <- makeAbsolute ephe4Path
         let errorMessage = Left $ "eph4_posit: file " ++ fullPath ++ "/sep4_245 does not exist\n"
         ephe `shouldBe` errorMessage
         
       it "reads ephemeris for a Julian date out of range, with fallback" $ do
-        ephe <- readEphemerisEasy True (julianDay 2021 6 6 0.0)
+        ephe <- readEphemerisEasy True (mkJulian 2021 6 6 0.0)
         ephe `shouldSatisfy` isRight
   
       it "reads all the ephemeris for a Julian date in range, no fallback" $ do
-        ephe <- readEphemerisEasy False (julianDay 1989 1 6 0.0)
+        ephe <- readEphemerisEasy False (mkJulian 1989 1 6 0.0)
         let expectedPositions =
               fromList
                 [ EphemerisPosition {ephePlanet = Sun, epheLongitude = 285.64657777777774, epheSpeed = 1.019651435185189},
@@ -97,19 +92,25 @@ spec = around_ withFallback $ do
             expectedEphe =
               Right $
                 Ephemeris
-                  { epheDate = JulianTime 2447532.5,
+                  { epheDate = mkJulian 1989 1 6 0, 
                     epheEcliptic = 23.44288611111111,
                     epheNutation = 1.9472222222222224e-3,
                     ephePositions = expectedPositions
                   }
         ephe `shouldBe` expectedEphe
 
-genOutOfRangeJulian :: Gen Double
-genOutOfRangeJulian = oneof [choose (2420000.5, 2430000.5), choose (2450000.5, 2470000.5)]
+minT :: UTCTime
+minT = mkUTC "1968-05-28T12:00:00Z"
 
-genInRangeJulian :: Gen Double
+maxT :: UTCTime
+maxT = mkUTC "1995-09-29T12:00:00Z"
+
+genOutOfRangeJulian :: Gen JulianDayUT1 
+genOutOfRangeJulian = oneof [genJulianInRange minTestEpheT minT, genJulianInRange maxT maxTestEpheT]
+
+genInRangeJulian :: Gen JulianDayUT1
 -- NOTE(luis) technically we could go up to 2449999.9,
 -- however, due to interpolation, for some dates the underlying
 -- library _may_ try to peek into the next block, which we don't
 -- bundle intentionally.
-genInRangeJulian = choose (2440005.0, 2449990.0)
+genInRangeJulian = genJulianInRange minT maxT

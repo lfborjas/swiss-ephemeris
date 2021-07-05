@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 
 -- |
 -- Module: SwissEphemeris.Internal
@@ -140,29 +140,18 @@ data SplitDegreesOption
   | KeepSign
   | KeepDegrees
   deriving (Eq, Show, Enum, Generic)
-  
+
 -- | Calendar options
 data CalendarOption
   = GregorianCal
   | JulianCal
   deriving (Eq, Show)
-  
+
 data EphemerisOption
   = UseSwissEphemeris
   | UseJPLEphemeris
   | UseMoshierEphemeris
   deriving (Eq, Show)
-
--- | Represents an instant in Julian time.
--- see:
--- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847871 8. Date and time conversion functions>
--- also cf. @julianDay@
-newtype JulianTime = JulianTime {unJulianTime :: Double}
-  deriving (Show, Eq, Ord, Num, Fractional, Real, RealFrac, Enum)
-
--- | Represents an instant in sidereal time
-newtype SiderealTime = SiderealTime {unSiderealTime :: Double}
-  deriving (Show, Eq, Ord)
 
 -- | The cusp of a given "house" or "sector". It is an ecliptic longitude.
 -- see:
@@ -349,10 +338,10 @@ allocaErrorMessage :: (Ptr CChar -> IO b) -> IO b
 allocaErrorMessage = allocaArray 256
 
 calendarOptionToFlag :: CalendarOption -> GregFlag
-calendarOptionToFlag GregorianCal = gregorian 
-calendarOptionToFlag JulianCal    = julian 
+calendarOptionToFlag GregorianCal = gregorian
+calendarOptionToFlag JulianCal    = julian
 
 ephemerisOptionToFlag :: EphemerisOption -> EpheFlag
-ephemerisOptionToFlag UseSwissEphemeris   = useSwissEph 
-ephemerisOptionToFlag UseJPLEphemeris     = useJplEph 
-ephemerisOptionToFlag UseMoshierEphemeris = useMoshierEph 
+ephemerisOptionToFlag UseSwissEphemeris   = useSwissEph
+ephemerisOptionToFlag UseJPLEphemeris     = useJplEph
+ephemerisOptionToFlag UseMoshierEphemeris = useMoshierEph

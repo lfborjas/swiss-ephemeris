@@ -9,6 +9,8 @@ import Test.Hspec
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
+import Utils
+import Data.Time (UTCTime)
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
 -- https://www.astro.com/swisseph/swetest.htm
@@ -16,26 +18,9 @@ import Test.QuickCheck.Monadic
 -- https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
 -- note the `PlbRS` format, which outputs latitude and longitude as decimals, not degrees
 -- for easier comparison.
-ephePath :: FilePath
-ephePath = "./swedist/sweph_18"
-
-uncurry4 :: (a -> b -> c -> d -> e) -> (a, b, c, d) -> e
-uncurry4 f (a, b, c, d) = f a b c d
 
 spec :: Spec
 spec = do
-  describe "julianDay" $
-    it "returns the julian day number given a gregorian date" $
-      julianDay 2020 11 6 15.773315995931625 `shouldBe` JulianTime 2459160.1572215
-
-  describe "gregorianDateTime" $
-    it "returns a tuple representing a gregorian date, given a julian day number" $
-      gregorianDateTime (JulianTime 2459160.1572215) `shouldBe` (2020, 11, 6, 15.773315995931625)
-
-  prop "date round trips: transforming a julian day to gregorian and back" $
-    forAll genJulian $ \jd ->
-      uncurry4 julianDay (gregorianDateTime (JulianTime jd)) == JulianTime jd
-
   describe "eclipticToEquatorial" $
     it "converts between ecliptic and equatorial" $ do
       let e = eclipticToEquatorial (ObliquityInformation 23.2 0 0 0) $ EclipticPosition 285.6465775 (-0.0000826) 1 0 0 0
@@ -65,7 +50,7 @@ spec = do
   around_ withoutEphemerides $ do
     describe "calculateEclipticPosition" $ do
       it "calculates ecliptic coordinates for the Sun for a specific day" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             expectedCoords =
               Right $
                 EclipticPosition
@@ -80,14 +65,14 @@ spec = do
         coords `compareCoords` expectedCoords
 
       it "fails to calculate coordinates for Chiron if no ephemeris file is set" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
         coords <- calculateEclipticPosition time Chiron
         coords `shouldBe` expectedCoords
 
     describe "calculateCuspsStrict" $ do
       it "calculates cusps and angles for a given place and time, keeping the same house system (not near the poles)" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
         let place = GeographicPosition {geoLat = 14.0839053, geoLng = -87.2750137}
         let expectedCalculations =
               CuspsCalculation
@@ -120,7 +105,7 @@ spec = do
         calcs `compareCalculations` Right expectedCalculations
 
       it "fails when using a house system that is unable to calculate cusps near the poles" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             -- Longyearbyen:
             place = GeographicPosition {geoLat = 78.2232, geoLng = 15.6267}
         calcs <- calculateCuspsStrict Placidus time place
@@ -128,7 +113,7 @@ spec = do
 
     describe "calculateCuspsLenient" $ do
       it "falls back to Porphyry when calculating cusps for a place near the poles" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             -- Longyearbyen:
             place = GeographicPosition {geoLat = 78.2232, geoLng = 15.6267}
             expected = CuspsCalculation {houseCusps = [190.88156009524067, 226.9336677703179, 262.9857754453951, 299.0378831204723, 322.9857754453951, 346.9336677703179, 10.881560095240673, 46.933667770317925, 82.98577544539512, 119.03788312047234, 142.98577544539512, 166.9336677703179], angles = Angles {ascendant = 190.88156009524067, mc = 119.03788312047234, armc = 121.17906552074543, vertex = 36.408617337292114, equatorialAscendant = 213.4074315205484, coAscendantKoch = 335.2547300150891, coAscendantMunkasey = 210.81731854391526, polarAscendant = 155.2547300150891}, systemUsed = Porphyrius}
@@ -158,7 +143,7 @@ spec = do
 
     describe "calculateHousePositionSimple" $
       it "calculates accurate house positions for some known planets" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             place = GeographicPosition {geoLat = 14.06, geoLng = -87.13}
             housePos = calculateHousePositionSimple Placidus time place
             houseN = fmap houseNumber
@@ -192,21 +177,21 @@ spec = do
 
     describe "calculateEquatorialPosition" $
       it "calculates equatorial coordinates for the Sun for a specific date" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             expectedPosition = Right (EquatorialPosition {rightAscension = 286.9771081985312, declination = -22.52537550693229, eqDistance = 0.9833448914987338, ascensionSpeed = 1.0963895541503408, declinationSpeed = 0.1184607330811988, eqDistanceSpeed = 1.736421046243553e-5})
         position <- calculateEquatorialPosition time Sun
         position `shouldBe` expectedPosition
 
     describe "calculateObliquity" $
       it "calculates obliquity of the ecliptic, and nutation, for a specific date" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             expectedObliquity = Right (ObliquityInformation {eclipticObliquity = 23.44288555112768, eclipticMeanObliquity = 23.44070869609064, nutationLongitude = 1.9483531068634399e-3, nutationObliquity = 2.1768550370416455e-3})
         obliquity <- calculateObliquity time
         obliquity `shouldBe` expectedObliquity
 
     describe "deltaTime" $
       it "calculates the Delta T for a specific date" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             expectedDeltaT = 6.517108007976064e-4
         deltaT <- deltaTime time
         deltaT `shouldBeApprox` expectedDeltaT
@@ -316,30 +301,35 @@ compareCalculations _ _ = expectationFailure "Unable to calculate"
 -- https://ssd.jpl.nasa.gov/tc.cgi
 -- read more in the manual:
 -- https://www.astro.com/swisseph/swephprg.htm
-genJulian :: Gen Double
-genJulian = choose (2378496.5, 2597641.4)
+minT :: UTCTime
+minT = minTestEpheT 
 
--- bad range: 3000 BC to the beginning of our ephemeris,
-genBadJulian :: Gen Double
-genBadJulian = oneof [choose (625673.5, 2378496.5), choose (2597641.4, 2816787.5)]
+maxT :: UTCTime
+maxT = maxTestEpheT
+
+genJulian :: Gen JulianDayUT1
+genJulian = genJulianInRange minT maxT
+
+genBadJulian :: Gen JulianDayUT1
+genBadJulian = oneof [genJulianBefore minT, genJulianAfter maxT]
 
 genHouseSystem :: Gen HouseSystem
 genHouseSystem = elements [Placidus, Koch, Porphyrius, Regiomontanus, Campanus, Equal, WholeSign]
 
-genCoordinatesQuery :: Gen (JulianTime, Planet)
+genCoordinatesQuery :: Gen (JulianDayUT1, Planet)
 genCoordinatesQuery = do
   time <- genJulian
   planet <- elements [Sun .. Chiron]
-  return (JulianTime time, planet)
+  return (time, planet)
 
 -- only Chiron is reliably outside of our calculations,
 -- our ephemerides data does have some other bodies missing though.
-genBadCoordinatesQuery :: Gen (JulianTime, Planet)
+genBadCoordinatesQuery :: Gen (JulianDayUT1, Planet)
 genBadCoordinatesQuery = do
   time <- genBadJulian
   -- TODO: does the library _really_ misbehave for all bodies, or just Chiron?
   let planet = Chiron
-  return (JulianTime time, planet)
+  return (time, planet)
 
 genAnyCoords :: Gen (Double, Double)
 genAnyCoords = do
@@ -349,19 +339,19 @@ genAnyCoords = do
   anyLong <- choose (-180.0, 180.0)
   return (anyLat, anyLong)
 
-genCuspsQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
+genCuspsQuery :: Gen ((Double, Double), JulianDayUT1, HouseSystem)
 genCuspsQuery = do
   coords <- genAnyCoords
   time <- genJulian
   -- Placidus and Koch _sometimes_ succeed, for certain locations, but are more likely to fail.
   -- Regiomontanus and Campanus also struggle to calculate some angles.
   house <- genHouseSystem
-  return (coords, JulianTime time, house)
+  return (coords, time, house)
 
-genCuspsNonPolarQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
+genCuspsNonPolarQuery :: Gen ((Double, Double), JulianDayUT1, HouseSystem)
 genCuspsNonPolarQuery = do
   nonPolarLat <- choose (-40.0, 40.0)
   anyLong <- choose (-180.0, 180.0)
   time <- genJulian
   house <- genHouseSystem
-  return ((nonPolarLat, anyLong), JulianTime time, house)
+  return ((nonPolarLat, anyLong), time, house)
