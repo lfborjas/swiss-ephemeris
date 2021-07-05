@@ -13,8 +13,7 @@ import Data.Time.Format.ISO8601
 import Data.Time
 import Data.Maybe (fromJust)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
-import Arbitrary
-import qualified Debug.Trace as Debug
+import Arbitrary ()
 
 ephePath :: FilePath
 ephePath = "./swedist/sweph_18"
@@ -129,6 +128,18 @@ spec = around_ withEphemeris $ do
         -- JD(TT) = JD(UT1) + dT@JD(UT1)
         let derivedTT = addDeltaTime jdut deltaT
         derivedTT `shouldBe` jdtt
+        
+      prop "can be used to find a TT from any UT1" $
+        forAll knownTime $
+          \time -> monadicIO $ do
+            Just jdut <- run (toJulianDay time :: (IO (Maybe JulianDayUT1)))
+            Just jdtt <- run (toJulianDay time :: (IO (Maybe JulianDayTT)))
+            deltaT    <- run $ deltaTime jdut
+            -- JD(TT) = JD(UT1) + dT@JD(UT1)
+            let derivedTT = addDeltaTime jdut deltaT
+            assert $ derivedTT == jdtt
+   
+
            
 
 -- TODO: move to a helpers module
