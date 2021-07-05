@@ -40,6 +40,7 @@ module SwissEphemeris.Time
 
     -- ** Pure conversion functions
     gregorianToJulianDayUT,
+    gregorianToFakeJulianDayTT,
     julianDay,
     gregorianFromJulianDayUT,
     gregorianDateTime,
@@ -203,14 +204,27 @@ subtractDeltaTime (MkJulianDay jd) dt = MkJulianDay (jd - dt)
 -- family of functions, via e.g. [@fromGregorianValid@](https://hackage.haskell.org/package/time-1.12/docs/Data-Time-Calendar.html#v:fromGregorianValid)
 -- and [@makeTimeOfDayValid@](https://hackage.haskell.org/package/time-1.12/docs/Data-Time-LocalTime.html#v:makeTimeOfDayValid)
 gregorianToJulianDayUT :: Integer -> Int -> Int -> Double -> JulianDay 'UT
-gregorianToJulianDayUT year month day hour =
+gregorianToJulianDayUT = gregorianToJulian
+    
+-- | If you care about accuracy, don't use this function!!! It's merely provided
+-- as a facility for testing or situations where you don't really care about
+-- the truth: the /actual/ Julian Day produced by this function is an absolute,
+-- universal time, we just naughtily repackage it as a terrestrial time here.
+-- If you want a /real/ TerrestrialTime, either convert a valid temporal value
+-- through the 'toJulian' polymorphic function, or use 'universalToTerrestrial'
+-- if you already have a 'UT1' value.
+gregorianToFakeJulianDayTT :: Integer -> Int -> Int -> Double -> JulianDay 'TT
+gregorianToFakeJulianDayTT = gregorianToJulian
+
+gregorianToJulian :: Integer -> Int -> Int -> Double -> JulianDay ts
+gregorianToJulian year month day hour =
   MkJulianDay . realToFrac $ c_swe_julday y m d h gregorian
   where
     y = fromIntegral year
     m = fromIntegral month
     d = fromIntegral day
     h = realToFrac hour
-
+ 
 {-# DEPRECATED julianDay "Use 'gregorianToJulianDayUT' instead." #-}
 julianDay :: Int -> Int -> Int -> Double -> JulianDay 'UT
 julianDay intYear = gregorianToJulianDayUT (fromIntegral intYear)

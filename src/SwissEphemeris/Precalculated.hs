@@ -211,7 +211,7 @@ data EphemerisPosition a = EphemerisPosition
 -- | The positions of all planets for a given time,
 -- plus ecliptic and nutation.
 data Ephemeris a = Ephemeris
-  { epheDate :: !JulianDayUT1,
+  { epheDate :: !JulianDayTT,
     -- ^ julian time for this ephemeris
     epheEcliptic :: !a,
     epheNutation :: !a,
@@ -339,13 +339,13 @@ setEphe4Path path =
 readEphemeris ::
   ( NonEmpty PlanetListOption ->
     NonEmpty EpheCalcOption ->
-    JulianDayUT1  ->
+    JulianDayTT  ->
     EpheVector ->
     a
   ) ->
   NonEmpty PlanetListOption ->
   NonEmpty EpheCalcOption ->
-  JulianDayUT1  ->
+  JulianDayTT  ->
   IO (Either String a)
 readEphemeris mkEphemeris planetOptions calcOptions time = do
   -- TODO(luis,) technically, we're /also/ able to exclude
@@ -372,7 +372,7 @@ readEphemeris mkEphemeris planetOptions calcOptions time = do
 readEphemerisStrict ::
   NonEmpty PlanetListOption ->
   NonEmpty EpheCalcOption ->
-  JulianDayUT1  ->
+  JulianDayTT  ->
   IO (Either String (Ephemeris (Maybe Double)))
 readEphemerisStrict = readEphemeris mkEphemerisStrict
 
@@ -381,7 +381,7 @@ readEphemerisStrict = readEphemeris mkEphemerisStrict
 readEphemerisSimple ::
   NonEmpty PlanetListOption ->
   NonEmpty EpheCalcOption ->
-  JulianDayUT1  ->
+  JulianDayTT  ->
   IO (Either String (Ephemeris Double))
 readEphemerisSimple = readEphemeris mkEphemerisSimple
 
@@ -396,7 +396,7 @@ readEphemerisSimple = readEphemeris mkEphemerisSimple
 -- material difference is that if it has to fall back to the underlying ephemeris,
 -- it _will_ skip calculating any specified planets or speeds. I personally
 -- use the "no fallback" version.
-readEphemerisEasy :: Bool -> JulianDayUT1  -> IO (Either String (Ephemeris Double))
+readEphemerisEasy :: Bool -> JulianDayTT  -> IO (Either String (Ephemeris Double))
 readEphemerisEasy allowFallback =
   readEphemerisSimple
     (IncludeAll :| [])
@@ -414,7 +414,7 @@ readEphemerisEasy allowFallback =
 mkEphemerisStrict ::
   NonEmpty PlanetListOption ->
   NonEmpty EpheCalcOption ->
-  JulianDayUT1  ->
+  JulianDayTT  ->
   EpheVector ->
   Ephemeris (Maybe Double)
 mkEphemerisStrict planetOptions calcOptions time results' =
@@ -452,7 +452,7 @@ mkEphemerisStrict planetOptions calcOptions time results' =
 mkEphemerisSimple ::
   NonEmpty PlanetListOption ->
   NonEmpty EpheCalcOption ->
-  JulianDayUT1  ->
+  JulianDayTT  ->
   EpheVector ->
   Ephemeris Double
 mkEphemerisSimple _ _ time results' =
@@ -504,17 +504,10 @@ mkEphemerisSimple _ _ time results' =
 readEphemerisRaw ::
   PlanetListFlag ->
   EpheCalcFlag ->
-  JulianDayUT1  ->
+  JulianDayTT  ->
   IO (Either String EpheVector)
-readEphemerisRaw plalist flag timeUT1 =
+readEphemerisRaw plalist flag timeTT =
   allocaErrorMessage $ \serr -> do
-    -- NOTE(luis) this should be fine in _most_ cases,
-    -- but do keep in mind that if you're switching ephemeris
-    -- modes (e.g. from Moshier to SwissEph,) this deltaTime
-    -- /will/ be incorrect. Ideally, we could update the
-    -- underlying library to use @swe_calc_ut@ instead of
-    -- @swe_calc@, but today's not that day.
-    timeTT <- universalToTerrestrial timeUT1
     ephe <-
       c_dephread2
         (realToFrac . getJulianDay $ timeTT)
@@ -536,7 +529,7 @@ readEphemerisRaw plalist flag timeUT1 =
 -- | For the most basic case: read ephemeris without falling back
 -- to the non-stored variant, and always include speeds, all planets,
 -- ecliptic and nutation.
-readEphemerisRawNoFallback :: JulianDayUT1  -> IO (Either String EpheVector)
+readEphemerisRawNoFallback :: JulianDayTT  -> IO (Either String EpheVector)
 readEphemerisRawNoFallback =
   readEphemerisRaw calculateAll addSpeedNoFallback
   where

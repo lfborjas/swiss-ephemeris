@@ -36,13 +36,15 @@ spec = around_ withFallback $ do
           prop "it is unable to read ephemeris for out-of-range days" $
             forAll genOutOfRangeJulian $
               \time -> monadicIO $ do
-                ephe <- run $ readEphemerisRaw includeAll speedButNoFallback time
+                timeTT <- run $ universalToTerrestrial time
+                ephe <- run $ readEphemerisRaw includeAll speedButNoFallback timeTT
                 assert $ isLeft ephe
 
         prop "it is able to read ephemeris for in-range days" $
           forAll genInRangeJulian $
             \time -> monadicIO $ do
-              ephe <- run $ readEphemerisRaw includeAll speedButNoFallback time
+              timeTT <- run $ universalToTerrestrial time
+              ephe <- run $ readEphemerisRaw includeAll speedButNoFallback timeTT
               assert $ isRight ephe
 
         
@@ -50,28 +52,31 @@ spec = around_ withFallback $ do
         prop "it is able to read ephemeris for in-range days" $
           forAll genInRangeJulian $
             \time -> monadicIO $ do
-              ephe <- run $ readEphemerisRaw includeAll includeSpeed time
+              timeTT <- run $ universalToTerrestrial time
+              ephe <- run $ readEphemerisRaw includeAll includeSpeed timeTT
               assert $ isRight ephe
 
         prop "it is also able to read ephemeris for out-of-range days" $
           forAll genOutOfRangeJulian $
             \time -> monadicIO $ do
-              ephe <- run $ readEphemerisRaw includeAll includeSpeed time
+              timeTT <- run $ universalToTerrestrial time
+              ephe <- run $ readEphemerisRaw includeAll includeSpeed timeTT
               assert $ isRight ephe
 
   describe "readEphemerisEasy" $ do
       it "fails to read when the Julian date is out of range, and no fallback is allowed" $ do
-        ephe <- readEphemerisEasy False (mkJulian 2021 6 6 0.0)
+        ephe <- readEphemerisEasy False (gregorianToFakeJulianDayTT 2021 6 6 0.0)
         fullPath <- makeAbsolute ephe4Path
         let errorMessage = Left $ "eph4_posit: file " ++ fullPath ++ "/sep4_245 does not exist\n"
         ephe `shouldBe` errorMessage
         
       it "reads ephemeris for a Julian date out of range, with fallback" $ do
-        ephe <- readEphemerisEasy True (mkJulian 2021 6 6 0.0)
+        ephe <- readEphemerisEasy True (gregorianToFakeJulianDayTT 2021 6 6 0.0)
         ephe `shouldSatisfy` isRight
   
       it "reads all the ephemeris for a Julian date in range, no fallback" $ do
-        ephe <- readEphemerisEasy False (mkJulian 1989 1 6 0.0)
+        let fakeJulian = gregorianToFakeJulianDayTT 1989 1 6 0.0
+        ephe <- readEphemerisEasy False fakeJulian
         let expectedPositions =
               fromList
                 [ EphemerisPosition {ephePlanet = Sun, epheLongitude = 285.64657777777774, epheSpeed = 1.019651435185189},
@@ -92,7 +97,7 @@ spec = around_ withFallback $ do
             expectedEphe =
               Right $
                 Ephemeris
-                  { epheDate = mkJulian 1989 1 6 0, 
+                  { epheDate = fakeJulian,
                     epheEcliptic = 23.44288611111111,
                     epheNutation = 1.9472222222222224e-3,
                     ephePositions = expectedPositions
