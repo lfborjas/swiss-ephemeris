@@ -11,7 +11,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import Data.Time.Format.ISO8601
 import Data.Time
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isJust)
 import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Arbitrary ()
 
@@ -108,6 +108,12 @@ spec = around_ withEphemeris $ do
         getJulianDay jd `shouldBe` 2459399.4624386113
         time' `shouldBe` roundTripped
         utcTimeToPOSIXSeconds time `shouldBeApprox` utcTimeToPOSIXSeconds roundTripped
+        
+      it "works for that weird timestamp that broke ubuntu once" $ do
+        let time = mkUTC "7514-11-10T22:13:08.35750808104Z"
+        jd <- toJulianDay time :: (IO (Maybe JulianDayUT1))
+        jd `shouldSatisfy` isJust
+        (getJulianDay <$> jd) `shouldBe` Just 4465805.425791175
 
       prop "can roundtrip a UT Julian from any UTC" $
         forAll validTime $
