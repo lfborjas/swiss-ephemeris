@@ -39,9 +39,9 @@ module SwissEphemeris.Time
     julianMidnight,
 
     -- ** Pure conversion functions
-    gregorianFromJulianDayUT,
-    julianDay,
     gregorianToJulianDayUT,
+    julianDay,
+    gregorianFromJulianDayUT,
     gregorianDateTime,
     utcToJulianUT,
     utcToJulian,
@@ -108,7 +108,7 @@ getSiderealTime :: SiderealTime -> Double
 getSiderealTime = unSiderealTime
 
 -- | A type that encodes an attempt to convert between
--- temporal types.
+-- temporal types. 
 newtype ConversionResult dt = ConversionResult {getConversionResult :: Either String dt}
   deriving (Show, Functor, Applicative, Monad)
 
@@ -121,6 +121,10 @@ instance Fail.MonadFail ConversionResult where
 -- in the general case, we need to interact with
 -- the outside world, and may fail, when consulting
 -- the necessary data.
+-- How can it fail? In short: at least for valid temporal
+-- values constructed via the @time@ library, pretty much only
+-- if you have an old version of Swiss Ephemeris that's not aware
+-- of a recent leap second. 
 class Fail.MonadFail m => ToJulianDay m jd from where
   toJulianDay :: from -> IO (m (JulianDay jd))
 
@@ -289,6 +293,20 @@ splitUTC (UTCTime day time) =
 -- UTC->(UT1,TT) functions
 -------------------------------------------------------------------------------
 
+-- | Convert a 'UTCTime' into a tuple of Terrestrial Time and UT1 Julian Days;
+-- the underlying C function can return errors if:
+--
+-- * Any of the individual date components are invalid
+-- * The given date has a leap second that it is not aware of (due to either
+--   input error or the library not being out of date.)
+--
+-- A legitimately obtained 'UTCTime' (i.e. not crafted by hand, but by some means
+-- of validated time input/ingestion) is very unlikely to error out in the former
+-- of those scenarios, but there /is/ a chance it may fail in the latter; if you
+-- encounter this, the first step would be to update the Swiss Ephemeris library,
+-- since they bundle an array of leap seconds; otherwise, you can provide a file
+-- called @seleapsec.txt@ in your configured ephemeris path,
+-- see: [8.3.  Handling of leap seconds and the file seleapsec.txt](https://www.astro.com/swisseph/swephprg.htm#_Toc71121195)
 utcToJulianDays :: Fail.MonadFail m => UTCTime -> IO (m (JulianDay 'TT, JulianDay 'UT1))
 utcToJulianDays ut =
   let (y, m, d, TimeOfDay h mn s) = splitUTC ut

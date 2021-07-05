@@ -26,7 +26,6 @@ withEphemeris act = do
 mkUTC :: String -> UTCTime
 mkUTC  = fromJust . iso8601ParseM
 
-
 spec :: Spec
 spec = around_ withEphemeris $ do
   describe "pure conversion functions" $ do
@@ -34,6 +33,15 @@ spec = around_ withEphemeris $ do
       it "can be constructed from a UTC" $ do
         let jd = utcToJulian (mkUTC "2021-07-03T23:05:54.696005Z")
         getJulianDay jd `shouldBe` 2459399.4624386113
+        
+    describe "coerceUT" $ do
+      it "shows that a UT JD is within a second of a UT1 JD" $ do
+        let time = mkUTC "2021-07-03T23:05:54.696005Z"
+            jdut = utcToJulian time
+        Just jdut1 <- toJulianDay time :: (IO (Maybe JulianDayUT1))
+        let fakeUT1 = coerceUT jdut
+            difference = abs $ subtract (getJulianDay jdut1) (getJulianDay fakeUT1)
+        difference `shouldSatisfy` (< 0.00001)
         
   describe "conversion functions" $ do
     describe "toJulianDay/fromJulianDay" $ do
@@ -64,7 +72,19 @@ spec = around_ withEphemeris $ do
         getJulianDay jd `shouldBe` 2459399.463239352
         time' `shouldBe` roundTripped
         utcTimeToPOSIXSeconds time `shouldBeApprox` utcTimeToPOSIXSeconds roundTripped
-        
+
+  describe "delta time" $ do
+    describe "deltaTime (simple)" $ do
+      it "can be used to find a TT from a UT1" $ do
+        let time = mkUTC "2021-07-03T23:05:54.696005Z"
+        Just jdut <- toJulianDay time :: (IO (Maybe JulianDayUT1))
+        Just jdtt <- toJulianDay time :: (IO (Maybe JulianDayTT))
+        deltaT    <- deltaTime jdut
+        -- JD(TT) = JD(UT1) + dT@JD(UT1)
+        let derivedTT = addDeltaTime jdut deltaT
+        derivedTT `shouldBe` jdtt
+           
+
 -- TODO: move to a helpers module
 shouldBeApprox :: (Fractional a, Ord a, Show a) => a -> a -> Expectation
 shouldBeApprox expected actual =
