@@ -34,14 +34,23 @@ mkUTC  = fromJust . iso8601ParseM
 -- conversion /will/ fail and it can /only/ be resolved by updating
 -- the Swiss Ephemeris version (and thus updating this library,) or
 -- providing a file with additional leap seconds. See
--- [8.3.  Handling of leap seconds and the file seleapsec.txt](https://www.astro.com/swisseph/swephprg.htm#_Toc71121195)
-knownTime :: Gen UTCTime
-knownTime =
-  arbitrary `suchThat` isBeforeTheTimeOfWriting
+-- [8.3.  Handling of leap seconds and the file seleapsec.txt](https://www.astro.com/swisseph/swephprg.htm#_Toc71121195).
+-- [Known leap seconds](https://www.ietf.org/timezones/data/leap-seconds.list)
+-- should, however, work with no complaints from the library.
+civilTime :: Gen UTCTime
+civilTime =
+  arbitrary `suchThat` isNotLeapSecond
   where
-    isBeforeTheTimeOfWriting t =
-      t < mkUTC "2021-07-03T23:05:54.696005Z"
+    -- The `arbitrary` instance for `UTCTime` will produce fake
+    -- leap seconds such as @-5779-06-16T23:59:60Z@, which is
+    -- _not_ a valid leap second, even if it's a valid 'UTCTime';
+    -- the C library doesn't like fake leap seconds.
+    isNotLeapSecond (UTCTime _ time) =
+      sec < 60
+      where
+        TimeOfDay _ _ sec = timeToTimeOfDay time
 
+      
 spec :: Spec
 spec = around_ withEphemeris $ do
   describe "pure conversion functions" $ do
@@ -51,6 +60,17 @@ spec = around_ withEphemeris $ do
         getJulianDay jd `shouldBe` 2459399.4624386113
         getJulianDay (julianMidnight jd) `shouldBe` 2459398.5
         getJulianDay (julianNoon jd) `shouldBe` 2459399.0
+
+      it "can produce a UT Julian even from a fake leap second" $ do
+        let time = mkUTC "-5779-06-16T23:59:60Z"
+            -- NOTE: notice how the roundtripped version correctly
+            -- lands on the next day. This same value would
+            -- result in an error when using the more strict UT1/TT
+            -- functions.
+            time' = mkUTC "-5779-06-17T00:00:00Z"
+        Just jd <- toJulianDay time :: (IO (Maybe JulianDayUT))
+        roundTripped <- fromJulianDay jd
+        time' `shouldBe` roundTripped
 
     describe "julianDay" $ do
       it "permits easy conversion from date components to JD (no validation)" $ do
@@ -77,8 +97,8 @@ spec = around_ withEphemeris $ do
         time' `shouldBe` roundTripped
         utcTimeToPOSIXSeconds time `shouldBeApprox` utcTimeToPOSIXSeconds roundTripped
 
-      prop "can roundtrip a UT Julian from any UTC (within known leap seconds)" $
-        forAll knownTime $
+      prop "can roundtrip a UT Julian from any UTC" $
+        forAll civilTime $
           \time -> monadicIO $ do
             Just jd <- run (toJulianDay time :: (IO (Maybe JulianDayUT)))
             roundTripped <- run $ fromJulianDay jd
@@ -96,19 +116,9 @@ spec = around_ withEphemeris $ do
         time' `shouldBe` roundTripped
         utcTimeToPOSIXSeconds time `shouldBeApprox` utcTimeToPOSIXSeconds roundTripped
         
-      it "can produce a UT1 Julian from a fractional second in the past" $ do
-        let time = mkUTC "-5779-06-16T23:59:60Z"
-            -- NOTE: notice how the roundtripped version correctly
-            -- lands on the next day. I've patched the C code to
-            -- accept the above, but maybe... that's not okay and the
-            -- Haskell library is wrong?
-            time' = mkUTC "-5779-06-17T00:00:00Z"
-        Just jd <- toJulianDay time :: (IO (Maybe JulianDayUT1))
-        roundTripped <- fromJulianDay jd
-        time' `shouldBe` roundTripped
-
-      prop "can roundtrip a UT1 Julian from any UTC (within known leap seconds)" $
-        forAll knownTime $
+      
+      prop "can roundtrip a UT1 Julian from any UTC" $
+        forAll civilTime $
           \time -> monadicIO $ do
             Just jd <- run (toJulianDay time :: (IO (Maybe JulianDayUT1)))
             roundTripped <- run $ fromJulianDay jd
@@ -126,8 +136,8 @@ spec = around_ withEphemeris $ do
         time' `shouldBe` roundTripped
         utcTimeToPOSIXSeconds time `shouldBeApprox` utcTimeToPOSIXSeconds roundTripped
 
-      prop "can roundtrip a TT Julian from any UTC (within known leap seconds)" $
-        forAll knownTime $
+      prop "can roundtrip a TT Julian from any UTC" $
+        forAll civilTime $
           \time -> monadicIO $ do
             Just jd <- run (toJulianDay time :: (IO (Maybe JulianDayTT)))
             roundTripped <- run $ fromJulianDay jd
@@ -148,7 +158,7 @@ spec = around_ withEphemeris $ do
         derivedTT `shouldBe` jdtt
 
       prop "can be used to find a TT from any UT1" $
-        forAll knownTime $
+        forAll civilTime $
           \time -> monadicIO $ do
             Just jdut <- run (toJulianDay time :: (IO (Maybe JulianDayUT1)))
             Just jdtt <- run (toJulianDay time :: (IO (Maybe JulianDayTT)))
@@ -156,8 +166,6 @@ spec = around_ withEphemeris $ do
             -- JD(TT) = JD(UT1) + dT@JD(UT1)
             let derivedTT = addDeltaTime jdut deltaT
             assert $ derivedTT == jdtt
-
-
 
 
 -- TODO: move to a helpers module
