@@ -50,6 +50,18 @@ civilTime =
       where
         TimeOfDay _ _ sec = timeToTimeOfDay time
 
+leapSeconds :: Gen UTCTime
+leapSeconds = 
+  -- a sampling of:
+  -- https://www.nist.gov/pml/time-and-frequency-division/time-realization/leap-seconds
+  oneof [ 
+    pure (mkUTC "2016-12-31T23:59:60Z"), 
+    pure (mkUTC "1985-06-30T23:59:60Z"),
+    pure (mkUTC "1987-12-31T23:59:60Z")
+    ]
+    
+validTime :: Gen UTCTime
+validTime = oneof [civilTime, leapSeconds]
       
 spec :: Spec
 spec = around_ withEphemeris $ do
@@ -98,7 +110,7 @@ spec = around_ withEphemeris $ do
         utcTimeToPOSIXSeconds time `shouldBeApprox` utcTimeToPOSIXSeconds roundTripped
 
       prop "can roundtrip a UT Julian from any UTC" $
-        forAll civilTime $
+        forAll validTime $
           \time -> monadicIO $ do
             Just jd <- run (toJulianDay time :: (IO (Maybe JulianDayUT)))
             roundTripped <- run $ fromJulianDay jd
@@ -118,7 +130,7 @@ spec = around_ withEphemeris $ do
         
       
       prop "can roundtrip a UT1 Julian from any UTC" $
-        forAll civilTime $
+        forAll validTime $
           \time -> monadicIO $ do
             Just jd <- run (toJulianDay time :: (IO (Maybe JulianDayUT1)))
             roundTripped <- run $ fromJulianDay jd
@@ -137,7 +149,7 @@ spec = around_ withEphemeris $ do
         utcTimeToPOSIXSeconds time `shouldBeApprox` utcTimeToPOSIXSeconds roundTripped
 
       prop "can roundtrip a TT Julian from any UTC" $
-        forAll civilTime $
+        forAll validTime $
           \time -> monadicIO $ do
             Just jd <- run (toJulianDay time :: (IO (Maybe JulianDayTT)))
             roundTripped <- run $ fromJulianDay jd
@@ -158,7 +170,7 @@ spec = around_ withEphemeris $ do
         derivedTT `shouldBe` jdtt
 
       prop "can be used to find a TT from any UT1" $
-        forAll civilTime $
+        forAll validTime $
           \time -> monadicIO $ do
             Just jdut <- run (toJulianDay time :: (IO (Maybe JulianDayUT1)))
             Just jdtt <- run (toJulianDay time :: (IO (Maybe JulianDayTT)))
