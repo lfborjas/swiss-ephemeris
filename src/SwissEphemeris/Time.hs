@@ -198,6 +198,10 @@ subtractDeltaTime (MkJulianDay jd) dt = MkJulianDay (jd - dt)
 -- as its input; if obtained by other means than via a 'UTCTime',
 -- it's likely to be off by up to a second when compared with a 'UT1' value.
 -- (on the other hand, it doesn't consult any data so it's not bound to 'IO')
+-- This is provided for convenience, but if you have date components, you'd
+-- be better off producing a valid 'UTCTime' to send to the 'toJulian'
+-- family of functions, via e.g. [@fromGregorianValid@](https://hackage.haskell.org/package/time-1.12/docs/Data-Time-Calendar.html#v:fromGregorianValid)
+-- and [@makeTimeOfDayValid@](https://hackage.haskell.org/package/time-1.12/docs/Data-Time-LocalTime.html#v:makeTimeOfDayValid)
 gregorianToJulianDayUT :: Integer -> Int -> Int -> Double -> JulianDay 'UT
 gregorianToJulianDayUT year month day hour =
   MkJulianDay . realToFrac $ c_swe_julday y m d h gregorian
