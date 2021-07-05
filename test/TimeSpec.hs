@@ -95,6 +95,17 @@ spec = around_ withEphemeris $ do
         getJulianDay jd `shouldBe` 2459399.46243737
         time' `shouldBe` roundTripped
         utcTimeToPOSIXSeconds time `shouldBeApprox` utcTimeToPOSIXSeconds roundTripped
+        
+      it "can produce a UT1 Julian from a fractional second in the past" $ do
+        let time = mkUTC "-5779-06-16T23:59:60Z"
+            -- NOTE: notice how the roundtripped version correctly
+            -- lands on the next day. I've patched the C code to
+            -- accept the above, but maybe... that's not okay and the
+            -- Haskell library is wrong?
+            time' = mkUTC "-5779-06-17T00:00:00Z"
+        Just jd <- toJulianDay time :: (IO (Maybe JulianDayUT1))
+        roundTripped <- fromJulianDay jd
+        time' `shouldBe` roundTripped
 
       prop "can roundtrip a UT1 Julian from any UTC (within known leap seconds)" $
         forAll knownTime $

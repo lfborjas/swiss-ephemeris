@@ -390,7 +390,14 @@ int32 CALL_CONV swe_utc_to_jd(int32 iyear, int32 imonth, int32 iday, int32 ihour
   if (ihour < 0 || ihour > 23 
    || imin < 0 || imin > 59 
    || dsec < 0 || dsec >= 61
-   || (dsec >= 60 && (imin < 59 || ihour < 23 || tjd_ut1 < J1972))) {
+   /* NOTE (lfborjas @ 2021-07-04): relaxed the epoch checking here,
+      for the case where `dsec` = 60: the time library I'm currently
+      using will sometimes produce timestamps with 60 seconds in the
+      distant past, e.g. `-5779-06-16T23:59:60Z` instead
+      of `-5779-06-17T00:00:00Z`, as such, this patch was necessary;
+      but it's not super legitimate. */
+   || (dsec == 60 && (imin < 59 || ihour < 23 /*|| tjd_ut1 < J1972*/)) 
+   || (dsec > 60 && (imin < 59 || ihour < 23 || tjd_ut1 < J1972))) {
     if (serr != NULL)
       sprintf(serr, "invalid time: %d:%d:%.2f", ihour, imin, dsec);
     return ERR;
@@ -585,4 +592,3 @@ void CALL_CONV swe_jdut1_to_utc(double tjd_ut, int32 gregflag, int32 *iyear, int
   double tjd_et = tjd_ut + swe_deltat_ex(tjd_ut, -1, NULL);
   swe_jdet_to_utc(tjd_et, gregflag, iyear, imonth, iday, ihour, imin, dsec);
 }
-

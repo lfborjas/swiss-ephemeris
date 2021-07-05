@@ -54,6 +54,10 @@ spec = around_ withFallback $ do
               ephe <- run $ readEphemerisRaw includeAll includeSpeed $ JulianTime time
               assert $ isRight ephe
 
+        it "works for a weird time that failed another time" $ do
+          ephe <- readEphemerisRaw includeAll includeSpeed (JulianTime 2450614.646993673)
+          ephe `shouldSatisfy` isRight
+
         prop "it is also able to read ephemeris for out-of-range days" $
           forAll genOutOfRangeJulian $
             \time -> monadicIO $ do
