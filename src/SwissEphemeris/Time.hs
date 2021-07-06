@@ -81,6 +81,8 @@ Some notes:
 https://wiki.haskell.org/Time#UniversalTime
 https://en.wikipedia.org/wiki/Terrestrial_Time
 https://en.wikipedia.org/wiki/Universal_Time
+https://www.nist.gov/pml/time-and-frequency-division/time-realization/leap-seconds
+https://www.ietf.org/timezones/data/leap-seconds.list
 
 -}
 

@@ -23,8 +23,9 @@ withFallback :: IO () -> IO ()
 withFallback act = do
   fullPath <- makeAbsolute ephe4Path
   withEphemerides ephePath $ do
+    Debug.traceM $ "Path" ++ fullPath
     setEphe4Path fullPath
-    act
+    act 
 
 speedButNoFallback :: EpheCalcFlag
 speedButNoFallback = foldEpheCalcOptions [includeSpeed, mustUseStoredEphe]
