@@ -75,6 +75,16 @@ import SwissEphemeris.Time
 -- | Given a path to a directory, point the underlying ephemerides library to it.
 -- You only need to call this function to provide an explicit ephemerides path,
 -- if the environment variable @SE_EPHE_PATH@ is set, it overrides this function.
+-- 
+-- __WARNING__: this is provided for convenience, but in a multi-threaded
+-- situation, it is relatively likely that a call to this function will
+-- either be optimized away, or interleaved too late. Please consider
+-- setting the @SE_EPHE_PATH@ environment variable instead: it will always
+-- be found by the C code, vs. the /sometimes/ of Haskell's inscrutable
+-- optimizations. For a discussion about the thread-unsafety of
+-- this function, see:
+-- https://groups.io/g/swisseph/message/10064
+-- and the related thread.
 setEphemeridesPath :: FilePath -> IO ()
 setEphemeridesPath path =
   withCString path $ \ephePath -> c_swe_set_ephe_path ephePath
@@ -82,17 +92,31 @@ setEphemeridesPath path =
 -- | Explicitly state that we don't want to set an ephemeris path,
 -- which will default to the built-in ephemeris, or use the directory
 -- in the @SE_EPHE_PATH@ environment variable, if set.
+-- 
+-- __WARNING__: this is provided for convenience, but in a multi-threaded
+-- situation, it is relatively likely that a call to this function will
+-- either be optimized away, or interleaved too late. Please consider
+-- setting the @SE_EPHE_PATH@ environment variable instead: it will always
+-- be found by the C code, vs. the /sometimes/ of Haskell's inscrutable
+-- optimizations. 
 setNoEphemeridesPath :: IO ()
 setNoEphemeridesPath = c_swe_set_ephe_path nullPtr
 
 -- | Explicitly release all "cache" pointers and open files obtained by the C
--- library.
+-- library. You don't need to call this if you always work with the same
+-- ephemeris mode: just 'setEphemeridesPath' and walk away -- the OS will
+-- clean up any file pointers or static data used by the library.
 closeEphemerides :: IO ()
 closeEphemerides = c_swe_close
 
 -- | Run a computation with a given ephemerides path open, and then close it.
 -- Note that the computation does /not/ receive the ephemerides,
 -- in keeping with the underlying library's side-effectful conventions.
+--
+-- You don't need to call this if you always work with the same
+-- ephemeris mode: just 'setEphemeridesPath' and walk away -- the OS will
+-- clean up any file pointers or static data used by the library. Preferably,
+-- set the @SE_EPHE_PATH@ environment variable. See 'setEphemeridesPath'
 withEphemerides :: FilePath -> IO a -> IO a
 withEphemerides ephemeridesPath =
   bracket_
@@ -102,6 +126,10 @@ withEphemerides ephemeridesPath =
 -- | Run a computation with no explicit ephemerides set, if the @SE_EPHE_PATH@
 -- environment variable is set, that will be used. If not, it'll fall back to
 -- in-memory data.
+--
+--- You don't need to call this if you always work with the same
+-- ephemeris mode: just 'setEphemeridesPath' and walk away -- the OS will
+-- clean up any file pointers or static data used by the library.
 withoutEphemerides :: IO a -> IO a
 withoutEphemerides =
   bracket_

@@ -317,6 +317,13 @@ forPlanet pl ephe =
     Just placalc -> ephePositions ephe V.!? (fromIntegral . unPlacalcPlanet $ placalc)
 
 -- | Set path for base directory where @sep4_@ files are stored.
+-- 
+-- __WARNING__: this is provided for convenience, but in a multi-threaded
+-- situation, it is relatively likely that a call to this function will
+-- either be optimized away, or interleaved too late. Please consider
+-- setting the @EP4_PATH@ environment variable instead: it will always
+-- be found by the C code, vs. the /sometimes/ of Haskell's inscrutable
+-- optimizations.
 setEphe4Path :: FilePath -> IO ()
 setEphe4Path path =
   withCString path $ \baseEphe4Path -> c_ephe4_set_ephe_path baseEphe4Path

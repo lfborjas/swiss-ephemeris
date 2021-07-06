@@ -70,10 +70,6 @@ tests:
   swiss-ephemeris-test:
     main:                Spec.hs
     source-dirs:         test
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
     dependencies:
     - swiss-ephemeris
     - hspec >= 2.7 && < 2.8
