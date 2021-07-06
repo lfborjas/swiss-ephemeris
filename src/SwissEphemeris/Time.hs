@@ -74,6 +74,16 @@ import Foreign.SwissEphemeris
 import SwissEphemeris.Internal
 import System.IO.Unsafe (unsafePerformIO)
 
+{- $timeEssay
+
+Some notes:
+
+https://wiki.haskell.org/Time#UniversalTime
+https://en.wikipedia.org/wiki/Terrestrial_Time
+https://en.wikipedia.org/wiki/Universal_Time
+
+-}
+
 data TimeStandard
   = -- | Terrestrial Time (successor to Ephemeris Time)
     TT

@@ -47,7 +47,7 @@ spec = around_ withFallback $ do
               timeTT <- run $ universalToTerrestrial time
               ephe <- run $ readEphemerisRaw includeAll speedButNoFallback timeTT
               if isLeft ephe then do
-                Debug.traceM $ "Failure: " <> show ephe
+                Debug.traceM $ "Failure: " ++ show ephe
               else
                 pure ()
               assert $ isRight ephe
@@ -60,7 +60,7 @@ spec = around_ withFallback $ do
               timeTT <- run $ universalToTerrestrial time
               ephe <- run $ readEphemerisRaw includeAll includeSpeed timeTT
               if isLeft ephe then do
-                Debug.traceM $ "Failure: " <> show ephe
+                Debug.traceM $ "Failure: " ++ show ephe
               else
                 pure ()
 
