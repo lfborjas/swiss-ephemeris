@@ -14,6 +14,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import Data.Time (UTCTime)
 import Utils
+import qualified Debug.Trace as Debug
 
 ephe4Path :: FilePath
 ephe4Path = "./swedist/precalc"
@@ -45,6 +46,10 @@ spec = around_ withFallback $ do
             \time -> monadicIO $ do
               timeTT <- run $ universalToTerrestrial time
               ephe <- run $ readEphemerisRaw includeAll speedButNoFallback timeTT
+              if isLeft ephe then do
+                Debug.traceM $ "Failure: " <> show ephe
+              else
+                pure ()
               assert $ isRight ephe
 
         
@@ -54,6 +59,11 @@ spec = around_ withFallback $ do
             \time -> monadicIO $ do
               timeTT <- run $ universalToTerrestrial time
               ephe <- run $ readEphemerisRaw includeAll includeSpeed timeTT
+              if isLeft ephe then do
+                Debug.traceM $ "Failure: " <> show ephe
+              else
+                pure ()
+
               assert $ isRight ephe
 
         prop "it is also able to read ephemeris for out-of-range days" $
