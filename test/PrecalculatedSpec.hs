@@ -23,7 +23,11 @@ withFallback :: IO () -> IO ()
 withFallback act = do
   fullPath <- makeAbsolute ephe4Path
   withEphemerides ephePath $ do
-    Debug.traceM $ "Path" ++ fullPath
+    -- NOTE(luis) there's a weird test failure mode when _some_
+    -- tests are not able to find the ephemeris and ep4 directories;
+    -- I'm sure it's related to this function (`withFallback`) being
+    -- called a lot of times, but I haven't been able to trace it.
+    --Debug.traceM $ "Path" ++ fullPath
     setEphe4Path fullPath
     act 
 
