@@ -1,0 +1,6 @@
+test:8.8.4:
+    image: haskell:8.8.4
+    script:
+        - cabal v2-update
+        - cabal new-build --enable-tests --enable-benchmarks --test-show-details=streaming
+        - cabal new-test --enable-tests --enable-benchmarks --test-show-details=streaming
