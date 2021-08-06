@@ -5,3 +5,5 @@ dist-newstyle
 *.hp
 *.prof
 result*
+
+.DS_Store

@@ -1,0 +1,10 @@
+-- from https://downloads.haskell.org/~ghc/7.4.1/docs/html/users_guide/ghci-dot-files.html
+
+-- show resource utilization
+:set +s
+
+
+:set prompt "λ> "
+
+-- ignore warnings, overload strings
+:seti -w -XOverloadedStrings
