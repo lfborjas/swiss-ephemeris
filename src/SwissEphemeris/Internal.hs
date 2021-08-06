@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 
+
 -- |
 -- Module: SwissEphemeris.Internal
 -- Description: helper functions and types, not for public consumption.
@@ -140,16 +141,17 @@ data SplitDegreesOption
   | KeepDegrees
   deriving (Eq, Show, Enum, Generic)
 
--- | Represents an instant in Julian time.
--- see:
--- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847871 8. Date and time conversion functions>
--- also cf. @julianDay@
-newtype JulianTime = JulianTime {unJulianTime :: Double}
-  deriving (Show, Eq, Ord)
+-- | Calendar options
+data CalendarOption
+  = GregorianCal
+  | JulianCal
+  deriving (Eq, Show)
 
--- | Represents an instant in sidereal time
-newtype SiderealTime = SiderealTime {unSiderealTime :: Double}
-  deriving (Show, Eq, Ord)
+data EphemerisOption
+  = UseSwissEphemeris
+  | UseJPLEphemeris
+  | UseMoshierEphemeris
+  deriving (Eq, Show)
 
 -- | The cusp of a given "house" or "sector". It is an ecliptic longitude.
 -- see:
@@ -334,3 +336,12 @@ numberToPlanet (PlanetNumber (CInt n)) =
 -- in e.g. 
 allocaErrorMessage :: (Ptr CChar -> IO b) -> IO b
 allocaErrorMessage = allocaArray 256
+
+calendarOptionToFlag :: CalendarOption -> GregFlag
+calendarOptionToFlag GregorianCal = gregorian
+calendarOptionToFlag JulianCal    = julian
+
+ephemerisOptionToFlag :: EphemerisOption -> EpheFlag
+ephemerisOptionToFlag UseSwissEphemeris   = useSwissEph
+ephemerisOptionToFlag UseJPLEphemeris     = useJplEph
+ephemerisOptionToFlag UseMoshierEphemeris = useMoshierEph

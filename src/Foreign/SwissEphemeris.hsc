@@ -29,6 +29,8 @@ instance Storable PlanetNumber where
     poke (castPtr ptr) n
 
 
+newtype EpheFlag = EpheFlag
+  { unEpheFlag :: CInt } deriving (Eq, Show)
 
 newtype GregFlag = GregFlag
   { unGregFlag :: CInt } deriving (Eq, Show)
@@ -73,6 +75,12 @@ newtype SplitDegFlag = SplitDegFlag
  , swissEph = SEFLG_SWIEPH
  , equatorialPositions = SEFLG_EQUATORIAL
  }
+
+#{enum EpheFlag, EpheFlag
+, useSwissEph = SEFLG_SWIEPH
+, useJplEph   = SEFLG_JPLEPH
+, useMoshierEph = SEFLG_MOSEPH
+}
 
 #{enum SplitDegFlag, SplitDegFlag
  , splitRoundSec = SE_SPLIT_DEG_ROUND_SEC
@@ -186,3 +194,89 @@ foreign import ccall unsafe "swephexp.h swe_sidtime0"
                    -> CDouble -- obliquity
                    -> CDouble -- nutation
                    -> (IO CDouble)
+
+-- | Same as 'c_swe_deltat', but expects one to have explicitly
+-- selected an ephemeris mode, and returns a warning if not.
+foreign import ccall unsafe "swephexp.h swe_deltat_ex"
+    c_swe_deltat_ex :: CDouble
+                    -- ^ JulianTime, in a UT scale.
+                    -> EpheFlag
+                    -- ^ Ephemeris to use (for tidal acceleration data)
+                    -> CString
+                    -- ^ For warning/error message
+                    -> IO CDouble
+                    -- ^ Delta T, if the correct ephemeris
+                    -- is being used.
+
+{- TODO
+  Not added:
+ 
+ * swe_date_conversion (Haskell already has functions for this,
+   in the time package)
+ * swe_utc_time_zone (expects an offset, in which case the
+   ZonedDateTime -> UTCTime conversion in Haskell also suffices.) 
+-}
+
+-- | Given a Universal Time input (UTC, but it's considered
+-- to be UT1 if before 1971, or if the leap is too great.)
+foreign import ccall unsafe "swephexp.h swe_utc_to_jd"
+    c_swe_utc_to_jd :: CInt
+                    -- ^ year
+                    -> CInt
+                    -- ^ month
+                    -> CInt
+                    -- ^ day
+                    -> CInt
+                    -- ^ hour
+                    -> CInt
+                    -- ^ min
+                    -> CDouble
+                    -- ^ sec
+                    -> GregFlag
+                    -- ^ gregorian/julian
+                    -> Ptr CDouble
+                    -- ^ @dret[2]@, where pos 0 is 
+                    -- the Julian Day in TT (née ET)
+                    -- and pos 1 is the Julian Day in UT1
+                    -> CString
+                    -- ^ error string
+                    -> IO CInt
+                    -- OK/ERR
+                  
+foreign import ccall unsafe "swephexp.h swe_jdet_to_utc"
+    c_swe_jdet_to_utc :: CDouble
+                      -- ^ JD
+                      -> GregFlag
+                      -- ^ julian/gregorian
+                      -> Ptr CInt
+                      -- ^ year
+                      -> Ptr CInt
+                      -- ^ month
+                      -> Ptr CInt
+                      -- ^ day 
+                      -> Ptr CInt
+                      -- ^ hour
+                      -> Ptr CInt
+                      -- ^ min
+                      -> Ptr CDouble
+                      -- ^ sec
+                      -> IO ()
+                      
+foreign import ccall unsafe "swephexp.h swe_jdut1_to_utc"
+    c_swe_jdut1_to_utc :: CDouble
+                      -- ^ JD
+                      -> GregFlag
+                      -- ^ julian/gregorian
+                      -> Ptr CInt
+                      -- ^ year
+                      -> Ptr CInt
+                      -- ^ month
+                      -> Ptr CInt
+                      -- ^ day 
+                      -> Ptr CInt
+                      -- ^ hour
+                      -> Ptr CInt
+                      -- ^ min
+                      -> Ptr CDouble
+                      -- ^ sec
+                      -> IO ()

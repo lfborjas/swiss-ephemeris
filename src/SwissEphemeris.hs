@@ -17,57 +17,50 @@
 -- There's a wealth of other calculations possible with the underlying library, however,
 -- please refer to their documentation and the bundled sources for ideas!
 module SwissEphemeris
-  ( -- classes for general concepts
+  ( -- * Classes for general concepts
     HasEclipticLongitude(..),
-    -- fundamental aliases/newtypes
-    JulianTime (..),
-    SiderealTime (..),
+    -- * Fundamental aliases/newtypes
     HouseCusp,
-    -- fundamental enumerations
+    -- * Fundamental enumerations
     SplitDegreesOption (..),
     Planet (..),
     HouseSystem (..),
     ZodiacSignName (..),
     NakshatraName (..),
-    -- coordinate/position systems
+    -- * Coordinate/position systems
     EclipticPosition (..),
     EquatorialPosition (..),
     GeographicPosition (..),
     HousePosition (..),
-    -- information about the ecliptic at a point in time.
+    -- * Information about the ecliptic at a point in time.
     ObliquityInformation (..),
     Angles (..),
     CuspsCalculation (..),
     LongitudeComponents (..),
-    -- management of data files
+    -- * Management of data files
     setEphemeridesPath,
     setNoEphemeridesPath,
     closeEphemerides,
     withEphemerides,
     withoutEphemerides,
-    -- core calculations
+    -- * Core calculations
     calculateEclipticPosition,
     calculateEquatorialPosition,
     calculateObliquity,
     calculateCusps,
     calculateCuspsLenient,
     calculateCuspsStrict,
-    -- utility: coordinate transformation
+    -- * Utilities for coordinate transformation
     equatorialToEcliptic,
     eclipticToEquatorial,
-    -- utilities for sidereal information
-    calculateSiderealTime,
-    calculateSiderealTimeSimple,
+    -- * Utilities for sidereal information
     calculateHousePosition,
     calculateHousePositionSimple,
-    -- utilities for time calculations:
-    julianDay,
-    gregorianDateTime,
-    deltaTime,
-    -- utilities for angles:
+    -- * Utilities for display/splitting:
     defaultSplitDegreesOptions,
     splitDegrees,
     splitDegreesZodiac,
+    module SwissEphemeris.Time
   )
 where
 
@@ -77,10 +70,21 @@ import Foreign.C.String
 import Foreign.SwissEphemeris
 import SwissEphemeris.Internal
 import System.IO.Unsafe (unsafePerformIO)
+import SwissEphemeris.Time
 
 -- | Given a path to a directory, point the underlying ephemerides library to it.
 -- You only need to call this function to provide an explicit ephemerides path,
 -- if the environment variable @SE_EPHE_PATH@ is set, it overrides this function.
+-- 
+-- __WARNING__: this is provided for convenience, but in a multi-threaded
+-- situation, it is relatively likely that a call to this function will
+-- either be optimized away, or interleaved too late. Please consider
+-- setting the @SE_EPHE_PATH@ environment variable instead: it will always
+-- be found by the C code, vs. the /sometimes/ of Haskell's inscrutable
+-- optimizations. For a discussion about the thread-unsafety of
+-- this function, see:
+-- https://groups.io/g/swisseph/message/10064
+-- and the related thread.
 setEphemeridesPath :: FilePath -> IO ()
 setEphemeridesPath path =
   withCString path $ \ephePath -> c_swe_set_ephe_path ephePath
@@ -88,17 +92,31 @@ setEphemeridesPath path =
 -- | Explicitly state that we don't want to set an ephemeris path,
 -- which will default to the built-in ephemeris, or use the directory
 -- in the @SE_EPHE_PATH@ environment variable, if set.
+-- 
+-- __WARNING__: this is provided for convenience, but in a multi-threaded
+-- situation, it is relatively likely that a call to this function will
+-- either be optimized away, or interleaved too late. Please consider
+-- setting the @SE_EPHE_PATH@ environment variable instead: it will always
+-- be found by the C code, vs. the /sometimes/ of Haskell's inscrutable
+-- optimizations. 
 setNoEphemeridesPath :: IO ()
 setNoEphemeridesPath = c_swe_set_ephe_path nullPtr
 
 -- | Explicitly release all "cache" pointers and open files obtained by the C
--- library.
+-- library. You don't need to call this if you always work with the same
+-- ephemeris mode: just 'setEphemeridesPath' and walk away -- the OS will
+-- clean up any file pointers or static data used by the library.
 closeEphemerides :: IO ()
 closeEphemerides = c_swe_close
 
 -- | Run a computation with a given ephemerides path open, and then close it.
 -- Note that the computation does /not/ receive the ephemerides,
 -- in keeping with the underlying library's side-effectful conventions.
+--
+-- You don't need to call this if you always work with the same
+-- ephemeris mode: just 'setEphemeridesPath' and walk away -- the OS will
+-- clean up any file pointers or static data used by the library. Preferably,
+-- set the @SE_EPHE_PATH@ environment variable. See 'setEphemeridesPath'
 withEphemerides :: FilePath -> IO a -> IO a
 withEphemerides ephemeridesPath =
   bracket_
@@ -108,48 +126,21 @@ withEphemerides ephemeridesPath =
 -- | Run a computation with no explicit ephemerides set, if the @SE_EPHE_PATH@
 -- environment variable is set, that will be used. If not, it'll fall back to
 -- in-memory data.
+--
+--- You don't need to call this if you always work with the same
+-- ephemeris mode: just 'setEphemeridesPath' and walk away -- the OS will
+-- clean up any file pointers or static data used by the library.
 withoutEphemerides :: IO a -> IO a
 withoutEphemerides =
   bracket_
     setNoEphemeridesPath
     closeEphemerides
 
--- | Given year, month and day as `Int` and a time as `Double`, return
--- a single floating point number representing absolute `JulianTime`.
--- The input date is assumed to be in Gregorian time.
-julianDay :: Int -> Int -> Int -> Double -> JulianTime
-julianDay year month day hour = JulianTime $ realToFrac $ c_swe_julday y m d h gregorian
-  where
-    y = fromIntegral year
-    m = fromIntegral month
-    d = fromIntegral day
-    h = realToFrac hour
-
--- | Given a `JulianTime`, return a tuple with a year, month, day
--- and hour (as a `Double`.) It is the reverse of `julianDay`.
-gregorianDateTime :: JulianTime -> (Int, Int, Int, Double)
-gregorianDateTime (JulianTime jd) =
-  unsafePerformIO $
-    alloca $ \jyear -> alloca $ \jmon -> alloca $ \jday -> alloca $ \jut -> do
-      _ <-
-        c_swe_revjul
-          (realToFrac jd)
-          gregorian
-          jyear
-          jmon
-          jday
-          jut
-      year <- peek jyear
-      month <- peek jmon
-      day <- peek jday
-      time <- peek jut
-      return (fromIntegral year, fromIntegral month, fromIntegral day, realToFrac time)
-
--- | Given `JulianTime` (see `julianDay`),
+-- | Given a 'JulianDay' in 'UT1',
 -- and a `Planet`, returns either the position of that planet at the given time,
 -- if available in the ephemeris, or an error. The underlying library may do IO
 -- when reading ephemerides data.
-calculateEclipticPosition :: JulianTime -> Planet -> IO (Either String EclipticPosition)
+calculateEclipticPosition :: JulianDayUT1 -> Planet -> IO (Either String EclipticPosition)
 calculateEclipticPosition time planet = do
   let options = mkCalculationOptions defaultCalculationOptions
   rawCoords <- calculateCoordinates' options time (planetNumber planet)
@@ -158,14 +149,14 @@ calculateEclipticPosition time planet = do
 -- | Obtain equatorial position (includes declination) of a planet.
 -- If you've called `calculateEclipticPosition` in your code, this is a very cheap call, as the data
 -- is already available to the C code.
-calculateEquatorialPosition :: JulianTime -> Planet -> IO (Either String EquatorialPosition)
+calculateEquatorialPosition :: JulianDayUT1 -> Planet -> IO (Either String EquatorialPosition)
 calculateEquatorialPosition time planet = do
   let options = mkCalculationOptions $ defaultCalculationOptions ++ [equatorialPositions]
   rawCoords <- calculateCoordinates' options time (planetNumber planet)
   return $ fmap equatorialFromList rawCoords
 
 -- | Given a time, calculate ecliptic obliquity and nutation
-calculateObliquity :: JulianTime -> IO (Either String ObliquityInformation)
+calculateObliquity :: JulianDayUT1 -> IO (Either String ObliquityInformation)
 calculateObliquity time = do
   let options = CalcFlag 0
   rawCoords <- calculateCoordinates' options time specialEclNut
@@ -173,12 +164,12 @@ calculateObliquity time = do
 
 -- | Internal function for calculations: the contract is too permissive, use one of the specialized
 -- ones!
-calculateCoordinates' :: CalcFlag -> JulianTime -> PlanetNumber -> IO (Either String [Double])
+calculateCoordinates' :: CalcFlag -> JulianDayUT1 -> PlanetNumber -> IO (Either String [Double])
 calculateCoordinates' options time planet =
   allocaArray 6 $ \coords -> allocaErrorMessage $ \serr -> do
     iflgret <-
       c_swe_calc_ut
-        (realToFrac . unJulianTime $ time)
+        (realToFrac . getJulianDay $ time)
         planet
         options
         coords
@@ -220,7 +211,7 @@ coordinateTransform' obliquity ins =
       return $ map realToFrac result
 
 -- | Alias for `calculateCuspsLenient`
-calculateCusps :: HouseSystem -> JulianTime -> GeographicPosition -> IO CuspsCalculation
+calculateCusps :: HouseSystem -> JulianDayUT1 -> GeographicPosition -> IO CuspsCalculation
 calculateCusps = calculateCuspsLenient
 
 -- | Given a decimal representation of Julian Time (see `julianDay`),
@@ -231,12 +222,12 @@ calculateCusps = calculateCuspsLenient
 -- like `Placidus` and `Koch`, are very likely to fail close to the polar circles; in this
 -- and other edge cases, the calculation returns cusps in the `Porphyrius` system.
 -- The underlying library may do IO when consulting ephemerides data.
-calculateCuspsLenient :: HouseSystem -> JulianTime -> GeographicPosition -> IO CuspsCalculation
+calculateCuspsLenient :: HouseSystem -> JulianDayUT1 -> GeographicPosition -> IO CuspsCalculation
 calculateCuspsLenient sys time loc =
   allocaArray 13 $ \cusps -> allocaArray 10 $ \ascmc -> do
     rval <-
       c_swe_houses
-        (realToFrac . unJulianTime $ time)
+        (realToFrac . getJulianDay $ time)
         (realToFrac $ geoLat loc)
         (realToFrac $ geoLng loc)
         (fromIntegral $ toHouseSystemFlag sys)
@@ -259,7 +250,7 @@ calculateCuspsLenient sys time loc =
 
 -- | Unlike `calculateCuspsLenient`, return a `Left` value if the required house system
 -- couldn't be used to perform the calculations.
-calculateCuspsStrict :: HouseSystem -> JulianTime -> GeographicPosition -> IO (Either String CuspsCalculation)
+calculateCuspsStrict :: HouseSystem -> JulianDayUT1 -> GeographicPosition -> IO (Either String CuspsCalculation)
 calculateCuspsStrict sys time loc = do
   calcs@(CuspsCalculation _ _ sys') <- calculateCuspsLenient sys time loc
   if sys' /= sys
@@ -276,14 +267,14 @@ calculateCuspsStrict sys time loc = do
 -- NOTES: for the Koch system, this is likely to fail, or return counterintuitive
 -- results. Also, we're doing a bit of a funky conversion between sidereal time and
 -- ARMC, if you `calculateCusps`, the correct `armc` will be present in the returned `Angles`
-calculateHousePositionSimple :: HouseSystem -> JulianTime -> GeographicPosition -> EclipticPosition -> IO (Either String HousePosition)
+calculateHousePositionSimple :: HouseSystem -> JulianDayUT1 -> GeographicPosition -> EclipticPosition -> IO (Either String HousePosition)
 calculateHousePositionSimple sys time loc pos = do
   obliquityAndNutation <- calculateObliquity time
   case obliquityAndNutation of
     Left e -> return $ Left e
     Right on -> do
-      SiderealTime siderealTime <- calculateSiderealTime time on
-      let armc' = siderealTime * 15 + geoLng loc
+      siderealTime <- julianToSidereal time on
+      let armc' = getSiderealTime siderealTime * 15 + geoLng loc
       calculateHousePosition sys armc' loc on pos
 
 -- | If you happen to have the correct ARMC for a time and place (obtained from calculateCusps)
@@ -310,35 +301,6 @@ calculateHousePosition sys armc' geoCoords obliq eclipticCoords =
         let houseN = truncate housePos
             cuspD = housePos - fromIntegral houseN
         return $ Right $ HousePosition houseN (realToFrac cuspD)
-
--- | Given `JulianTime`, get `SiderealTime`. May consult ephemerides data, hence it being in IO,
--- will have to calculate obliquity at the given julian time, so it'll be slightly slower than
--- `calculateSiderealTime`.
-calculateSiderealTimeSimple :: JulianTime -> IO SiderealTime
-calculateSiderealTimeSimple jt = do
-  sidTime <- c_swe_sidtime (realToFrac . unJulianTime $ jt)
-  return $ SiderealTime $ realToFrac sidTime
-
--- | Given a `JulianTime` and `ObliquityInformation`, calculate the equivalent `SiderealTime`.
--- prefer it over `calculateSiderealTimeSimple` if you already obtained `ObliquityInformation`
--- for another calculation.
-calculateSiderealTime :: JulianTime -> ObliquityInformation -> IO SiderealTime
-calculateSiderealTime jt on = do
-  let obliq = realToFrac $ eclipticObliquity on
-      nut = realToFrac $ nutationLongitude on
-  sidTime <- c_swe_sidtime0 (realToFrac . unJulianTime $ jt) obliq nut
-  return $ SiderealTime $ realToFrac sidTime
-
--- | Given a `JulianTime` (based on a UniversalTime), calculate the delta
--- between it and "true time":
--- See <https://www.astro.com/swisseph/swisseph.htm#_Toc46391727 7. Delta T>
--- It relies on ephemeris data being open, and as such belongs in IO.
--- /NOTE:/ this could be used to create a JulianTime -> EphemerisTime
--- function to send down to @swe_calc@, if we choose to port that one.
-deltaTime :: JulianTime -> IO Double
-deltaTime jt = do
-  deltaT <- c_swe_deltat . realToFrac . unJulianTime $ jt
-  return $ realToFrac deltaT
 
 -- | Given a longitude, return the degrees it's from its nearest sign,
 -- minutes, and seconds; with seconds rounded. Convenience alias for `splitDegrees`,

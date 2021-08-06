@@ -1,5 +1,11 @@
 # Changelog for swiss-ephemeris
 
+## v1.4.0.0
+
+* Adds the `Precalculated` namespace with functions to read and write pre-calculated
+  ephemeris from a file on disk.
+* [dev] adds a `Dockerfile` and `NOTES.md` to aid in diagnosing memory leaks.
+
 ## v1.3.0.2
 
 * More memory safety paranoia: ensure that `gravGroup` functions have appropriately
