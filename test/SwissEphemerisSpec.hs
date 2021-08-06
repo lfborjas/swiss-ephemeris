@@ -19,6 +19,12 @@ import Data.Time (UTCTime)
 -- note the `PlbRS` format, which outputs latitude and longitude as decimals, not degrees
 -- for easier comparison.
 
+withoutEphemerides' :: IO ()
+withoutEphemerides' = setNoEphemeridesPath 
+
+withEphemerides' :: IO ()
+withEphemerides' = setEphemeridesPath ephePath
+
 spec :: Spec
 spec = do
   describe "eclipticToEquatorial" $
@@ -47,7 +53,7 @@ spec = do
           split = LongitudeComponents {longitudeZodiacSign = Just Capricorn, longitudeDegrees = 15, longitudeMinutes = 38, longitudeSeconds = 50, longitudeSecondsFraction = 0.0, longitudeSignum = Nothing, longitudeNakshatra = Nothing}
       splitDegreesZodiac longitude `shouldBe` split
 
-  around_ withoutEphemerides $ do
+  beforeAll_ withoutEphemerides' $ do
     describe "calculateEclipticPosition" $ do
       it "calculates ecliptic coordinates for the Sun for a specific day" $ do
         let time = mkJulian 1989 1 6 0.0
@@ -196,7 +202,7 @@ spec = do
         deltaT <- deltaTime time
         deltaT `shouldBeApprox` expectedDeltaT
 
-  around_ (withEphemerides ephePath) $
+  beforeAll_ withEphemerides' $
     context "with bundled ephemeris" $ do
       prop "calculates ecliptic coordinates for any of the planets in a wide range of time." $
         forAll genCoordinatesQuery $

@@ -2,7 +2,7 @@
 
 module TimeSpec (spec) where
 
-import SwissEphemeris (withEphemerides)
+import SwissEphemeris (setEphemeridesPath)
 import SwissEphemeris.Time
 import System.Directory
 import Test.Hspec
@@ -15,11 +15,10 @@ import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
 import Arbitrary ()
 import Utils ( ephePath, mkUTC, civilTime )
 
-withEphemeris :: IO () -> IO ()
-withEphemeris act = do
+withEphemeris :: IO ()
+withEphemeris = do
   fullPath <- makeAbsolute ephePath
-  withEphemerides fullPath $ do
-    act
+  setEphemeridesPath fullPath
 
 leapSeconds :: Gen UTCTime
 leapSeconds =
@@ -35,7 +34,7 @@ validTime :: Gen UTCTime
 validTime = oneof [civilTime, leapSeconds]
 
 spec :: Spec
-spec = around_ withEphemeris $ do
+spec = beforeAll_ withEphemeris $ do
   describe "pure conversion functions" $ do
     describe "dayToJulianDay/dayFromJulianDay" $ do
       it "can produce a fake TT julian from a Day" $ do

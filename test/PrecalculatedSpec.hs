@@ -19,23 +19,18 @@ import qualified Debug.Trace as Debug
 ephe4Path :: FilePath
 ephe4Path = "./swedist/precalc"
 
-withFallback :: IO () -> IO ()
-withFallback act = do
+withFallback :: IO ()
+withFallback = do
   fullPath <- makeAbsolute ephe4Path
-  withEphemerides ephePath $ do
-    -- NOTE(luis) there's a weird test failure mode when _some_
-    -- tests are not able to find the ephemeris and ep4 directories;
-    -- I'm sure it's related to this function (`withFallback`) being
-    -- called a lot of times, but I haven't been able to trace it.
-    --Debug.traceM $ "Path" ++ fullPath
-    setEphe4Path fullPath
-    act 
+  fullEphePath <- makeAbsolute ephePath
+  setEphemeridesPath fullEphePath
+  setEphe4Path fullPath
 
 speedButNoFallback :: EpheCalcFlag
 speedButNoFallback = foldEpheCalcOptions [includeSpeed, mustUseStoredEphe]
 
 spec :: Spec
-spec = around_ withFallback $ do
+spec = beforeAll_ withFallback $ do
   describe "readEphemerisRaw" $ do
     context "with stored ephemeris, but no fallback ephemeris" $ do
         modifyMaxSuccess (const 10) $
