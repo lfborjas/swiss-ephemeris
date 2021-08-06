@@ -33,6 +33,7 @@ module SwissEphemeris.Precalculated
 
     -- * Convenience functions
     forPlanet,
+    planetEphe,
     mkEphemerisBlockNumber,
     extractEphemerisBlockNumber,
 
@@ -310,11 +311,15 @@ type EpheVector = VU.Vector Double
 
 -- | Convenience "indexing" function to get a given 'Planet's
 -- data from a given ephemeris.
-forPlanet :: Planet -> Ephemeris a -> Maybe (EphemerisPosition a)
-forPlanet pl ephe =
+forPlanet :: Ephemeris a -> Planet -> Maybe (EphemerisPosition a)
+forPlanet ephe pl =
   case planetToPlanetOption pl of
     Nothing -> Nothing
     Just placalc -> ephePositions ephe V.!? (fromIntegral . unPlacalcPlanet $ placalc)
+    
+-- | Flipped version of `forPlanet`
+planetEphe :: Planet -> Ephemeris a -> Maybe (EphemerisPosition a)
+planetEphe = flip forPlanet
 
 -- | Set path for base directory where @sep4_@ files are stored.
 -- 
