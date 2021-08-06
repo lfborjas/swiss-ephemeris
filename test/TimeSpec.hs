@@ -22,21 +22,35 @@ withEphemeris act = do
     act
 
 leapSeconds :: Gen UTCTime
-leapSeconds = 
+leapSeconds =
   -- a sampling of:
   -- https://www.nist.gov/pml/time-and-frequency-division/time-realization/leap-seconds
-  oneof [ 
-    pure (mkUTC "2016-12-31T23:59:60Z"), 
+  oneof [
+    pure (mkUTC "2016-12-31T23:59:60Z"),
     pure (mkUTC "1985-06-30T23:59:60Z"),
     pure (mkUTC "1987-12-31T23:59:60Z")
     ]
-    
+
 validTime :: Gen UTCTime
 validTime = oneof [civilTime, leapSeconds]
-      
+
 spec :: Spec
 spec = around_ withEphemeris $ do
   describe "pure conversion functions" $ do
+    describe "fakeToJulianDay/fakeFromJulianDay" $ do
+      it "can produce a fake TT julian from a Day" $ do
+        let day = fromGregorian 2021 7 1
+            jd = fakeToJulianDay day :: JulianDayTT
+            rt = fakeFromJulianDay jd
+        getJulianDay jd `shouldBe` 2459397.0
+        rt `shouldBe` day
+
+      prop "can roundtrip a fake TT julian from any Day" $
+        forAll validTime $
+          \(UTCTime day _) ->
+            let jd = fakeToJulianDay day :: JulianDayTT
+            in fakeFromJulianDay jd `shouldBe` day
+
     describe "utcToJulian" $ do
       it "can be constructed from a UTC" $ do
         let jd = utcToJulian (mkUTC "2021-07-03T23:05:54.696005Z")
@@ -59,7 +73,7 @@ spec = around_ withEphemeris $ do
       it "permits easy conversion from date components to JD (no validation)" $ do
         let jd = gregorianToJulianDayUT 2021 7 3 0
         getJulianDay jd `shouldBe` 2459398.5
-        
+
     describe "coerceUT" $ do
       it "shows that a UT JD is within a second of a UT1 JD" $ do
         let time = mkUTC "2021-07-03T23:05:54.696005Z"
@@ -79,7 +93,7 @@ spec = around_ withEphemeris $ do
         getJulianDay jd `shouldBe` 2459399.4624386113
         time' `shouldBe` roundTripped
         utcTimeToPOSIXSeconds time `shouldBeApprox` utcTimeToPOSIXSeconds roundTripped
-        
+
       it "works for that weird timestamp that broke ubuntu once" $ do
         let time = mkUTC "7514-11-10T22:13:08.35750808104Z"
         jd <- toJulianDay time :: (IO (Maybe JulianDayUT1))
@@ -104,8 +118,8 @@ spec = around_ withEphemeris $ do
         getJulianDay jd `shouldBe` 2459399.46243737
         time' `shouldBe` roundTripped
         utcTimeToPOSIXSeconds time `shouldBeApprox` utcTimeToPOSIXSeconds roundTripped
-        
-      
+
+
       prop "can roundtrip a UT1 Julian from any UTC" $
         forAll validTime $
           \time -> monadicIO $ do

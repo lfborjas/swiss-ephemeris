@@ -16,6 +16,7 @@
 -- @since 1.4.0.0
 module SwissEphemeris.Time
   ( -- * The many faces of time
+    -- $timeDoc
     TimeStandard (..),
     JulianDay,
     JulianDayUT,
@@ -39,6 +40,8 @@ module SwissEphemeris.Time
     julianMidnight,
 
     -- ** Pure conversion functions
+    fakeFromJulianDay,
+    fakeToJulianDay,
     gregorianToJulianDayUT,
     gregorianToFakeJulianDayTT,
     julianDay,
@@ -74,18 +77,63 @@ import Foreign.SwissEphemeris
 import SwissEphemeris.Internal
 import System.IO.Unsafe (unsafePerformIO)
 
-{- $timeEssay
+{- $timeDoc
+   This module offers conversions between some Haskell time values, and astronomical
+   time values as defined by @SwissEphemeris@. The most important types in this
+   module are 'TimeStandard', which refers to different "standards" of time
+   such as Universal Time and Terrestial Time, and 'JulianDay', which codifies
+   an absolute floating point number of fractional "days" since an epoch
+   in the distant past. A 'SiderealTime' is also provided, though it figures
+   less prominently in the Swiss Ephemeris API, and the conversions are more
+   self-explanatory.
+   
+   As far as this library is concerned, a [Julian Day](https://en.wikipedia.org/wiki/Julian_day)
+   can represent either a moment in [Universal Time](https://en.wikipedia.org/wiki/Universal_Time),
+   which takes into account the Earth's rotation (either the
+   more specific @UT1@ standard, or a generic @UT@ time whose precision is left up
+   to the caller -- we provide ways of converting a @UTCTime@ into a @JulianDayUT@, for example,)
+   or [Terrestrial Time](https://en.wikipedia.org/wiki/Terrestrial_Time), which is independent of the Earth's rotation and is used
+   in astronomical measurements from a theoretical point on the surface of the Earth.
+   Most functionality in Swiss Ephemeris uses Terrestrial Time (the documentation
+   also refers to it using the now-superseded moniker of Ephemeris Time, but current
+   versions of the library actually don't use the time standard by that name, and instead
+   adhere to TT.) 
 
-Some notes:
+   An absolute moment in time will /not/ be the same in UT1 and TT: TT is /ahead/ of
+   UT1 by a quantity known as [Delta Time](https://en.wikipedia.org/wiki/%CE%94T_(timekeeping\)),
+   which is not neatly predictable but which is expected to increase with the passage of time;
+   given this reality, functions in this module make it mostly impossible to "coerce" a Julian Day
+   obtained from a moment in Universal Time to Terrestrial Time (and vice-versa: ) Delta Time /must/ be calculated,
+   and [leap seconds](https://en.wikipedia.org/wiki/Leap_second) in UT /must/ be taken into account. 
+   Swiss Ephemeris provides functions to do these conversions safely by consulting historical data (hence the @IO@ restriction,)
+   and the 'ToJulian' and 'FromJulian' typeclasses govern the interface for conversion for any
+   given type: currently only @UTCTime@ from the Haskell time taxonomy is supported: a @Day@
+   can trivially be first converted to/from @UTCTime@, and other values such as Haskell's
+   own notion of @UniversalTime@ don't have immediate astronomical significance.
+   
+   The only somewhat "safe" coercion between time standards that doesn't go through IO
+   is between @UT@ and @UT1@, though for @UTCTime@, this will be off by less than a second
+   due to the nature of UTC vs. UT1. 
+   
+   For convenience, we provide a way of converting between 'Day' and any 'JulianDay' values purely,
+   which relies on temporally unsound assumptions about the difference
+   between the supported time standards; this works fine for dates, but is categorically
+   wrong whenever a time of day is necessary. Go through the typeclass methods in that case.
 
-https://wiki.haskell.org/Time#UniversalTime
-https://en.wikipedia.org/wiki/Terrestrial_Time
-https://en.wikipedia.org/wiki/Universal_Time
-https://www.nist.gov/pml/time-and-frequency-division/time-realization/leap-seconds
-https://www.ietf.org/timezones/data/leap-seconds.list
+   Some further reading:
+   
+   * https://wiki.haskell.org/Time
+   * https://en.wikipedia.org/wiki/Terrestrial_Time
+   * https://en.wikipedia.org/wiki/Universal_Time
+   * https://en.wikipedia.org/wiki/Leap_second
+   * https://en.wikipedia.org/wiki/%CE%94T_(timekeeping)
+   * https://www.nist.gov/pml/time-and-frequency-division/time-realization/leap-seconds
+   * https://www.ietf.org/timezones/data/leap-seconds.list
 
 -}
 
+-- | Various standards for measuring time that can be expressed as
+-- Julian Days.
 data TimeStandard
   = -- | Terrestrial Time (successor to Ephemeris Time)
     TT
@@ -105,15 +153,24 @@ data TimeStandard
 --   information, as done by the Swiss Ephemeris library,
 --   in which case it's 'TT' (aka, somewhat wrongly, as Ephemeris
 --   time,) or 'UT1'.
-newtype JulianDay (s :: TimeStandard) = MkJulianDay {getJulianDay :: Double}
+newtype JulianDay (s :: TimeStandard) = MkJulianDay {
+                                          -- | Get the underlying 'Double' in 
+                                          -- a 'JulianDay'. We intentionally do /not/
+                                          -- export a way to finagle a 'Double' into a
+                                          -- 'JulianDay': you'll have to obtain it
+                                          -- through the various temporal conversion functions.
+                                          getJulianDay :: Double}
   deriving (Eq, Show, Enum)
 
 -- Aliases for those who dislike datakinds
 
+-- | A terrestrial time as a Julian Day
 type JulianDayTT = JulianDay 'TT
 
+-- | A generic universal time as a Julian Day
 type JulianDayUT = JulianDay 'UT
 
+-- | A @UT1@ universal time as a Julian Day
 type JulianDayUT1 = JulianDay 'UT1
 
 -- | Represents an instant in sidereal time
@@ -201,6 +258,36 @@ addDeltaTime (MkJulianDay jd) dt = MkJulianDay (jd + dt)
 subtractDeltaTime :: JulianDay 'TT -> Double -> JulianDay 'UT1
 subtractDeltaTime (MkJulianDay jd) dt = MkJulianDay (jd - dt)
 
+
+-------------------------------------------------------------------------------
+-- Lies & deceit
+-------------------------------------------------------------------------------
+
+-- Convenience "pure" function that pretends
+-- that a day at noon can be converted to /any/ JulianDay;
+-- in reality, it pretends that a JulianDay /in UT/ stands
+-- in for any other (e.g. in 'UT1' or 'TT') -- this is "good enough"
+-- for a day at noon since, at least in 2021, UT is only off
+-- by less than a second from UT1, and only behind TT by a few
+-- seconds 
+fakeToJulianDay :: Day -> JulianDay ts
+fakeToJulianDay day =
+  gregorianToJulian y m d 12
+  where
+    (y, m, d) = toGregorian day
+    
+-- Convenience "pure" function that takes an arbitrary
+-- 'JulianDay' value in any time standard, converts it to noon,
+-- and then to the corresponding 'Day.' Exploits the same circumstantial
+-- truths about time as 'fakeToJulianDay'
+fakeFromJulianDay :: JulianDay ts -> Day
+fakeFromJulianDay jd =
+  fromGregorian y m d
+  where
+  (y,m,d,_) = gregorianFromJulianDay . julianNoon $ jd
+  
+
+
 -------------------------------------------------------------------------------
 -- Generic UT functions
 -------------------------------------------------------------------------------
@@ -223,7 +310,7 @@ gregorianToJulianDayUT = gregorianToJulian
 -- the truth: the /actual/ Julian Day produced by this function is an absolute,
 -- universal time, we just naughtily repackage it as a terrestrial time here.
 -- If you want a /real/ TerrestrialTime, either convert a valid temporal value
--- through the 'toJulian' polymorphic function, or use 'universalToTerrestrial'
+-- through the 'toJulianDay' polymorphic function, or use 'universalToTerrestrial'
 -- if you already have a 'UT1' value.
 gregorianToFakeJulianDayTT :: Integer -> Int -> Int -> Double -> JulianDay 'TT
 gregorianToFakeJulianDayTT = gregorianToJulian
@@ -241,10 +328,10 @@ gregorianToJulian year month day hour =
 julianDay :: Int -> Int -> Int -> Double -> JulianDay 'UT
 julianDay intYear = gregorianToJulianDayUT (fromIntegral intYear)
 
--- | Given a 'JulianDay' in the 'UT' standard,
+-- | Given a 'JulianDay' in any standard,
 -- produce the date/time components of a gregorian date.
-gregorianFromJulianDayUT :: JulianDay 'UT -> (Integer, Int, Int, Double)
-gregorianFromJulianDayUT (MkJulianDay jd) =
+gregorianFromJulianDay :: JulianDay ts -> (Integer, Int, Int, Double)
+gregorianFromJulianDay (MkJulianDay jd) =
   unsafePerformIO $
     alloca $ \jyear -> alloca $ \jmon -> alloca $ \jday -> alloca $ \jut -> do
       _ <-
@@ -260,6 +347,9 @@ gregorianFromJulianDayUT (MkJulianDay jd) =
       day <- peek jday
       time <- peek jut
       return (fromIntegral year, fromIntegral month, fromIntegral day, realToFrac time)
+
+gregorianFromJulianDayUT :: JulianDay 'UT -> (Integer, Int, Int, Double)
+gregorianFromJulianDayUT = gregorianFromJulianDay
 
 {-# DEPRECATED gregorianDateTime "Use 'gregorianFromJulianDayUT' instead" #-}
 gregorianDateTime :: JulianDay 'UT -> (Int, Int, Int, Double)
