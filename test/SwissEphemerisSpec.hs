@@ -301,8 +301,8 @@ compareCalculations _ _ = expectationFailure "Unable to calculate"
 -- | As noted in the readme, the test ephemeris only covers from
 -- 1800-Jan-01 AD to 2399-Dec-31
 -- the Moshier ephemeris should cover a wider range of years, but
--- they cannot compute Chiron. We're choosing a range for which
--- we have Ephemeris for chiron.
+-- they cannot compute Chiron in the general case. 
+-- We're choosing a range for which we have continuous Ephemeris for chiron.
 -- These numbers were calculated with:
 -- https://ssd.jpl.nasa.gov/tc.cgi
 -- read more in the manual:
@@ -313,11 +313,23 @@ minT = minTestEpheT
 maxT :: UTCTime
 maxT = maxTestEpheT
 
+-- see:
+-- https://github.com/aloistr/swisseph/blob/7a9a56f858f8db5128c1e5c0bf1c3bde760a0cb3/sweph.h#L207-L208
+-- and:
+-- https://github.com/aloistr/swisseph/blob/40a0baa743a7c654f0ae3331c5d9170ca1da6a6a/sweph.c#L1079
+-- It seems that even though we don't have /data/ for Chiron beyond
+-- `minT` and `maxT` above, some far out dates are still interpolated
+-- just fine; so we work with the absolute limits of the library
+-- for the negative case, instead.
+minChironEphe, maxChironEphe :: UTCTime 
+minChironEphe = mkUTC "0675-01-01T00:00:00Z"
+maxChironEphe = mkUTC "4650-01-01T00:00:00Z"
+
 genJulian :: Gen JulianDayUT1
 genJulian = genJulianInRange minT maxT
 
 genBadJulian :: Gen JulianDayUT1
-genBadJulian = oneof [genJulianBefore minT, genJulianAfter maxT]
+genBadJulian = oneof [genJulianBefore minChironEphe, genJulianAfter maxChironEphe]
 
 genHouseSystem :: Gen HouseSystem
 genHouseSystem = elements [Placidus, Koch, Porphyrius, Regiomontanus, Campanus, Equal, WholeSign]
