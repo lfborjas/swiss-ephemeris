@@ -37,19 +37,19 @@ validTime = oneof [civilTime, leapSeconds]
 spec :: Spec
 spec = around_ withEphemeris $ do
   describe "pure conversion functions" $ do
-    describe "fakeToJulianDay/fakeFromJulianDay" $ do
+    describe "dayToJulianDay/dayFromJulianDay" $ do
       it "can produce a fake TT julian from a Day" $ do
         let day = fromGregorian 2021 7 1
-            jd = fakeToJulianDay day :: JulianDayTT
-            rt = fakeFromJulianDay jd
+            jd = dayToJulianDay day :: JulianDayTT
+            rt = dayFromJulianDay jd
         getJulianDay jd `shouldBe` 2459397.0
         rt `shouldBe` day
 
       prop "can roundtrip a fake TT julian from any Day" $
         forAll validTime $
           \(UTCTime day _) ->
-            let jd = fakeToJulianDay day :: JulianDayTT
-            in fakeFromJulianDay jd `shouldBe` day
+            let jd = dayToJulianDay day :: JulianDayTT
+            in dayFromJulianDay jd `shouldBe` day
 
     describe "utcToJulian" $ do
       it "can be constructed from a UTC" $ do

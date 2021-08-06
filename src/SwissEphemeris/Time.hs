@@ -40,16 +40,20 @@ module SwissEphemeris.Time
     julianMidnight,
 
     -- ** Pure conversion functions
-    fakeFromJulianDay,
-    fakeToJulianDay,
-    gregorianToJulianDayUT,
+    -- *** Lossy conversion of a @Day@ value
+    dayFromJulianDay,
+    dayToJulianDay,
+    -- *** 'Fake' (innacurate) conversions of datetime components
     gregorianToFakeJulianDayTT,
-    julianDay,
+    gregorianFromFakeJulianDayTT,
+    -- *** Lossy UT conversions of datetime components
+    gregorianToJulianDayUT,
     gregorianFromJulianDayUT,
-    gregorianDateTime,
-    utcToJulianUT,
+    -- *** Lossy UT conversions of an @UTC@ value
+    utcToJulianDayUT,
+    julianDayUTToUTC,
+    -- (less ugly aliases)
     utcToJulian,
-    julianUTToUTC,
     julianToUTC,
 
     -- * Delta Time
@@ -199,7 +203,7 @@ class Fail.MonadFail m => ToJulianDay m jd from where
   toJulianDay :: from -> IO (m (JulianDay jd))
 
 instance Fail.MonadFail m => ToJulianDay m 'UT UTCTime where
-  toJulianDay = return . pure . utcToJulianUT
+  toJulianDay = return . pure . utcToJulianDayUT
 
 instance Fail.MonadFail m => ToJulianDay m 'UT1 UTCTime where
   toJulianDay = utcToJulianUT1
@@ -215,7 +219,7 @@ class FromJulianDay jd to where
   fromJulianDay :: JulianDay jd -> IO to
 
 instance FromJulianDay 'UT UTCTime where
-  fromJulianDay = pure . julianUTToUTC
+  fromJulianDay = pure . julianDayUTToUTC
 
 instance FromJulianDay 'UT1 UTCTime where
   fromJulianDay = julianUT1ToUTC
@@ -260,7 +264,8 @@ subtractDeltaTime (MkJulianDay jd) dt = MkJulianDay (jd - dt)
 
 
 -------------------------------------------------------------------------------
--- Lies & deceit
+-- Lossy (pure, and /almost/ accurate for the contemporary timescale) conversions
+-- for Day values.
 -------------------------------------------------------------------------------
 
 -- Convenience "pure" function that pretends
@@ -270,8 +275,8 @@ subtractDeltaTime (MkJulianDay jd) dt = MkJulianDay (jd - dt)
 -- for a day at noon since, at least in 2021, UT is only off
 -- by less than a second from UT1, and only behind TT by a few
 -- seconds 
-fakeToJulianDay :: Day -> JulianDay ts
-fakeToJulianDay day =
+dayToJulianDay :: Day -> JulianDay ts
+dayToJulianDay day =
   gregorianToJulian y m d 12
   where
     (y, m, d) = toGregorian day
@@ -279,19 +284,29 @@ fakeToJulianDay day =
 -- Convenience "pure" function that takes an arbitrary
 -- 'JulianDay' value in any time standard, converts it to noon,
 -- and then to the corresponding 'Day.' Exploits the same circumstantial
--- truths about time as 'fakeToJulianDay'
-fakeFromJulianDay :: JulianDay ts -> Day
-fakeFromJulianDay jd =
+-- truths about time as 'dayToJulianDay'
+dayFromJulianDay :: JulianDay ts -> Day
+dayFromJulianDay jd =
   fromGregorian y m d
   where
   (y,m,d,_) = gregorianFromJulianDay . julianNoon $ jd
   
-
-
 -------------------------------------------------------------------------------
--- Generic UT functions
+-- Lossy (but pure, and /almost/ accurate) conversion functions for UT values. 
 -------------------------------------------------------------------------------
 
+-- | Can produce a 'JulianDay' in any scale, but only values in 'UT'
+-- are considered truthful. Hence the @fake@ moniker in the 'TT'
+-- specialization, below.
+gregorianToJulian :: Integer -> Int -> Int -> Double -> JulianDay ts
+gregorianToJulian year month day hour =
+  MkJulianDay . realToFrac $ c_swe_julday y m d h gregorian
+  where
+    y = fromIntegral year
+    m = fromIntegral month
+    d = fromIntegral day
+    h = realToFrac hour
+ 
 -- | Given components of a gregorian day (and time,)
 -- produce a 'JulianDay' in the generic 'UT' time standard;
 -- the precision of the resulting Julian Day will only be as good
@@ -315,18 +330,6 @@ gregorianToJulianDayUT = gregorianToJulian
 gregorianToFakeJulianDayTT :: Integer -> Int -> Int -> Double -> JulianDay 'TT
 gregorianToFakeJulianDayTT = gregorianToJulian
 
-gregorianToJulian :: Integer -> Int -> Int -> Double -> JulianDay ts
-gregorianToJulian year month day hour =
-  MkJulianDay . realToFrac $ c_swe_julday y m d h gregorian
-  where
-    y = fromIntegral year
-    m = fromIntegral month
-    d = fromIntegral day
-    h = realToFrac hour
- 
-{-# DEPRECATED julianDay "Use 'gregorianToJulianDayUT' instead." #-}
-julianDay :: Int -> Int -> Int -> Double -> JulianDay 'UT
-julianDay intYear = gregorianToJulianDayUT (fromIntegral intYear)
 
 -- | Given a 'JulianDay' in any standard,
 -- produce the date/time components of a gregorian date.
@@ -351,12 +354,14 @@ gregorianFromJulianDay (MkJulianDay jd) =
 gregorianFromJulianDayUT :: JulianDay 'UT -> (Integer, Int, Int, Double)
 gregorianFromJulianDayUT = gregorianFromJulianDay
 
-{-# DEPRECATED gregorianDateTime "Use 'gregorianFromJulianDayUT' instead" #-}
-gregorianDateTime :: JulianDay 'UT -> (Int, Int, Int, Double)
-gregorianDateTime jd =
-  (fromIntegral y, m, d, h)
-  where
-    (y, m, d, h) = gregorianFromJulianDayUT jd
+-- | This is a bit of a misnomer: the "fake" value isn't the input,
+-- it's the output: it produces a value as if the input was in UT, thus
+-- running afoul of both leap seconds and delta time. Only useful
+-- in contexts where accuracy is not valued. To get a somewhat more
+-- trustworthy value, and still not have to go into 'IO', check out
+-- 'dayFromJulianDay', which produces only the 'Day' part of a date.
+gregorianFromFakeJulianDayTT :: JulianDay 'TT -> (Integer, Int, Int, Double)
+gregorianFromFakeJulianDayTT = gregorianFromJulianDay
 
 picosecondsInHour :: Double
 picosecondsInHour = 3600 * 1e12
@@ -368,37 +373,37 @@ picosecondsInHour = 3600 * 1e12
 -- both the 'UT1' and 'TT' timestamps,) or 'utcToJulianUT1'.
 -- Keep in mind though, that they're both in 'IO' /and/ may
 -- return errors.
-utcToJulianUT :: UTCTime -> JulianDay 'UT
-utcToJulianUT (UTCTime day time) =
-  julianDay (fromIntegral y) m d h
+utcToJulianDayUT :: UTCTime -> JulianDay 'UT
+utcToJulianDayUT (UTCTime day time) =
+  gregorianToJulianDayUT y m d h
   where
     (y, m, d) = toGregorian day
     h = (1 / picosecondsInHour) * fromIntegral (diffTimeToPicoseconds time)
 
--- | See 'utcToJulianUT' -- this function is provided
+-- | Given a JulianDay in the vague 'UT' time standard,
+-- produce a 'UTCTime' purely.
+julianDayUTToUTC :: JulianDay 'UT -> UTCTime
+julianDayUTToUTC jd =
+  UTCTime day dt
+  where
+    (y, m, d, h) = gregorianFromJulianDayUT jd
+    day = fromGregorian y m d
+    dt = picosecondsToDiffTime $ round $ h * picosecondsInHour
+
+-- | See 'utcToJulianDayUT' -- this function is provided
 -- for convenience in contexts where the ~1s accuracy gain
 -- is not worth the more complicated type signature of
 -- 'toJulian', but you'll get a "lesser" JulianDay
 -- that's only as precise as its input.
 utcToJulian :: UTCTime -> JulianDay 'UT
-utcToJulian = utcToJulianUT
+utcToJulian = utcToJulianDayUT
 
--- | Given a JulianDay in the vague 'UT' time standard,
--- produce a 'UTCTime' purely.
-julianUTToUTC :: JulianDay 'UT -> UTCTime
-julianUTToUTC jd =
-  UTCTime day dt
-  where
-    (y, m, d, h) = gregorianDateTime jd
-    day = fromGregorian (fromIntegral y) m d
-    dt = picosecondsToDiffTime $ round $ h * picosecondsInHour
-
--- | See 'julianUTToUTC' -- this function is provided
+-- | See 'julianDayUTToUTC' -- this function is provided
 -- for convenience in contexts where a slightly innacurate
 -- JulianDay is worth it to stay in a pure context, otherwise,
 -- see 'fromJulian'.
 julianToUTC :: JulianDay 'UT -> UTCTime
-julianToUTC = julianUTToUTC
+julianToUTC = julianDayUTToUTC
 
 -- | Utility function to split a 'UTCTime' into the constituent
 -- parts expected by the underlying lib.
