@@ -11,9 +11,10 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import Data.Time
 import Data.Maybe (isJust)
-import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
+import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds, POSIXTime)
 import Arbitrary ()
 import Utils ( ephePath, mkUTC, civilTime )
+import qualified Debug.Trace as Debug
 
 withEphemeris :: IO ()
 withEphemeris = do
@@ -122,12 +123,21 @@ spec = beforeAll_ withEphemeris $ do
       prop "can roundtrip a UT1 Julian from any UTC" $
         forAll validTime $
           \time -> monadicIO $ do
+            jd' <- run (toJulianDay time :: (IO (ConversionResult JulianDayUT1)))
+            case getConversionResult jd' of
+              Left s -> Debug.traceM $ "ERROR: " <> s
+              Right _ -> pure ()
             Just jd <- run (toJulianDay time :: (IO (Maybe JulianDayUT1)))
             roundTripped <- run $ fromJulianDay jd
             let jdSeconds = utcTimeToPOSIXSeconds time
                 rtSeconds = utcTimeToPOSIXSeconds roundTripped
                 difference = abs $ subtract jdSeconds rtSeconds
-            assert $ difference < 1e-04
+            if difference >= 1e-04 then
+              Debug.traceM $ "Exceeded diff: " <> show difference <> ": " <> show jd <> show time <> show roundTripped
+            else
+              pure ()
+
+            assert $ difference < timeEpsilon
 
       it "can produce a TT Julian from UTC" $ do
         let time = mkUTC "2021-07-03T23:05:54.696005Z"
@@ -146,7 +156,11 @@ spec = beforeAll_ withEphemeris $ do
             let jdSeconds = utcTimeToPOSIXSeconds time
                 rtSeconds = utcTimeToPOSIXSeconds roundTripped
                 difference = abs $ subtract jdSeconds rtSeconds
-            assert $ difference < 1e-04
+            if difference >= 1e-04 then
+              Debug.traceM $ "Exceeded diff: " <> show difference <> ": " <> show jd <> show time <> show roundTripped
+            else
+              pure ()
+            assert $ difference < timeEpsilon
 
   describe "delta time" $ do
     describe "deltaTime (simple)" $ do
@@ -187,3 +201,7 @@ shouldBeApprox expected actual =
         ]
 
 infix 1 `shouldBeApprox`
+
+-- | Acceptable difference between two roundtripped timestamps
+timeEpsilon :: POSIXTime
+timeEpsilon = 1e-03
