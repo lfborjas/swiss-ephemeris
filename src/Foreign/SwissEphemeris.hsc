@@ -280,3 +280,31 @@ foreign import ccall unsafe "swephexp.h swe_jdut1_to_utc"
                       -> Ptr CDouble
                       -- ^ sec
                       -> IO ()
+
+foreign import ccall unsafe "swephexp.h swe_pheno"
+    c_swe_pheno :: CDouble
+                -- ^ JD (TT)
+                -> PlanetNumber
+                -- ^ ipl
+                -> CalcFlag
+                -- ^ iflag
+                -> Ptr CDouble
+                -- ^ *attr
+                -> CString
+                -- ^ *serr
+                -> IO CInt
+                -- ^ retval
+
+foreign import ccall unsafe "swephexp.h swe_pheno_ut"
+    c_swe_pheno_ut :: CDouble
+                   -- ^ JD (UT)
+                   -> PlanetNumber
+                   -- ^ ipl
+                   -> CalcFlag
+                   -- ^ iflag
+                   -> Ptr CDouble
+                   -- ^ *attr
+                   -> CString
+                   -- ^ *serr
+                   -> IO CInt
+                   -- ^ retval

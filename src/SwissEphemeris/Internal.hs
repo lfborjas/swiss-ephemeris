@@ -249,6 +249,15 @@ data LongitudeComponents = LongitudeComponents
   }
   deriving (Show, Eq, Generic)
 
+-- | A Planet's "phenomena" record
+data PlanetPhenomenon = PlanetPhenomenon
+  { planetPhaseAngle :: Double
+  , planetPhase      :: Double
+  , planetElongation :: Double
+  , planetApparentDiameter :: Double
+  , planetApparentMagnitude :: Double
+  } deriving (Eq, Show)
+
 -- folders for bitwise flags, and some opinionated defaults.
 
 mkCalculationOptions :: [CalcFlag] -> CalcFlag

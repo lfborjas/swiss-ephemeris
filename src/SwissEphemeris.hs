@@ -60,6 +60,11 @@ module SwissEphemeris
     defaultSplitDegreesOptions,
     splitDegrees,
     splitDegreesZodiac,
+    -- * Planetary Phenomena
+    planetaryPhenomenonRawTT,
+    planetaryPhenomenonRawUT,
+    planetaryPhenomenonTT,
+    planetaryPhenomenonUT,
     module SwissEphemeris.Time
   )
 where
@@ -71,6 +76,7 @@ import Foreign.SwissEphemeris
 import SwissEphemeris.Internal
 import System.IO.Unsafe (unsafePerformIO)
 import SwissEphemeris.Time
+import Foreign.C (CDouble, CInt)
 
 -- | Given a path to a directory, point the underlying ephemerides library to it.
 -- You only need to call this function to provide an explicit ephemerides path,
@@ -351,3 +357,95 @@ splitDegrees' options deg =
       sec' <- peek isec
       secfr <- peek dsecfr
       return (fromIntegral sign', fromIntegral deg', fromIntegral min', fromIntegral sec', realToFrac secfr)
+
+
+-------------------------------------------------------------------------------
+-- PLANETARY PHENOMENA
+-------------------------------------------------------------------------------
+
+type PhenoFn = CDouble -> PlanetNumber -> CalcFlag -> Ptr CDouble -> CString -> IO CInt
+
+planetaryPhenomenonRaw ::
+  PhenoFn ->
+  JulianDay ts ->
+  PlanetNumber ->
+  CalcFlag ->
+  IO (Either String [Double])
+planetaryPhenomenonRaw fn jd ipl iflag =
+  allocaErrorMessage $ \serr ->
+    allocaArray 20 $ \attr -> do
+      rval <-
+        fn
+          (realToFrac  . getJulianDay $ jd)
+          ipl
+          iflag
+          attr
+          serr
+
+      if rval < 0
+        then do
+          err <- peekCAString serr
+          pure $ Left err
+        else do
+          attrs <- peekArray 20 attr
+          pure $ Right $ map realToFrac attrs
+
+
+-- could avoid this duplication with singletons: https://stackoverflow.com/a/52299897
+planetaryPhenomenonRawUT ::
+  JulianDayUT1 ->
+  PlanetNumber ->
+  CalcFlag ->
+  IO (Either String [Double])
+planetaryPhenomenonRawUT = planetaryPhenomenonRaw c_swe_pheno_ut
+
+planetaryPhenomenonRawTT ::
+  JulianDayTT ->
+  PlanetNumber ->
+  CalcFlag ->
+  IO (Either String [Double])
+planetaryPhenomenonRawTT = planetaryPhenomenonRaw c_swe_pheno
+
+-- | Get a 'PlanetPhenomenon' for a given 'Planet' at a given 'JulianDay' in 'UT1'
+-- See [8.13. swe_pheno_ut() and swe_pheno(), planetary phenomena](https://www.astro.com/swisseph/swephprg.htm#_Toc78973568)
+-- This function is /not/ useful for calculating the phase of the moon, since the phase angle
+-- is in the range 0-180 (i.e. can't distinguish between the first/last quarters,) instead,
+-- find the angular difference between the positions of the Moon and the Sun at the given time.
+planetaryPhenomenonUT :: Planet -> JulianDayUT1 -> IO (Either String PlanetPhenomenon)
+planetaryPhenomenonUT planet jd = do
+  let options = mkCalculationOptions defaultCalculationOptions
+  pheno <- planetaryPhenomenonRawUT jd (planetNumber planet) options
+  case pheno of
+    Left err -> pure $ Left err
+    Right (a:p:e:d:m:_) ->
+      pure $ Right $
+        PlanetPhenomenon {
+         planetPhaseAngle = a,
+         planetPhase = p,
+         planetElongation = e,
+         planetApparentDiameter = d,
+         planetApparentMagnitude = m
+        }
+    Right _ -> pure $ Left "Unable to calculate all attributes."
+
+-- | Get a 'PlanetPhenomenon' for a given 'Planet' at a given 'JulianDay' in 'TT'
+-- See [8.13. swe_pheno_ut() and swe_pheno(), planetary phenomena](https://www.astro.com/swisseph/swephprg.htm#_Toc78973568)
+-- This function is /not/ useful for calculating the phase of the moon, since the phase angle
+-- is in the range 0-180 (i.e. can't distinguish between the first/last quarters,) instead,
+-- find the angular difference between the positions of the Moon and the Sun at the given time.
+planetaryPhenomenonTT :: Planet -> JulianDayTT -> IO (Either String PlanetPhenomenon)
+planetaryPhenomenonTT planet jd = do
+  let options = mkCalculationOptions defaultCalculationOptions
+  pheno <- planetaryPhenomenonRawTT jd (planetNumber planet) options
+  case pheno of
+    Left err -> pure $ Left err
+    Right (a:p:e:d:m:_) ->
+      pure $ Right $
+        PlanetPhenomenon {
+         planetPhaseAngle = a,
+         planetPhase = p,
+         planetElongation = e,
+         planetApparentDiameter = d,
+         planetApparentMagnitude = m
+        }
+    Right _ -> pure $ Left "Unable to calculate all attributes."
