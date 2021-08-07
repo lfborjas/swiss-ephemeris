@@ -3,6 +3,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE GADTs #-}
 
 -- |
 -- Module: SwissEphemeris.Time
@@ -25,6 +26,9 @@ module SwissEphemeris.Time
     getJulianDay,
     SiderealTime,
     getSiderealTime,
+    -- ** singletons
+    SingTimeStandard(..),
+    SingTSI(..),
 
     -- * Impure conversion typeclasses
     ToJulianDay (..),
@@ -80,6 +84,7 @@ import Foreign.C.String
 import Foreign.SwissEphemeris
 import SwissEphemeris.Internal
 import System.IO.Unsafe (unsafePerformIO)
+import Data.Kind (Type)
 
 {- $timeDoc
    This module offers conversions between some Haskell time values, and astronomical
@@ -148,6 +153,30 @@ data TimeStandard
     UT
   deriving (Eq, Show)
 
+----------------------------------------------------------
+--- SINGLETONS
+-- thanks to: https://blog.jle.im/entry/introduction-to-singletons-1.html
+-- if this gets more use, consider using the 'singletons' package:
+-- https://hackage.haskell.org/package/singletons-3.0
+----------------------------------------------------------
+-- | Singletons for pseudo-dependent type programming with
+-- time standards. 
+data SingTimeStandard :: TimeStandard -> Type where
+  STT :: SingTimeStandard 'TT
+  SUT1 :: SingTimeStandard 'UT1
+  SUT :: SingTimeStandard 'UT
+  
+-- | Typeclass to recover the singleton for a given time standard
+class SingTSI a where
+  singTS :: SingTimeStandard a 
+
+instance SingTSI 'TT where
+  singTS = STT
+instance SingTSI 'UT1 where
+  singTS = SUT1
+instance SingTSI 'UT where
+  singTS = SUT
+ 
 -- A @JulianDay@ can have different provenances, witnessed
 -- by its accompanying phantom type:
 --
@@ -165,6 +194,8 @@ newtype JulianDay (s :: TimeStandard) = MkJulianDay {
                                           -- through the various temporal conversion functions.
                                           getJulianDay :: Double}
   deriving (Eq, Show, Enum)
+
+ 
 
 -- Aliases for those who dislike datakinds
 

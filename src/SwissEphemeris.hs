@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 -- |
 -- Module: SwissEphemeris
 -- Description: Bindings to the swisseph C library.
@@ -61,10 +62,8 @@ module SwissEphemeris
     splitDegrees,
     splitDegreesZodiac,
     -- * Planetary Phenomena
-    planetaryPhenomenonRawTT,
-    planetaryPhenomenonRawUT,
-    planetaryPhenomenonTT,
-    planetaryPhenomenonUT,
+    planetaryPhenomenon,
+    planetaryPhenomenonRaw,
     module SwissEphemeris.Time
   )
 where
@@ -363,20 +362,31 @@ splitDegrees' options deg =
 -- PLANETARY PHENOMENA
 -------------------------------------------------------------------------------
 
-type PhenoFn = CDouble -> PlanetNumber -> CalcFlag -> Ptr CDouble -> CString -> IO CInt
-
-planetaryPhenomenonRaw ::
-  PhenoFn ->
+planetaryPhenomenonRaw :: SingTSI ts =>
   JulianDay ts ->
   PlanetNumber ->
   CalcFlag ->
   IO (Either String [Double])
-planetaryPhenomenonRaw fn jd ipl iflag =
-  allocaErrorMessage $ \serr ->
+planetaryPhenomenonRaw = planetaryPhenomenonRaw' singTS
+
+planetaryPhenomenonRaw' ::
+  -- | witness to the time standard we're using:
+  SingTimeStandard ts ->
+  JulianDay ts ->
+  PlanetNumber ->
+  CalcFlag ->
+  IO (Either String [Double])
+planetaryPhenomenonRaw' sing jd ipl iflag =
+  let fn :: CDouble -> PlanetNumber -> CalcFlag -> Ptr CDouble -> CString -> IO CInt
+      fn = case sing of
+        STT -> c_swe_pheno 
+        SUT1 -> c_swe_pheno_ut 
+        SUT -> c_swe_pheno_ut
+  in allocaErrorMessage $ \serr ->
     allocaArray 20 $ \attr -> do
       rval <-
         fn
-          (realToFrac  . getJulianDay $ jd)
+          (realToFrac . getJulianDay $ jd)
           ipl
           iflag
           attr
@@ -390,53 +400,15 @@ planetaryPhenomenonRaw fn jd ipl iflag =
           attrs <- peekArray 20 attr
           pure $ Right $ map realToFrac attrs
 
-
--- could avoid this duplication with singletons: https://stackoverflow.com/a/52299897
-planetaryPhenomenonRawUT ::
-  JulianDayUT1 ->
-  PlanetNumber ->
-  CalcFlag ->
-  IO (Either String [Double])
-planetaryPhenomenonRawUT = planetaryPhenomenonRaw c_swe_pheno_ut
-
-planetaryPhenomenonRawTT ::
-  JulianDayTT ->
-  PlanetNumber ->
-  CalcFlag ->
-  IO (Either String [Double])
-planetaryPhenomenonRawTT = planetaryPhenomenonRaw c_swe_pheno
-
--- | Get a 'PlanetPhenomenon' for a given 'Planet' at a given 'JulianDay' in 'UT1'
+-- | Get a 'PlanetPhenomenon' for a given 'Planet' at a given 'JulianDay'
 -- See [8.13. swe_pheno_ut() and swe_pheno(), planetary phenomena](https://www.astro.com/swisseph/swephprg.htm#_Toc78973568)
 -- This function is /not/ useful for calculating the phase of the moon, since the phase angle
 -- is in the range 0-180 (i.e. can't distinguish between the first/last quarters,) instead,
 -- find the angular difference between the positions of the Moon and the Sun at the given time.
-planetaryPhenomenonUT :: Planet -> JulianDayUT1 -> IO (Either String PlanetPhenomenon)
-planetaryPhenomenonUT planet jd = do
+planetaryPhenomenon :: SingTSI ts => Planet -> JulianDay ts -> IO (Either String PlanetPhenomenon)
+planetaryPhenomenon planet jd = do
   let options = mkCalculationOptions defaultCalculationOptions
-  pheno <- planetaryPhenomenonRawUT jd (planetNumber planet) options
-  case pheno of
-    Left err -> pure $ Left err
-    Right (a:p:e:d:m:_) ->
-      pure $ Right $
-        PlanetPhenomenon {
-         planetPhaseAngle = a,
-         planetPhase = p,
-         planetElongation = e,
-         planetApparentDiameter = d,
-         planetApparentMagnitude = m
-        }
-    Right _ -> pure $ Left "Unable to calculate all attributes."
-
--- | Get a 'PlanetPhenomenon' for a given 'Planet' at a given 'JulianDay' in 'TT'
--- See [8.13. swe_pheno_ut() and swe_pheno(), planetary phenomena](https://www.astro.com/swisseph/swephprg.htm#_Toc78973568)
--- This function is /not/ useful for calculating the phase of the moon, since the phase angle
--- is in the range 0-180 (i.e. can't distinguish between the first/last quarters,) instead,
--- find the angular difference between the positions of the Moon and the Sun at the given time.
-planetaryPhenomenonTT :: Planet -> JulianDayTT -> IO (Either String PlanetPhenomenon)
-planetaryPhenomenonTT planet jd = do
-  let options = mkCalculationOptions defaultCalculationOptions
-  pheno <- planetaryPhenomenonRawTT jd (planetNumber planet) options
+  pheno <- planetaryPhenomenonRaw jd (planetNumber planet) options
   case pheno of
     Left err -> pure $ Left err
     Right (a:p:e:d:m:_) ->
