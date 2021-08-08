@@ -68,6 +68,8 @@ module SwissEphemeris
     -- * Crossings over a longitude
     sunCrossing,
     moonCrossing,
+    moonCrossingNode,
+    heliocentricCrossing,
     module SwissEphemeris.Time
   )
 where
@@ -432,6 +434,10 @@ planetaryPhenomenon planet jd = do
 jd2C :: JulianDay s -> CDouble
 jd2C = realToFrac . getJulianDay
 
+dir2C :: CrossingSearchDirection -> CInt
+dir2C SearchBackward = -1
+dir2C SearchForward  = 1 
+
 sunCrossingOpt
   :: SingTSI ts
   => CalcFlag
@@ -469,7 +475,8 @@ sunCrossingOpt' sing iflag ln jd =
 
 -- | Given an ecliptic longitude, and 'JulianDay' after which to search
 -- try to find the next future date when the Sun will be crossing the
--- given longitude exactly (with a precision of 1 milliarcsecond)
+-- given longitude exactly (with a precision of 1 milliarcsecond,)
+-- from a geocentric perspective.
 sunCrossing :: SingTSI ts
  => Double
  -> JulianDay ts
@@ -513,9 +520,109 @@ moonCrossingOpt' sing iflag ln jd =
 
 -- | Given an ecliptic longitude, and 'JulianDay' after which to search
 -- try to find the next future date when the Moon will be crossing the
--- given longitude exactly (with a precision of 1 milliarcsecond)
+-- given longitude exactly (with a precision of 1 milliarcsecond,)
+-- from a geocentric perspective.
 moonCrossing :: SingTSI ts
  => Double
  -> JulianDay ts
  -> IO (Either String (JulianDay ts))
 moonCrossing = moonCrossingOpt (mkCalculationOptions defaultCalculationOptions)
+
+
+moonCrossingNodeOpt'
+  :: SingTimeStandard ts
+  -> CalcFlag 
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts, Double, Double))
+moonCrossingNodeOpt' sing iflag jd =
+  let fn :: CDouble -> CalcFlag -> Ptr CDouble -> Ptr CDouble -> CString -> IO CDouble
+      fn = case sing of
+        STT -> c_swe_mooncross_node
+        _   -> c_swe_mooncross_node_ut
+      doubleJD = jd2C jd
+  in 
+    allocaErrorMessage $ \serr ->
+      alloca $ \xlon -> alloca $ \xlat -> do
+        nextCrossing <-
+          fn
+            doubleJD
+            iflag
+            xlon
+            xlat
+            serr
+        if | nextCrossing < doubleJD && serr /= nullPtr ->
+             Left <$> peekCAString serr
+           | nextCrossing < doubleJD ->
+             pure . Left $ "No crossing found in the future."
+           | otherwise -> do
+             moonLng <- peek xlon
+             moonLat <- peek xlat
+             pure . Right $
+              (mkJulianDay sing (realToFrac nextCrossing), 
+               realToFrac moonLng, 
+               realToFrac moonLat)
+
+moonCrossingNodeOpt :: SingTSI ts => CalcFlag -> JulianDay ts -> IO (Either String (JulianDay ts, Double, Double))
+moonCrossingNodeOpt = moonCrossingNodeOpt' singTS
+
+-- | Find the next 'JulianDay' the Moon will cross its True Node, from a /geocentric/
+-- perspective.
+-- returns the day, and the longitude and latitude of the Moon at that time.
+moonCrossingNode :: SingTSI ts
+  => JulianDay ts
+  -> IO (Either String (JulianDay ts, Double, Double))
+moonCrossingNode =
+  moonCrossingNodeOpt (mkCalculationOptions defaultCalculationOptions)
+
+heliocentricCrossingOpt'
+  :: SingTimeStandard ts
+  -> CalcFlag
+  -> CrossingSearchDirection
+  -> Planet
+  -> Double
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts))
+heliocentricCrossingOpt' sing iflag dir planet ln jd =
+  let fn :: PlanetNumber -> CDouble -> CDouble -> CalcFlag -> CInt -> Ptr CDouble -> CString -> IO CInt
+      fn = case sing of
+        STT -> c_swe_helio_cross
+        _ -> c_swe_helio_cross_ut
+      doubleJD = jd2C jd
+  in
+    allocaErrorMessage $ \serr ->
+      alloca $ \nextCrossingPtr -> do
+        rval <-
+          fn
+            (planetNumber planet)
+            (realToFrac ln)
+            doubleJD
+            iflag
+            (dir2C dir)
+            nextCrossingPtr
+            serr
+        if rval < 0 then 
+          Left <$> peekCAString serr
+        else do
+          Right . mkJulianDay sing . realToFrac <$> peek nextCrossingPtr
+
+heliocentricCrossingOpt :: 
+  SingTSI ts =>
+  CalcFlag -> CrossingSearchDirection -> Planet -> Double -> JulianDay ts -> IO (Either String (JulianDay ts))
+heliocentricCrossingOpt = 
+  heliocentricCrossingOpt' singTS 
+          
+-- | Find the next 'JulianDay' a given 'Planet' crosses a given ecliptic longitude,
+-- notice that this finds /heliocentric/ crossings: due to retrograde motion in most planets,
+-- this function is not suitable for geocentric insights. 
+-- For example, Mars enters Libra on Sep 5, 2021 from a heliocentric perspective,
+-- but won't do so until Sep 14, 2021 from a geocentric perspective.
+-- Objects whose orbit is not heliocentric will fail.
+heliocentricCrossing 
+  :: SingTSI ts
+  => CrossingSearchDirection 
+  -> Planet
+  -> Double
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts))
+heliocentricCrossing =
+  heliocentricCrossingOpt (mkCalculationOptions defaultCalculationOptions)
