@@ -370,7 +370,6 @@ planetaryPhenomenonRaw :: SingTSI ts =>
 planetaryPhenomenonRaw = planetaryPhenomenonRaw' singTS
 
 planetaryPhenomenonRaw' ::
-  -- | witness to the time standard we're using:
   SingTimeStandard ts ->
   JulianDay ts ->
   PlanetNumber ->
