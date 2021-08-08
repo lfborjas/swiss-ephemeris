@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiWayIf #-}
 -- |
 -- Module: SwissEphemeris
 -- Description: Bindings to the swisseph C library.
@@ -64,6 +65,9 @@ module SwissEphemeris
     -- * Planetary Phenomena
     planetaryPhenomenon,
     planetaryPhenomenonRaw,
+    -- * Crossings over a longitude
+    sunCrossing,
+    moonCrossing,
     module SwissEphemeris.Time
   )
 where
@@ -378,9 +382,8 @@ planetaryPhenomenonRaw' ::
 planetaryPhenomenonRaw' sing jd ipl iflag =
   let fn :: CDouble -> PlanetNumber -> CalcFlag -> Ptr CDouble -> CString -> IO CInt
       fn = case sing of
-        STT -> c_swe_pheno 
-        SUT1 -> c_swe_pheno_ut 
-        SUT -> c_swe_pheno_ut
+        STT -> c_swe_pheno
+        _ -> c_swe_pheno_ut
   in allocaErrorMessage $ \serr ->
     allocaArray 20 $ \attr -> do
       rval <-
@@ -420,3 +423,99 @@ planetaryPhenomenon planet jd = do
          planetApparentMagnitude = m
         }
     Right _ -> pure $ Left "Unable to calculate all attributes."
+
+
+-------------------------------------------------------------------------------
+-- CROSSINGS
+-------------------------------------------------------------------------------
+
+jd2C :: JulianDay s -> CDouble
+jd2C = realToFrac . getJulianDay
+
+sunCrossingOpt
+  :: SingTSI ts
+  => CalcFlag
+  -> Double
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts))
+sunCrossingOpt = 
+  sunCrossingOpt' singTS
+
+sunCrossingOpt'
+  :: SingTimeStandard ts
+  -> CalcFlag
+  -> Double
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts))
+sunCrossingOpt' sing iflag ln jd =
+  let fn :: CDouble -> CDouble -> CalcFlag -> CString -> IO CDouble
+      fn = case sing of
+        STT -> c_swe_solcross
+        _   -> c_swe_solcross_ut
+      doubleJD = jd2C jd
+  in allocaErrorMessage $ \serr -> do
+    nextCrossing <-
+      fn
+        (realToFrac ln)
+        doubleJD
+        iflag
+        serr
+    if | nextCrossing < doubleJD && serr /= nullPtr ->
+        Left <$> peekCAString serr
+       | nextCrossing < doubleJD ->
+        pure . Left $ "No crossing found in the future."
+       | otherwise ->
+        pure . Right $ mkJulianDay sing (realToFrac nextCrossing)
+
+-- | Given an ecliptic longitude, and 'JulianDay' after which to search
+-- try to find the next future date when the Sun will be crossing the
+-- given longitude exactly (with a precision of 1 milliarcsecond)
+sunCrossing :: SingTSI ts
+ => Double
+ -> JulianDay ts
+ -> IO (Either String (JulianDay ts))
+sunCrossing = sunCrossingOpt (mkCalculationOptions defaultCalculationOptions)
+
+moonCrossingOpt
+  :: SingTSI ts
+  => CalcFlag
+  -> Double
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts))
+moonCrossingOpt = 
+  moonCrossingOpt' singTS
+
+moonCrossingOpt'
+  :: SingTimeStandard ts
+  -> CalcFlag
+  -> Double
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts))
+moonCrossingOpt' sing iflag ln jd =
+  let fn :: CDouble -> CDouble -> CalcFlag -> CString -> IO CDouble
+      fn = case sing of
+        STT -> c_swe_mooncross
+        _   -> c_swe_mooncross_ut
+      doubleJD = jd2C jd
+  in allocaErrorMessage $ \serr -> do
+    nextCrossing <-
+      fn
+        (realToFrac ln)
+        doubleJD
+        iflag
+        serr
+    if | nextCrossing < doubleJD && serr /= nullPtr ->
+        Left <$> peekCAString serr
+       | nextCrossing < doubleJD ->
+        pure . Left $ "No crossing found in the future."
+       | otherwise ->
+        pure . Right $ mkJulianDay sing (realToFrac nextCrossing)
+
+-- | Given an ecliptic longitude, and 'JulianDay' after which to search
+-- try to find the next future date when the Moon will be crossing the
+-- given longitude exactly (with a precision of 1 milliarcsecond)
+moonCrossing :: SingTSI ts
+ => Double
+ -> JulianDay ts
+ -> IO (Either String (JulianDay ts))
+moonCrossing = moonCrossingOpt (mkCalculationOptions defaultCalculationOptions)

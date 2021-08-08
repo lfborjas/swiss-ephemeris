@@ -308,3 +308,116 @@ foreign import ccall unsafe "swephexp.h swe_pheno_ut"
                    -- ^ *serr
                    -> IO CInt
                    -- ^ retval
+
+foreign import ccall unsafe "swephexp.h swe_solcross"
+  c_swe_solcross :: CDouble
+                 -- ^ x2cross -- longitude to cross
+                 -> CDouble
+                 -- ^ JD (TT)
+                 -> CalcFlag
+                 -- ^ flag
+                 -> CString
+                 -- ^ serr
+                 -> IO CDouble
+                 -- ^ JD (time of next crossing; if in the past, we failed.)
+
+foreign import ccall unsafe "swephexp.h swe_solcross_ut"
+  c_swe_solcross_ut :: CDouble
+                    -- ^ x2cross -- longitude to cross
+                    -> CDouble
+                    -- ^ JD (UT1/UT)
+                    -> CalcFlag
+                    -- ^ flag
+                    -> CString
+                    -- ^ serr
+                    -> IO CDouble
+                    -- ^ JD (time of next crossing; if in the past, we failed.)
+
+foreign import ccall unsafe "swephexp.h swe_mooncross"
+  c_swe_mooncross :: CDouble
+                  -- ^ x2cross -- longitude to cross
+                  -> CDouble
+                  -- ^ JD (TT)
+                  -> CalcFlag
+                  -- ^ flag
+                  -> CString
+                  -- ^ serr
+                  -> IO CDouble
+                  -- ^ JD (time of next crossing; if in the past, we failed.)
+
+foreign import ccall unsafe "swephexp.h swe_mooncross_ut"
+  c_swe_mooncross_ut :: CDouble
+                     -- ^ x2cross -- longitude to cross
+                     -> CDouble
+                     -- ^ JD (UT1/UT)
+                     -> CalcFlag
+                     -- ^ flag
+                     -> CString
+                     -- ^ serr
+                     -> IO CDouble
+                     -- ^ JD (time of next crossing; if in the past, we failed.)
+
+foreign import ccall unsafe "swephexp.h swe_mooncross_node"
+  c_swe_mooncross_node :: CDouble
+                       -- ^ JD (TT)
+                       -> CalcFlag
+                       -- ^ flag
+                       -> Ptr CDouble
+                       -- ^ [return] xlon
+                       -> Ptr CDouble
+                       -- ^ [return] xlat
+                       -> CString
+                       -- ^ serr
+                       -> IO CDouble
+                       -- ^ JD (time of next crossing) 
+
+foreign import ccall unsafe "swephexp.h swe_mooncross_node_ut"
+  c_swe_mooncross_node_ut :: CDouble
+                          -- ^ JD (TT)
+                          -> CalcFlag
+                          -- ^ flag
+                          -> Ptr CDouble
+                          -- ^ [return] xlon
+                          -> Ptr CDouble
+                          -- ^ [return] xlat
+                          -> CString
+                          -- ^ serr
+                          -> IO CDouble
+                          -- ^ JD (time of next crossing) 
+
+
+foreign import ccall unsafe "swephexp.h swe_helio_cross"
+  c_swe_helio_cross :: PlanetNumber
+                    -- ^ planet
+                    -> CDouble
+                    -- ^ x2cross
+                    -> CDouble
+                    -- ^ JD (TT)
+                    -> CalcFlag
+                    -- ^ iflag
+                    -> CInt
+                    -- ^ dir (< 0 back, >0 forward)
+                    -> Ptr CDouble
+                    -- ^ JD
+                    -> CString
+                    -- ^ serr
+                    -> IO CInt
+                    -- ^ retval (OK/ERR)
+
+foreign import ccall unsafe "swephexp.h swe_helio_cross_ut"
+  c_swe_helio_cross_ut :: PlanetNumber
+                       -- ^ planet
+                       -> CDouble
+                       -- ^ x2cross
+                       -> CDouble
+                       -- ^ JD (TT)
+                       -> CalcFlag
+                       -- ^ iflag
+                       -> CInt
+                       -- ^ dir (< 0 back, >0 forward)
+                       -> Ptr CDouble
+                       -- ^ JD
+                       -> CString
+                       -- ^ serr
+                       -> IO CInt
+                       -- ^ retval (OK/ERR)
