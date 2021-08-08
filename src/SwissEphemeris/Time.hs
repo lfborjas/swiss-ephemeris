@@ -39,6 +39,7 @@ module SwissEphemeris.Time
     getConversionResult,
 
     -- * Pure utility functions
+    mkJulianDay,
     coerceUT,
     julianNoon,
     julianMidnight,
@@ -196,7 +197,6 @@ newtype JulianDay (s :: TimeStandard) = MkJulianDay {
   deriving (Eq, Show, Enum)
 
  
-
 -- Aliases for those who dislike datakinds
 
 -- | A terrestrial time as a Julian Day
@@ -261,6 +261,16 @@ instance FromJulianDay 'TT UTCTime where
 -------------------------------------------------------------------------------
 -- UTILS
 -------------------------------------------------------------------------------
+
+-- | Constructor with chaperone: you have to provide a witness to a time standard
+-- to produce a 'JulianDay' directly from a 'Double'. This is mostly
+-- intended for internal use, if you find yourself using this function,
+-- you're probably producing an unreliable value: consider using the
+-- 'ToJulianDay' instance of a reliable temporal type
+-- (like 'UTCTime',) before reaching for this function.
+mkJulianDay :: SingTimeStandard ts -> Double -> JulianDay ts
+mkJulianDay _ = MkJulianDay
+
 
 -- | Coerce a value obtained directly from UTC (without
 -- consulting historical data) into a UT1 Julian Day.
