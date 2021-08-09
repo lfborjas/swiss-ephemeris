@@ -657,7 +657,7 @@ tret[8]   time when annular-total eclipse becomes total, not implemented so far
 tret[9]   time when annular-total eclipse becomes annular again, not implemented so far
 -}
 data SolarEclipseInformation = SolarEclipseInformation
-  { solarEclipseType :: EclipseType
+  { solarEclipseType :: SolarEclipseType
   , solarEclipseMax :: JulianDayUT1
   , solarEclipseNoon :: JulianDayUT1
   , solarEclipseBegin :: JulianDayUT1
@@ -674,7 +674,7 @@ nextSolarEclipseRaw
   -> EclipseFlag
   -> Bool
   -> JulianDayUT1
-  -> IO (Either String (EclipseType, [Double]))
+  -> IO (Either String (SolarEclipseType, [Double]))
 nextSolarEclipseRaw iflag ifltype backward jd =
   allocaErrorMessage $ \serr ->
     allocaArray 10 $ \ret -> do
@@ -698,8 +698,8 @@ nextSolarEclipseRaw iflag ifltype backward jd =
 -- the array of Doubles returned by the C library into usable data. 
 -- See 'nextSolarEclipseSimple' for an example.
 nextSolarEclipse
-  :: (Either String (EclipseType, [Double]) -> Either String a)
-  -> [EclipseType]
+  :: (Either String (SolarEclipseType, [Double]) -> Either String a)
+  -> [SolarEclipseType]
   -> CrossingSearchDirection
   -> JulianDayUT1
   -> IO (Either String a)
@@ -707,7 +707,11 @@ nextSolarEclipse mkEcl typeFilter dir startDate =
     mkEcl <$> nextSolarEclipseRaw opts eclOpts backward startDate
    where
     opts = defaultCalculationFlag
-    eclOpts = if null typeFilter then anyEclipse else foldEclipseOptions typeFilter
+    eclOpts = 
+      if null typeFilter then
+        anyEclipse 
+      else 
+        foldEclipseOptions . map solarEclipseTypeToFlag $ typeFilter
     backward =
       case dir of
         SearchBackward -> True
@@ -715,7 +719,7 @@ nextSolarEclipse mkEcl typeFilter dir startDate =
 
 -- | Like 'nextSolarEclipse', but packages a successful result in the more
 -- informative 'SolarEclipseInformation' record.
-nextSolarEclipseSimple :: [EclipseType]
+nextSolarEclipseSimple :: [SolarEclipseType]
   -> CrossingSearchDirection
   -> JulianDayUT1
   -> IO (Either String SolarEclipseInformation)
@@ -738,11 +742,6 @@ nextSolarEclipseSimple =
           h
     mkSolarEcl _ = Left "insufficient eclipse data"
 
-
-
-
-
-
 {-
 tret[0]   time of maximum eclipse
 
@@ -763,7 +762,7 @@ tret[7]   time of penumbral phase end
 
 -}
 data LunarEclipseInformation = LunarEclipseInformation
-  { lunarEclipseType :: EclipseType 
+  { lunarLunarEclipseType :: LunarEclipseType 
   , lunarEclipseMax :: JulianDayUT1
   , lunarEclipsePartialPhaseBegin :: JulianDayUT1
   , lunarEclipsePartialPhaseEnd :: JulianDayUT1
@@ -778,7 +777,7 @@ nextLunarEclipseRaw
   -> EclipseFlag
   -> Bool
   -> JulianDayUT1
-  -> IO (Either String (EclipseType, [Double]))
+  -> IO (Either String (LunarEclipseType, [Double]))
 nextLunarEclipseRaw iflag ifltype backward jd =
   allocaErrorMessage $ \serr ->
     allocaArray 10 $ \ret -> do
@@ -794,16 +793,16 @@ nextLunarEclipseRaw iflag ifltype backward jd =
         Left <$> peekCAString serr
       else do
         attrs <- peekArray 10 ret
-        pure . Right $ (eclipseFlagToTypeSolar (EclipseFlag eclType), map realToFrac attrs)
+        pure . Right $ (eclipseFlagToTypeLunar (EclipseFlag eclType), map realToFrac attrs)
 
 -- | Find the closest solar eclipse to a given date, visible from anywhere on Earth;
--- can be filtered by providing a non-empty list of 'EclipseType' (empty means "any eclipse"), 
+-- can be filtered by providing a non-empty list of 'LunarEclipseType' (empty means "any eclipse"), 
 -- and one can search backward or forward in time. Bring your own function to convert
 -- the array of Doubles returned by the C library into usable data. 
 -- See 'nextLunarEclipseSimple' for an example.
 nextLunarEclipse
-  :: (Either String (EclipseType, [Double]) -> Either String a)
-  -> [EclipseType]
+  :: (Either String (LunarEclipseType, [Double]) -> Either String a)
+  -> [LunarEclipseType]
   -> CrossingSearchDirection
   -> JulianDayUT1
   -> IO (Either String a)
@@ -811,7 +810,11 @@ nextLunarEclipse mkEcl typeFilter dir startDate =
     mkEcl <$> nextLunarEclipseRaw opts eclOpts backward startDate
    where
     opts = defaultCalculationFlag
-    eclOpts = if null typeFilter then anyEclipse else foldEclipseOptions typeFilter
+    eclOpts = 
+      if null typeFilter then 
+        anyEclipse
+      else 
+        foldEclipseOptions . map lunarEclipseTypeToFlag $ typeFilter
     backward =
       case dir of
         SearchBackward -> True
@@ -819,7 +822,7 @@ nextLunarEclipse mkEcl typeFilter dir startDate =
 
 -- | Like 'nextLunarEclipse', but packages a successful result in the more
 -- informative 'LunarEclipseInformation' record.
-nextLunarEclipseSimple :: [EclipseType]
+nextLunarEclipseSimple :: [LunarEclipseType]
   -> CrossingSearchDirection
   -> JulianDayUT1
   -> IO (Either String LunarEclipseInformation)

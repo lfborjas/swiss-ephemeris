@@ -159,15 +159,17 @@ data CrossingSearchDirection
   | SearchForward
   deriving (Eq, Show)
 
-data EclipseType
-  = CentralEclipse
-  | NonCentralEclipse
-  | TotalEclipse
+data SolarEclipseType
+  = TotalSolarEclipse
   | AnnularEclipse
-  | PartialEclipse
   | AnnularTotalEclipse
-  | HybridEclipse
+  | PartialSolarEclipse
+  deriving (Eq, Show)
+
+data LunarEclipseType
+  = TotalLunarEclipse
   | PenumbralEclipse
+  | PartialLunarEclipse
   deriving (Eq, Show)
 
 -- | The cusp of a given "house" or "sector". It is an ecliptic longitude.
@@ -303,33 +305,46 @@ splitOptionToFlag KeepDegrees = splitKeepDeg
 defaultSplitDegreesOptions :: [SplitDegreesOption]
 defaultSplitDegreesOptions = [KeepSign, KeepDegrees]
 
-eclipseTypeToFlag :: EclipseType -> EclipseFlag
-eclipseTypeToFlag =
+solarEclipseTypeToFlag :: SolarEclipseType -> EclipseFlag
+solarEclipseTypeToFlag =
   \case
-    CentralEclipse -> eclipseCentral
-    NonCentralEclipse -> eclipseNonCentral
-    TotalEclipse -> eclipseTotal
+    TotalSolarEclipse -> eclipseTotal
     AnnularEclipse -> eclipseAnnular
-    PartialEclipse -> eclipsePartial
+    PartialSolarEclipse -> eclipsePartial
     AnnularTotalEclipse -> eclipseAnnularTotal
-    HybridEclipse -> eclipseHybrid
+
+lunarEclipseTypeToFlag :: LunarEclipseType -> EclipseFlag
+lunarEclipseTypeToFlag =
+  \case
+    TotalLunarEclipse -> eclipseTotal
+    PartialLunarEclipse -> eclipsePartial
     PenumbralEclipse -> eclipsePenumbral
 
-eclipseFlagToTypeSolar :: EclipseFlag -> EclipseType
+-- NOTE(luis) apart from the types of eclipses here, a solar eclipse
+-- can also be central or noncentral, and there's a notion of hybrid;
+-- see: https://github.com/aloistr/swisseph/blob/bc59eb7ab0c3480086132ae652c6f32924f25589/swetest.c#L3348
+eclipseFlagToTypeSolar :: EclipseFlag -> SolarEclipseType
 eclipseFlagToTypeSolar f
-    | f == eclipseCentral = CentralEclipse
-    | f == eclipseNonCentral = NonCentralEclipse
-    | f == eclipseTotal = TotalEclipse
-    | f == eclipseAnnular = AnnularEclipse
-    | f == eclipsePartial = PartialEclipse
-    | f == eclipseAnnularTotal = AnnularTotalEclipse
-    | f == eclipseHybrid = HybridEclipse
-    | f == eclipsePenumbral = PenumbralEclipse
+    | f `match` eclipseTotal = TotalSolarEclipse
+    | f `match` eclipseAnnular = AnnularEclipse
+    | f `match` eclipsePartial = PartialSolarEclipse
+    | f `match` eclipseAnnularTotal = AnnularTotalEclipse
     | otherwise = undefined
 
-foldEclipseOptions :: [EclipseType] -> EclipseFlag
+eclipseFlagToTypeLunar :: EclipseFlag -> LunarEclipseType
+eclipseFlagToTypeLunar f
+    | f `match` eclipseTotal = TotalLunarEclipse
+    | f `match` eclipsePartial = PartialLunarEclipse
+    | f `match` eclipsePenumbral = PenumbralEclipse 
+    | otherwise = undefined
+
+-- | Equivalent to @flag & FLAG_VALUE@ in C.
+match :: EclipseFlag -> EclipseFlag -> Bool
+(EclipseFlag n) `match` (EclipseFlag m) = (n .&. m) /= 0
+
+foldEclipseOptions :: [EclipseFlag] -> EclipseFlag
 foldEclipseOptions typs =
-  EclipseFlag (foldr (((.|.) . unEclipseFlag) . eclipseTypeToFlag) 0 typs)
+  EclipseFlag (foldr ((.|.) . unEclipseFlag) 0 typs)
 
 -- Some options recommended in the sweph library for types of eclipses
 -- that actually occur with the luminaries.
@@ -337,20 +352,20 @@ foldEclipseOptions typs =
 defaultEclipseFlag :: EclipseFlag
 defaultEclipseFlag = anyEclipse
 totalSolarEclipseFlag :: EclipseFlag
-totalSolarEclipseFlag = foldEclipseOptions [TotalEclipse, NonCentralEclipse, CentralEclipse]
+totalSolarEclipseFlag = foldEclipseOptions [eclipseTotal, eclipseNonCentral, eclipseCentral]
 annularSolarEclipseFlag :: EclipseFlag
-annularSolarEclipseFlag = foldEclipseOptions [AnnularEclipse, NonCentralEclipse, CentralEclipse]
+annularSolarEclipseFlag = foldEclipseOptions [eclipseAnnular , eclipseNonCentral, eclipseCentral]
 hybridSolarEclipseFlag :: EclipseFlag
-hybridSolarEclipseFlag = foldEclipseOptions [AnnularTotalEclipse, NonCentralEclipse, CentralEclipse]
+hybridSolarEclipseFlag = foldEclipseOptions [eclipseAnnularTotal, eclipseNonCentral, eclipseCentral]
 partialSolarEclipseFlag :: EclipseFlag
-partialSolarEclipseFlag = foldEclipseOptions [PartialEclipse]
+partialSolarEclipseFlag = foldEclipseOptions [eclipsePartial]
 
 totalLunarEclipseFlag :: EclipseFlag
 totalLunarEclipseFlag = eclipseTotal
 partialLunarEclipseFlag :: EclipseFlag
-partialLunarEclipseFlag = eclipsePartial 
+partialLunarEclipseFlag = eclipsePartial
 penumbralLunarEclipseFlag :: EclipseFlag
-penumbralLunarEclipseFlag = eclipsePenumbral 
+penumbralLunarEclipseFlag = eclipsePenumbral
 
 
 
