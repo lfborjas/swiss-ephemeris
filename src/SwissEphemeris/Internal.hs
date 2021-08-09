@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 
 
 -- |
@@ -158,6 +159,17 @@ data CrossingSearchDirection
   | SearchForward
   deriving (Eq, Show)
 
+data EclipseType
+  = CentralEclipse
+  | NonCentralEclipse
+  | TotalEclipse
+  | AnnularEclipse
+  | PartialEclipse
+  | AnnularTotalEclipse
+  | HybridEclipse
+  | PenumbralEclipse
+  deriving (Eq, Show)
+
 -- | The cusp of a given "house" or "sector". It is an ecliptic longitude.
 -- see:
 -- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847888 14.1 House cusp calculation>
@@ -271,6 +283,9 @@ mkCalculationOptions = CalcFlag . foldr ((.|.) . unCalcFlag) 0
 defaultCalculationOptions :: [CalcFlag]
 defaultCalculationOptions = [speed, swissEph]
 
+defaultCalculationFlag :: CalcFlag
+defaultCalculationFlag = mkCalculationOptions defaultCalculationOptions
+
 foldSplitDegOptions :: [SplitDegFlag] -> SplitDegFlag
 foldSplitDegOptions = SplitDegFlag . foldr ((.|.) . unSplitDegFlag) 0
 
@@ -287,6 +302,58 @@ splitOptionToFlag KeepDegrees = splitKeepDeg
 -- Omit rounding if it would bring it over the next sign or degree.
 defaultSplitDegreesOptions :: [SplitDegreesOption]
 defaultSplitDegreesOptions = [KeepSign, KeepDegrees]
+
+eclipseTypeToFlag :: EclipseType -> EclipseFlag
+eclipseTypeToFlag =
+  \case
+    CentralEclipse -> eclipseCentral
+    NonCentralEclipse -> eclipseNonCentral
+    TotalEclipse -> eclipseTotal
+    AnnularEclipse -> eclipseAnnular
+    PartialEclipse -> eclipsePartial
+    AnnularTotalEclipse -> eclipseAnnularTotal
+    HybridEclipse -> eclipseHybrid
+    PenumbralEclipse -> eclipsePenumbral
+
+eclipseFlagToTypeSolar :: EclipseFlag -> EclipseType
+eclipseFlagToTypeSolar f
+    | f == eclipseCentral = CentralEclipse
+    | f == eclipseNonCentral = NonCentralEclipse
+    | f == eclipseTotal = TotalEclipse
+    | f == eclipseAnnular = AnnularEclipse
+    | f == eclipsePartial = PartialEclipse
+    | f == eclipseAnnularTotal = AnnularTotalEclipse
+    | f == eclipseHybrid = HybridEclipse
+    | f == eclipsePenumbral = PenumbralEclipse
+    | otherwise = undefined
+
+foldEclipseOptions :: [EclipseType] -> EclipseFlag
+foldEclipseOptions typs =
+  EclipseFlag (foldr (((.|.) . unEclipseFlag) . eclipseTypeToFlag) 0 typs)
+
+-- Some options recommended in the sweph library for types of eclipses
+-- that actually occur with the luminaries.
+
+defaultEclipseFlag :: EclipseFlag
+defaultEclipseFlag = anyEclipse
+totalSolarEclipseFlag :: EclipseFlag
+totalSolarEclipseFlag = foldEclipseOptions [TotalEclipse, NonCentralEclipse, CentralEclipse]
+annularSolarEclipseFlag :: EclipseFlag
+annularSolarEclipseFlag = foldEclipseOptions [AnnularEclipse, NonCentralEclipse, CentralEclipse]
+hybridSolarEclipseFlag :: EclipseFlag
+hybridSolarEclipseFlag = foldEclipseOptions [AnnularTotalEclipse, NonCentralEclipse, CentralEclipse]
+partialSolarEclipseFlag :: EclipseFlag
+partialSolarEclipseFlag = foldEclipseOptions [PartialEclipse]
+
+totalLunarEclipseFlag :: EclipseFlag
+totalLunarEclipseFlag = eclipseTotal
+partialLunarEclipseFlag :: EclipseFlag
+partialLunarEclipseFlag = eclipsePartial 
+penumbralLunarEclipseFlag :: EclipseFlag
+penumbralLunarEclipseFlag = eclipsePenumbral 
+
+
+
 
 -- Helpers
 

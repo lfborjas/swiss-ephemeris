@@ -41,6 +41,9 @@ newtype CalcFlag = CalcFlag
 newtype SplitDegFlag = SplitDegFlag
   { unSplitDegFlag :: CInt } deriving (Eq, Show)
 
+newtype EclipseFlag = EclipseFlag
+  { unEclipseFlag :: CInt} deriving (Eq, Show)
+
 -- following:
 -- https://en.wikibooks.org/wiki/Haskell/FFI#Enumerations
 
@@ -91,6 +94,22 @@ newtype SplitDegFlag = SplitDegFlag
  , splitKeepSign  = SE_SPLIT_DEG_KEEP_SIGN
  , splitKeepDeg   = SE_SPLIT_DEG_KEEP_DEG
  }
+ 
+#{enum EclipseFlag, EclipseFlag
+ , eclipseCentral = SE_ECL_CENTRAL
+ , eclipseNonCentral = SE_ECL_NONCENTRAL
+ , eclipseTotal = SE_ECL_TOTAL
+ , eclipseAnnular = SE_ECL_ANNULAR
+ , eclipsePartial = SE_ECL_PARTIAL
+ , eclipseAnnularTotal = SE_ECL_ANNULAR_TOTAL
+ , eclipseHybrid = SE_ECL_HYBRID
+ , eclipsePenumbral = SE_ECL_PENUMBRAL
+ , eclipseSolar = SE_ECL_ALLTYPES_SOLAR
+ , eclipseLunar = SE_ECL_ALLTYPES_LUNAR
+}
+
+anyEclipse :: EclipseFlag
+anyEclipse = EclipseFlag 0
 
 foreign import ccall unsafe "swephexp.h swe_set_ephe_path"
     c_swe_set_ephe_path :: CString -> IO ()
@@ -421,3 +440,40 @@ foreign import ccall unsafe "swephexp.h swe_helio_cross_ut"
                        -- ^ serr
                        -> IO CInt
                        -- ^ retval (OK/ERR)
+
+
+------------------------------------------------
+-- ECLIPSES
+------------------------------------------------
+
+foreign import ccall unsafe "swephexp.h swe_sol_eclipse_when_glob"
+  c_swe_sol_eclipse_when_glob :: CDouble
+                              -- ^ JD(UT)
+                              -> CalcFlag
+                              -- ^ iflag
+                              -> EclipseFlag
+                              -- ^ ifltype
+                              -> Ptr CDouble
+                              -- ^ ret[10] eclipse time highlights
+                              -> CInt
+                              -- ^ BOOL: forward/backward
+                              -> CString
+                              -- ^ serr
+                              -> IO CInt
+                              -- ^ retval (OK/ERR)
+                              
+foreign import ccall unsafe "swephexp.h swe_lun_eclipse_when"
+  c_swe_lun_eclipse_when :: CDouble
+                         -- ^ JD(UT)
+                         -> CalcFlag
+                         -- ^ iflag
+                         -> EclipseFlag
+                         -- ^ ifltype
+                         -> Ptr CDouble
+                         -- ^ ret[10] eclipse time highlights
+                         -> CInt
+                         -- ^ BOOL: forward/backward
+                         -> CString
+                         -- ^ serr
+                         -> IO CInt
+                         -- ^ retval (OK/ERR)

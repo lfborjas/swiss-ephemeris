@@ -70,6 +70,9 @@ module SwissEphemeris
     moonCrossing,
     moonCrossingNode,
     heliocentricCrossing,
+    -- * Eclipses
+    nextSolarEclipseSimple,
+    nextLunarEclipseSimple,
     module SwissEphemeris.Time
   )
 where
@@ -82,6 +85,7 @@ import SwissEphemeris.Internal
 import System.IO.Unsafe (unsafePerformIO)
 import SwissEphemeris.Time
 import Foreign.C (CDouble, CInt)
+import Data.Bifunctor (second)
 
 -- | Given a path to a directory, point the underlying ephemerides library to it.
 -- You only need to call this function to provide an explicit ephemerides path,
@@ -436,7 +440,7 @@ jd2C = realToFrac . getJulianDay
 
 dir2C :: CrossingSearchDirection -> CInt
 dir2C SearchBackward = -1
-dir2C SearchForward  = 1 
+dir2C SearchForward  = 1
 
 sunCrossingOpt
   :: SingTSI ts
@@ -444,7 +448,7 @@ sunCrossingOpt
   -> Double
   -> JulianDay ts
   -> IO (Either String (JulianDay ts))
-sunCrossingOpt = 
+sunCrossingOpt =
   sunCrossingOpt' singTS
 
 sunCrossingOpt'
@@ -489,7 +493,7 @@ moonCrossingOpt
   -> Double
   -> JulianDay ts
   -> IO (Either String (JulianDay ts))
-moonCrossingOpt = 
+moonCrossingOpt =
   moonCrossingOpt' singTS
 
 moonCrossingOpt'
@@ -531,7 +535,7 @@ moonCrossing = moonCrossingOpt (mkCalculationOptions defaultCalculationOptions)
 
 moonCrossingNodeOpt'
   :: SingTimeStandard ts
-  -> CalcFlag 
+  -> CalcFlag
   -> JulianDay ts
   -> IO (Either String (JulianDay ts, Double, Double))
 moonCrossingNodeOpt' sing iflag jd =
@@ -540,7 +544,7 @@ moonCrossingNodeOpt' sing iflag jd =
         STT -> c_swe_mooncross_node
         _   -> c_swe_mooncross_node_ut
       doubleJD = jd2C jd
-  in 
+  in
     allocaErrorMessage $ \serr ->
       alloca $ \xlon -> alloca $ \xlat -> do
         nextCrossing <-
@@ -558,8 +562,8 @@ moonCrossingNodeOpt' sing iflag jd =
              moonLng <- peek xlon
              moonLat <- peek xlat
              pure . Right $
-              (mkJulianDay sing (realToFrac nextCrossing), 
-               realToFrac moonLng, 
+              (mkJulianDay sing (realToFrac nextCrossing),
+               realToFrac moonLng,
                realToFrac moonLat)
 
 moonCrossingNodeOpt :: SingTSI ts => CalcFlag -> JulianDay ts -> IO (Either String (JulianDay ts, Double, Double))
@@ -600,29 +604,239 @@ heliocentricCrossingOpt' sing iflag dir planet ln jd =
             (dir2C dir)
             nextCrossingPtr
             serr
-        if rval < 0 then 
+        if rval < 0 then
           Left <$> peekCAString serr
         else do
           Right . mkJulianDay sing . realToFrac <$> peek nextCrossingPtr
 
-heliocentricCrossingOpt :: 
+heliocentricCrossingOpt ::
   SingTSI ts =>
   CalcFlag -> CrossingSearchDirection -> Planet -> Double -> JulianDay ts -> IO (Either String (JulianDay ts))
-heliocentricCrossingOpt = 
-  heliocentricCrossingOpt' singTS 
-          
+heliocentricCrossingOpt =
+  heliocentricCrossingOpt' singTS
+
 -- | Find the next 'JulianDay' a given 'Planet' crosses a given ecliptic longitude,
 -- notice that this finds /heliocentric/ crossings: due to retrograde motion in most planets,
 -- this function is not suitable for geocentric insights. 
 -- For example, Mars enters Libra on Sep 5, 2021 from a heliocentric perspective,
 -- but won't do so until Sep 14, 2021 from a geocentric perspective.
 -- Objects whose orbit is not heliocentric will fail.
-heliocentricCrossing 
+heliocentricCrossing
   :: SingTSI ts
-  => CrossingSearchDirection 
+  => CrossingSearchDirection
   -> Planet
   -> Double
   -> JulianDay ts
   -> IO (Either String (JulianDay ts))
 heliocentricCrossing =
   heliocentricCrossingOpt (mkCalculationOptions defaultCalculationOptions)
+
+-------------------------------------------------------------------------------
+-- ECLIPSES
+-------------------------------------------------------------------------------
+-- | Important times around an eclipse
+{-
+tret[0]   time of maximum eclipse
+
+tret[1]   time, when eclipse takes place at local apparent noon
+
+tret[2]   time of eclipse begin
+
+tret[3]   time of eclipse end
+
+tret[4]   time of totality begin
+
+tret[5]   time of totality end
+
+tret[6]   time of center line begin
+
+tret[7]   time of center line end
+
+tret[8]   time when annular-total eclipse becomes total, not implemented so far
+
+tret[9]   time when annular-total eclipse becomes annular again, not implemented so far
+-}
+data SolarEclipseInformation = SolarEclipseInformation
+  { solarEclipseType :: EclipseType
+  , solarEclipseMax :: JulianDayUT1
+  , solarEclipseNoon :: JulianDayUT1
+  , solarEclipseBegin :: JulianDayUT1
+  , solarEclipseEnd :: JulianDayUT1
+  , solarEclipseTotalityBegin :: JulianDayUT1
+  , solarEclipseTotalityEnd :: JulianDayUT1
+  , solarEclipseCenterLineBegin :: JulianDayUT1
+  , solarEclipseCenterLineEnd :: JulianDayUT1
+  } deriving (Eq, Show)
+
+
+nextSolarEclipseRaw
+  :: CalcFlag
+  -> EclipseFlag
+  -> Bool
+  -> JulianDayUT1
+  -> IO (Either String (EclipseType, [Double]))
+nextSolarEclipseRaw iflag ifltype backward jd =
+  allocaErrorMessage $ \serr ->
+    allocaArray 10 $ \ret -> do
+      eclType <-
+        c_swe_sol_eclipse_when_glob
+          (jd2C jd)
+          iflag
+          ifltype
+          ret
+          (fromBool backward)
+          serr
+      if eclType < 0 then
+        Left <$> peekCAString serr
+      else do
+        attrs <- peekArray 10 ret
+        pure . Right $ (eclipseFlagToTypeSolar (EclipseFlag eclType), map realToFrac attrs)
+
+-- | Find the closest solar eclipse to a given date, visible from anywhere on Earth;
+-- can be filtered by providing a non-empty list of 'EclipseType' (empty means "any eclipse"), 
+-- and one can search backward or forward in time. Bring your own function to convert
+-- the array of Doubles returned by the C library into usable data. 
+-- See 'nextSolarEclipseSimple' for an example.
+nextSolarEclipse
+  :: (Either String (EclipseType, [Double]) -> Either String a)
+  -> [EclipseType]
+  -> CrossingSearchDirection
+  -> JulianDayUT1
+  -> IO (Either String a)
+nextSolarEclipse mkEcl typeFilter dir startDate =
+    mkEcl <$> nextSolarEclipseRaw opts eclOpts backward startDate
+   where
+    opts = defaultCalculationFlag
+    eclOpts = if null typeFilter then anyEclipse else foldEclipseOptions typeFilter
+    backward =
+      case dir of
+        SearchBackward -> True
+        SearchForward -> False
+
+-- | Like 'nextSolarEclipse', but packages a successful result in the more
+-- informative 'SolarEclipseInformation' record.
+nextSolarEclipseSimple :: [EclipseType]
+  -> CrossingSearchDirection
+  -> JulianDayUT1
+  -> IO (Either String SolarEclipseInformation)
+nextSolarEclipseSimple =
+  nextSolarEclipse
+   (mkSolarEcl . fmap (second (map $ mkJulianDay SUT1)))
+  where
+    mkSolarEcl (Left e) = Left e
+    mkSolarEcl (Right (typ, a:b:c:d:e:f:g:h:_)) =
+      Right $
+        SolarEclipseInformation
+          typ
+          a
+          b
+          c
+          d
+          e
+          f
+          g
+          h
+    mkSolarEcl _ = Left "insufficient eclipse data"
+
+
+
+
+
+
+{-
+tret[0]   time of maximum eclipse
+
+tret[1]  
+
+tret[2]   time of partial phase begin (indices consistent with solar eclipses)
+
+tret[3]   time of partial phase end
+
+tret[4]   time of totality begin
+
+tret[5]   time of totality end
+
+tret[6]   time of penumbral phase begin
+
+tret[7]   time of penumbral phase end
+
+
+-}
+data LunarEclipseInformation = LunarEclipseInformation
+  { lunarEclipseType :: EclipseType 
+  , lunarEclipseMax :: JulianDayUT1
+  , lunarEclipsePartialPhaseBegin :: JulianDayUT1
+  , lunarEclipsePartialPhaseEnd :: JulianDayUT1
+  , lunarEclipseTotalityBegin :: JulianDayUT1
+  , lunarEclipseTotalityEnd :: JulianDayUT1
+  , lunarEclipsePenumbralPhaseBegin :: JulianDayUT1
+  , lunarEclipsePenumbralPhaseEnd :: JulianDayUT1
+  } deriving (Eq, Show)
+
+nextLunarEclipseRaw
+  :: CalcFlag
+  -> EclipseFlag
+  -> Bool
+  -> JulianDayUT1
+  -> IO (Either String (EclipseType, [Double]))
+nextLunarEclipseRaw iflag ifltype backward jd =
+  allocaErrorMessage $ \serr ->
+    allocaArray 10 $ \ret -> do
+      eclType <-
+        c_swe_lun_eclipse_when
+          (jd2C jd)
+          iflag
+          ifltype
+          ret
+          (fromBool backward)
+          serr
+      if eclType < 0 then
+        Left <$> peekCAString serr
+      else do
+        attrs <- peekArray 10 ret
+        pure . Right $ (eclipseFlagToTypeSolar (EclipseFlag eclType), map realToFrac attrs)
+
+-- | Find the closest solar eclipse to a given date, visible from anywhere on Earth;
+-- can be filtered by providing a non-empty list of 'EclipseType' (empty means "any eclipse"), 
+-- and one can search backward or forward in time. Bring your own function to convert
+-- the array of Doubles returned by the C library into usable data. 
+-- See 'nextLunarEclipseSimple' for an example.
+nextLunarEclipse
+  :: (Either String (EclipseType, [Double]) -> Either String a)
+  -> [EclipseType]
+  -> CrossingSearchDirection
+  -> JulianDayUT1
+  -> IO (Either String a)
+nextLunarEclipse mkEcl typeFilter dir startDate =
+    mkEcl <$> nextLunarEclipseRaw opts eclOpts backward startDate
+   where
+    opts = defaultCalculationFlag
+    eclOpts = if null typeFilter then anyEclipse else foldEclipseOptions typeFilter
+    backward =
+      case dir of
+        SearchBackward -> True
+        SearchForward -> False
+
+-- | Like 'nextLunarEclipse', but packages a successful result in the more
+-- informative 'LunarEclipseInformation' record.
+nextLunarEclipseSimple :: [EclipseType]
+  -> CrossingSearchDirection
+  -> JulianDayUT1
+  -> IO (Either String LunarEclipseInformation)
+nextLunarEclipseSimple =
+  nextLunarEclipse
+   (mkLunarEcl . fmap (second (map $ mkJulianDay SUT1)))
+  where
+    mkLunarEcl (Left e) = Left e
+    mkLunarEcl (Right (typ, a:_b:c:d:e:f:g:h:_)) =
+      Right $
+        LunarEclipseInformation
+          typ
+          a
+          c
+          d
+          e
+          f
+          g
+          h
+    mkLunarEcl _ = Left "insufficient eclipse data"
