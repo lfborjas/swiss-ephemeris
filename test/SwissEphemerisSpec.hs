@@ -209,9 +209,10 @@ spec = do
         Right (nextEclipseType, nextEclipseJD) <- nextSolarEclipseWhen [] SearchForward startTime
         Right nextEclipseLoc <- nextSolarEclipseWhere nextEclipseJD
         nextEclipseType `shouldBe` TotalSolarEclipse
-        julianNoon nextEclipseJD `shouldBe` julianNoon expectedEclipseDate 
+        julianNoon nextEclipseJD `shouldBe` julianNoon expectedEclipseDate
         -- somewhere in Antarctica
-        nextEclipseLoc `shouldBe` GeographicPosition {geoLat = -76.75422256653523, geoLng = -46.06809018915021}
+        geoLat nextEclipseLoc `shouldBeApprox` -76.75422256653523
+        geoLng nextEclipseLoc `shouldBeApprox` -46.06809018915021
 
     describe "lunar eclipses" $
       it "calculates the date of a lunar eclipse" $ do
