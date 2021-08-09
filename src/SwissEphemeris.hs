@@ -693,7 +693,7 @@ nextSolarEclipseRaw iflag ifltype backward jd =
         attrs <- peekArray 10 ret
         case eclipseFlagToTypeSolar (EclipseFlag eclType) of
           Nothing -> 
-            pure . Left $ "Unknown Solar Eclipse type: " <> show eclType
+            pure . Left $ "Unknown Solar Eclipse type: " ++ show eclType
           Just set -> 
             pure . Right $ (set, map realToFrac attrs)
 
@@ -718,7 +718,7 @@ nextSolarEclipseLocationRaw iflag jd =
            attrs <- peekArray 20 attr
            case eclipseFlagToTypeSolar (EclipseFlag eclType) of
              Nothing ->
-               pure . Left $ "Unknown Solar Eclipse type: " <> show eclType
+               pure . Left $ "Unknown Solar Eclipse type: " ++ show eclType
              Just set ->
                pure . Right $ (set, map realToFrac geo, map realToFrac attrs)
 
@@ -849,7 +849,7 @@ nextLunarEclipseRaw iflag ifltype backward jd =
         attrs <- peekArray 10 ret
         case eclipseFlagToTypeLunar (EclipseFlag eclType) of
           Nothing ->
-            pure . Left $ "Unknown Lunar Eclipse type: " <> show eclType
+            pure . Left $ "Unknown Lunar Eclipse type: " ++ show eclType
           Just set ->
             pure . Right $ (set, map realToFrac attrs)
 
