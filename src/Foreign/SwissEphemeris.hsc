@@ -456,12 +456,50 @@ foreign import ccall unsafe "swephexp.h swe_sol_eclipse_when_glob"
                               -> Ptr CDouble
                               -- ^ ret[10] eclipse time highlights
                               -> CInt
-                              -- ^ BOOL: forward/backward
+                              -- ^ BOOL: search backward?
                               -> CString
                               -- ^ serr
                               -> IO CInt
-                              -- ^ retval (OK/ERR)
+                              -- ^ retval (ERR/Eclipse type)
                               
+foreign import ccall unsafe "swephexp.h swe_sol_eclipse_where"
+  c_swe_sol_eclipse_where :: CDouble
+                          -- ^ JD(UT), must be known time of maximum eclipse
+                          -> CalcFlag
+                          -- ^ iflag
+                          -> Ptr CDouble
+                          -- ^ [return] geopos
+                          -> Ptr CDouble
+                          -- ^ [return] attr
+                          -> CString
+                          -- ^ serr
+                          -> IO CInt
+                          -- ^ ret (ERR/eclipse type)
+                          
+-- | Given a search date, lat/lng/height of a geographic vantage point,
+-- return an eclipse's maximum, four contacts and other important events,
+-- and various attributes. See:
+-- [8.2.  swe_sol_eclipse_when_loc](https://www.astro.com/swisseph/swephprg.htm#_Toc78973580).
+-- NOTE(luis) only providing the C binding right now, as I have no /current/ use for all this
+-- data, and don't want to provide an opinionated Haskell equivalent until I do. 
+foreign import ccall unsafe "swephexp.h swe_sol_eclipse_when_loc"
+  c_swe_sol_eclipse_when_loc :: CDouble
+                             -- ^ JD(UT), time to start searching
+                             -> CalcFlag
+                             -- ^ iflag
+                             -> Ptr CDouble
+                             -- ^ geopos of a known locale
+                             -> Ptr CDouble
+                             -- ^ [return] tret (contacts)
+                             -> Ptr CDouble
+                             -- ^ [return] other attributes
+                             -> CInt
+                             -- ^ BOOL: search backward?
+                             -> CString
+                             -- ^ serr
+                             -> IO CInt
+                             -- ^ ret (ERR/eclipse type)
+ 
 foreign import ccall unsafe "swephexp.h swe_lun_eclipse_when"
   c_swe_lun_eclipse_when :: CDouble
                          -- ^ JD(UT)
@@ -477,3 +515,28 @@ foreign import ccall unsafe "swephexp.h swe_lun_eclipse_when"
                          -- ^ serr
                          -> IO CInt
                          -- ^ retval (OK/ERR)
+
+-- | Given a search date, lat/lng/height of a geographic vantage point,
+-- return an eclipse's maximum, four contacts and other important events,
+-- and various attributes. See:
+-- [8.9.  swe_lun_eclipse_when_loc](https://www.astro.com/swisseph/swephprg.htm#_Toc78973587).
+-- NOTE(luis) only providing the C binding right now, as I have no /current/ use for all this
+-- data, and don't want to provide an opinionated Haskell equivalent until I do. 
+foreign import ccall unsafe "swephexp.h swe_lun_eclipse_when_loc"
+  c_swe_lun_eclipse_when_loc :: CDouble
+                             -- ^ JD(UT), time to start searching
+                             -> CalcFlag
+                             -- ^ iflag
+                             -> Ptr CDouble
+                             -- ^ geopos of a known locale
+                             -> Ptr CDouble
+                             -- ^ [return] tret (contacts)
+                             -> Ptr CDouble
+                             -- ^ [return] other attributes
+                             -> CInt
+                             -- ^ BOOL: search backward?
+                             -> CString
+                             -- ^ serr
+                             -> IO CInt
+                             -- ^ ret (ERR/eclipse type)
+ 

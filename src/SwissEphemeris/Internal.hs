@@ -154,7 +154,9 @@ data EphemerisOption
   | UseMoshierEphemeris
   deriving (Eq, Show)
 
-data CrossingSearchDirection
+-- | When looking for eclipses, occulations or crossings, determine
+-- the temporal direction to take from the provided start time.
+data EventSearchDirection
   = SearchBackward
   | SearchForward
   deriving (Eq, Show)
@@ -323,20 +325,20 @@ lunarEclipseTypeToFlag =
 -- NOTE(luis) apart from the types of eclipses here, a solar eclipse
 -- can also be central or noncentral, and there's a notion of hybrid;
 -- see: https://github.com/aloistr/swisseph/blob/bc59eb7ab0c3480086132ae652c6f32924f25589/swetest.c#L3348
-eclipseFlagToTypeSolar :: EclipseFlag -> SolarEclipseType
+eclipseFlagToTypeSolar :: EclipseFlag -> Maybe SolarEclipseType
 eclipseFlagToTypeSolar f
-    | f `match` eclipseTotal = TotalSolarEclipse
-    | f `match` eclipseAnnular = AnnularEclipse
-    | f `match` eclipsePartial = PartialSolarEclipse
-    | f `match` eclipseAnnularTotal = AnnularTotalEclipse
-    | otherwise = undefined
+    | f `match` eclipseTotal = Just TotalSolarEclipse
+    | f `match` eclipseAnnular = Just AnnularEclipse
+    | f `match` eclipsePartial = Just PartialSolarEclipse
+    | f `match` eclipseAnnularTotal = Just AnnularTotalEclipse
+    | otherwise = Nothing
 
-eclipseFlagToTypeLunar :: EclipseFlag -> LunarEclipseType
+eclipseFlagToTypeLunar :: EclipseFlag -> Maybe LunarEclipseType
 eclipseFlagToTypeLunar f
-    | f `match` eclipseTotal = TotalLunarEclipse
-    | f `match` eclipsePartial = PartialLunarEclipse
-    | f `match` eclipsePenumbral = PenumbralEclipse 
-    | otherwise = undefined
+    | f `match` eclipseTotal = Just TotalLunarEclipse
+    | f `match` eclipsePartial = Just PartialLunarEclipse
+    | f `match` eclipsePenumbral = Just PenumbralEclipse 
+    | otherwise = Nothing
 
 -- | Equivalent to @flag & FLAG_VALUE@ in C.
 match :: EclipseFlag -> EclipseFlag -> Bool

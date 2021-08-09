@@ -201,6 +201,26 @@ spec = do
             expectedDeltaT = 6.517108007976064e-4
         deltaT <- deltaTime time
         deltaT `shouldBeApprox` expectedDeltaT
+        
+    describe "solar eclipses" $
+      it "calculates the date and location of a solar eclipse" $ do
+        let startTime = mkJulian 2021 8 9 0.0
+            expectedEclipseDate = mkJulian 2021 12 4 7.0
+        Right (nextEclipseType, nextEclipseJD) <- nextSolarEclipseWhen [] SearchForward startTime
+        Right nextEclipseLoc <- nextSolarEclipseWhere nextEclipseJD
+        nextEclipseType `shouldBe` TotalSolarEclipse
+        julianNoon nextEclipseJD `shouldBe` julianNoon expectedEclipseDate 
+        -- somewhere in Antarctica
+        nextEclipseLoc `shouldBe` GeographicPosition {geoLat = -76.75422256653523, geoLng = -46.06809018915021}
+
+    describe "lunar eclipses" $
+      it "calculates the date of a lunar eclipse" $ do
+        let startTime = mkJulian 2021 8 9 0.0
+            expectedEclipseDate = mkJulian 2021 11 19 9.0
+        Right (nextEclipseType, nextEclipseJD) <- nextLunarEclipseWhen [] SearchForward startTime
+        nextEclipseType `shouldBe` PartialLunarEclipse
+        julianNoon nextEclipseJD `shouldBe` julianNoon expectedEclipseDate 
+ 
 
   beforeAll_ withEphemerides' $
     context "with bundled ephemeris" $ do
@@ -214,6 +234,32 @@ spec = do
           \(time, planet) -> monadicIO $ do
             coords <- run $ calculateEclipticPosition time planet
             assert $ isLeft coords
+      describe "crossings" $ do
+        describe "sunCrossing" $  
+          it "calculates the geocentric solar crossing over a given longitude" $ do
+            let libraSeasonStart = mkJulian 2021 9 23 0
+                startTime = mkJulian 2021 8 9 0.0
+            Right crossingJD <- sunCrossing 180.0 startTime
+            julianNoon crossingJD `shouldBe` julianNoon libraSeasonStart
+
+        describe "moonCrossing" $
+          it "calculates the geocentric lunar crossing over a given longitude" $ do
+            let startTime = mkJulian 2021 8 9 0.0
+                -- 2021-Aug-09 06:56:14.57 UT
+                expectedCrossing = 2459435.7890575626
+                venusTrine = 265.5868455517535 - 120.0
+            Right crossingJD <- moonCrossing venusTrine startTime
+            getJulianDay crossingJD `shouldBe` expectedCrossing
+
+        describe "heliocentricCrossing" $
+          it "calculates the heliocentric crossing of a planet over a given longitude" $ do
+            let startTime = mkJulian 2021 8 9 0.0
+                expectedCrossing = mkJulian 2021 9 4 13.0
+                libraLongitude = 180.0
+            Right crossingJD <- heliocentricCrossing SearchForward Mars libraLongitude startTime
+            -- note that Mars enters libra /earlier/ from a heliocentric
+            -- perspective than from a geocentric perspective.
+            julianNoon crossingJD `shouldBe` julianNoon expectedCrossing
 
 {- For reference, here's an official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
