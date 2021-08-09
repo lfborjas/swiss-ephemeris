@@ -634,28 +634,18 @@ heliocentricCrossing =
 -------------------------------------------------------------------------------
 -- ECLIPSES
 -------------------------------------------------------------------------------
--- | Important times around an eclipse
-{-
-tret[0]   time of maximum eclipse
 
-tret[1]   time, when eclipse takes place at local apparent noon
+{- NOTE(luis)
 
-tret[2]   time of eclipse begin
+We currently only have functions to determine when an eclipse is visible from /anywhere/,
+but Swiss Ephemeris is also capable of determine /where/ a solar eclipse is visible from,
+see the `swe_sol_eclipse_where` function, and the example for more a involved eclipse
+calculation routine in [8.1.  Example of a typical eclipse calculation](https://www.astro.com/swisseph/swephprg.htm#_Toc78973579)
 
-tret[3]   time of eclipse end
+What we learn from there is that the time when it's maximal is the most important datum.
 
-tret[4]   time of totality begin
-
-tret[5]   time of totality end
-
-tret[6]   time of center line begin
-
-tret[7]   time of center line end
-
-tret[8]   time when annular-total eclipse becomes total, not implemented so far
-
-tret[9]   time when annular-total eclipse becomes annular again, not implemented so far
 -}
+
 data SolarEclipseInformation = SolarEclipseInformation
   { solarEclipseType :: SolarEclipseType
   , solarEclipseMax :: JulianDayUT1
@@ -742,25 +732,6 @@ nextSolarEclipseSimple =
           h
     mkSolarEcl _ = Left "insufficient eclipse data"
 
-{-
-tret[0]   time of maximum eclipse
-
-tret[1]  
-
-tret[2]   time of partial phase begin (indices consistent with solar eclipses)
-
-tret[3]   time of partial phase end
-
-tret[4]   time of totality begin
-
-tret[5]   time of totality end
-
-tret[6]   time of penumbral phase begin
-
-tret[7]   time of penumbral phase end
-
-
--}
 data LunarEclipseInformation = LunarEclipseInformation
   { lunarLunarEclipseType :: LunarEclipseType 
   , lunarEclipseMax :: JulianDayUT1
