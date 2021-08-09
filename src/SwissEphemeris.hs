@@ -39,6 +39,9 @@ module SwissEphemeris
     Angles (..),
     CuspsCalculation (..),
     LongitudeComponents (..),
+    -- * Information about an Eclipse
+    SolarEclipseInformation(..),
+    LunarEclipseInformation(..),
     -- * Management of data files
     setEphemeridesPath,
     setNoEphemeridesPath,
@@ -733,7 +736,7 @@ nextSolarEclipseSimple =
     mkSolarEcl _ = Left "insufficient eclipse data"
 
 data LunarEclipseInformation = LunarEclipseInformation
-  { lunarLunarEclipseType :: LunarEclipseType 
+  { lunarEclipseType :: LunarEclipseType 
   , lunarEclipseMax :: JulianDayUT1
   , lunarEclipsePartialPhaseBegin :: JulianDayUT1
   , lunarEclipsePartialPhaseEnd :: JulianDayUT1
