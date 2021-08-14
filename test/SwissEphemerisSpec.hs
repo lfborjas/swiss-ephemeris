@@ -254,9 +254,8 @@ spec = do
           it "knows when to give up calculating the geocentric solar crossing over a given longitude in an interval" $ do
             let startTime = mkJulian 2021 8 9 0.0
                 endTime   = mkJulian 2021 9 22 0.0
-            e <- sunCrossingBetween 180.0 startTime endTime
-            e `shouldSatisfy` isLeft
-            --e `shouldBe` "No crossing found in the specified interval"
+            Left e <- sunCrossingBetween 180.0 startTime endTime
+            e `shouldBe` "No crossing found in the specified interval."
 
         describe "moonCrossing" $
           it "calculates the geocentric lunar crossing over a given longitude" $ do
@@ -281,8 +280,8 @@ spec = do
             let startTime = mkJulian 2021 8 9 0.0
                 endTime   = mkJulian 2021 8 9 2.0
                 venusTrine = 265.5868455517535 - 120.0
-            e <- moonCrossingBetween venusTrine startTime endTime
-            e `shouldSatisfy` isLeft
+            Left e <- moonCrossingBetween venusTrine startTime endTime
+            e `shouldBe` "No crossing found in the specified interval."
 
         describe "heliocentricCrossing" $
           it "calculates the heliocentric crossing of a planet over a given longitude" $ do

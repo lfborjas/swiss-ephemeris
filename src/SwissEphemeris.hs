@@ -97,6 +97,7 @@ import System.IO.Unsafe (unsafePerformIO)
 import SwissEphemeris.Time
 import Foreign.C (CDouble, CInt)
 import Data.Bifunctor (second)
+import Data.Bool (bool)
 
 -- | Given a path to a directory, point the underlying ephemerides library to it.
 -- You only need to call this function to provide an explicit ephemerides path,
@@ -521,6 +522,7 @@ sunCrossingBetweenOpt' sing iflag ln jdStart jdEnd =
         STT -> c_swe_solcross_between 
         _   -> c_swe_solcross_ut_between
       doubleJD = jd2C jdStart
+      defaultErr = "No crossing found in the specified interval."
   in allocaErrorMessage $ \serr -> do
     nextCrossing <-
       fn
@@ -529,10 +531,11 @@ sunCrossingBetweenOpt' sing iflag ln jdStart jdEnd =
         (jd2C jdEnd)
         iflag
         serr
-    if | nextCrossing < doubleJD && serr /= nullPtr ->
-        Left <$> peekCAString serr
+    if | nextCrossing < doubleJD && serr /= nullPtr -> do
+        libErr <- peekCAString serr
+        pure . Left $ bool libErr defaultErr (null libErr)
        | nextCrossing < doubleJD ->
-        pure . Left $ "No crossing found in the specified interval."
+        pure . Left $ defaultErr
        | otherwise ->
         pure . Right $ mkJulianDay sing (realToFrac nextCrossing)
 
@@ -615,6 +618,7 @@ moonCrossingBetweenOpt' sing iflag ln jdStart jdEnd =
         STT -> c_swe_mooncross_between 
         _   -> c_swe_mooncross_ut_between
       doubleJD = jd2C jdStart
+      defaultErr = "No crossing found in the specified interval."
   in allocaErrorMessage $ \serr -> do
     nextCrossing <-
       fn
@@ -623,10 +627,11 @@ moonCrossingBetweenOpt' sing iflag ln jdStart jdEnd =
         (jd2C jdEnd)
         iflag
         serr
-    if | nextCrossing < doubleJD && serr /= nullPtr ->
-        Left <$> peekCAString serr
+    if | nextCrossing < doubleJD && serr /= nullPtr -> do
+        libErr <- peekCAString serr
+        pure . Left $ bool libErr defaultErr (null libErr)
        | nextCrossing < doubleJD ->
-        pure . Left $ "No crossing found in the specified interval."
+        pure . Left $ defaultErr
        | otherwise ->
         pure . Right $ mkJulianDay sing (realToFrac nextCrossing)
 
