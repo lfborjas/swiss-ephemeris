@@ -243,6 +243,21 @@ spec = do
             Right crossingJD <- sunCrossing 180.0 startTime
             julianNoon crossingJD `shouldBe` julianNoon libraSeasonStart
 
+        describe "sunCrossingBetween" $ do 
+          it "calculates the geocentric solar crossing over a given longitude in an interval" $ do
+            let libraSeasonStart = mkJulian 2021 9 23 0
+                startTime = mkJulian 2021 8 9 0.0
+                endTime   = mkJulian 2021 9 24 0.0
+            Right crossingJD <- sunCrossingBetween 180.0 startTime endTime
+            julianNoon crossingJD `shouldBe` julianNoon libraSeasonStart
+   
+          it "knows when to give up calculating the geocentric solar crossing over a given longitude in an interval" $ do
+            let startTime = mkJulian 2021 8 9 0.0
+                endTime   = mkJulian 2021 9 22 0.0
+            e <- sunCrossingBetween 180.0 startTime endTime
+            e `shouldSatisfy` isLeft
+            --e `shouldBe` "No crossing found in the specified interval"
+
         describe "moonCrossing" $
           it "calculates the geocentric lunar crossing over a given longitude" $ do
             let startTime = mkJulian 2021 8 9 0.0
@@ -251,6 +266,23 @@ spec = do
                 venusTrine = 265.5868455517535 - 120.0
             Right crossingJD <- moonCrossing venusTrine startTime
             getJulianDay crossingJD `shouldBe` expectedCrossing
+
+        describe "moonCrossingBetween" $ do
+          it "calculates the geocentric lunar crossing over a given longitude in an interval" $ do
+            let startTime = mkJulian 2021 8 9 0.0
+                endTime   = mkJulian 2021 8 10 0.0
+                -- 2021-Aug-09 06:56:14.57 UT
+                expectedCrossing = 2459435.7890575626
+                venusTrine = 265.5868455517535 - 120.0
+            Right crossingJD <- moonCrossingBetween venusTrine startTime endTime
+            getJulianDay crossingJD `shouldBe` expectedCrossing
+
+          it "knows when to give up when calculating the geocentric lunar crossing over a given longitude in an interval" $ do
+            let startTime = mkJulian 2021 8 9 0.0
+                endTime   = mkJulian 2021 8 9 2.0
+                venusTrine = 265.5868455517535 - 120.0
+            e <- moonCrossingBetween venusTrine startTime endTime
+            e `shouldSatisfy` isLeft
 
         describe "heliocentricCrossing" $
           it "calculates the heliocentric crossing of a planet over a given longitude" $ do

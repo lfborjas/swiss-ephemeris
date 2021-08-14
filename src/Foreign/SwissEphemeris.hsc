@@ -340,6 +340,21 @@ foreign import ccall unsafe "swephexp.h swe_solcross"
                  -> IO CDouble
                  -- ^ JD (time of next crossing; if in the past, we failed.)
 
+foreign import ccall unsafe "swephexp.h swe_solcross_between"
+  c_swe_solcross_between :: CDouble
+                         -- ^ x2cross -- longitude to cross
+                         -> CDouble
+                         -- ^ JD (TT) -- start
+                         -> CDouble
+                         -- ^ JD (TT) -- end
+                         -> CalcFlag
+                         -- ^ flag
+                         -> CString
+                         -- ^ serr
+                         -> IO CDouble
+                         -- ^ JD (time of next crossing; if in the past, we failed.)
+
+
 foreign import ccall unsafe "swephexp.h swe_solcross_ut"
   c_swe_solcross_ut :: CDouble
                     -- ^ x2cross -- longitude to cross
@@ -351,6 +366,21 @@ foreign import ccall unsafe "swephexp.h swe_solcross_ut"
                     -- ^ serr
                     -> IO CDouble
                     -- ^ JD (time of next crossing; if in the past, we failed.)
+
+foreign import ccall unsafe "swephexp.h swe_solcross_ut_between"
+  c_swe_solcross_ut_between :: CDouble
+                            -- ^ x2cross -- longitude to cross
+                            -> CDouble
+                            -- ^ JD (UT1/UT) -- start
+                            -> CDouble
+                            -- ^ JD (UT1/UT) -- end
+                            -> CalcFlag
+                            -- ^ flag
+                            -> CString
+                            -- ^ serr
+                            -> IO CDouble
+                            -- ^ JD (time of next crossing; if in the past, we failed.)
+
 
 foreign import ccall unsafe "swephexp.h swe_mooncross"
   c_swe_mooncross :: CDouble
@@ -364,6 +394,21 @@ foreign import ccall unsafe "swephexp.h swe_mooncross"
                   -> IO CDouble
                   -- ^ JD (time of next crossing; if in the past, we failed.)
 
+foreign import ccall unsafe "swephexp.h swe_mooncross_between"
+  c_swe_mooncross_between :: CDouble
+                          -- ^ x2cross -- longitude to cross
+                          -> CDouble
+                          -- ^ JD (TT) -- start
+                          -> CDouble
+                          -- ^ JD (TT) -- end
+                          -> CalcFlag
+                          -- ^ flag
+                          -> CString
+                          -- ^ serr
+                          -> IO CDouble
+                          -- ^ JD (time of next crossing; if in the past, we failed.)
+
+
 foreign import ccall unsafe "swephexp.h swe_mooncross_ut"
   c_swe_mooncross_ut :: CDouble
                      -- ^ x2cross -- longitude to cross
@@ -375,6 +420,21 @@ foreign import ccall unsafe "swephexp.h swe_mooncross_ut"
                      -- ^ serr
                      -> IO CDouble
                      -- ^ JD (time of next crossing; if in the past, we failed.)
+
+foreign import ccall unsafe "swephexp.h swe_mooncross_ut_between"
+  c_swe_mooncross_ut_between :: CDouble
+                             -- ^ x2cross -- longitude to cross
+                             -> CDouble
+                             -- ^ JD (UT1/UT) -- start
+                             -> CDouble
+                             -- ^ JD (UT1/UT) -- end
+                             -> CalcFlag
+                             -- ^ flag
+                             -> CString
+                             -- ^ serr
+                             -> IO CDouble
+                             -- ^ JD (time of next crossing; if in the past, we failed.)
+
 
 foreign import ccall unsafe "swephexp.h swe_mooncross_node"
   c_swe_mooncross_node :: CDouble

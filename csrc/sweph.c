@@ -8437,6 +8437,45 @@ double CALL_CONV swe_solcross(double x2cross, double jd_et, int flag, char *serr
 }
 
 /*************************************************
+ * ADDED BY lfborjas 2021-08-14
+ * compute Sun'scrossing over some longitude in a date range
+ * flag covers the following bits as used by swe_calc():
+   SEFLG_HELCTR 		0 = geocentric, SUN, 1 = heliocentric, EARTH
+   SEFLG_TRUEPOS 	   	0 = apparent positions, 1 = true positions
+   SEFLG_NONUT 		0 = do nutation (true equinox of date)
+ * returns juldate of the next crossing, with jd > jd_et
+ * The returned time is ephemeris time; to get UT we must do
+ * jd_ut = jd - deltat(jd) or use swe_solcross_ut.
+ * Errors are indicated by returning a jd < jd_et!
+ *************************************************/
+double CALL_CONV swe_solcross_between(double x2cross, double jd_et_start, double jd_et_end, int flag, char *serr)
+{
+  double x[6], xlp, dist;
+  double jd;
+  int ipl = SE_SUN;
+  /*
+   * compute the SUN at start date, and then estimate the crossing date
+   */
+  flag |= SEFLG_SPEED;
+  if (swe_calc(jd_et_start, ipl, flag, x, serr) < 0) 
+    return jd_et_start - 1;
+  xlp = 360.0 / 365.24;	/* mean solar speed */
+  dist = swe_degnorm(x2cross - x[0]);
+  jd = jd_et_start + dist / xlp;
+  for(;;) {
+    if (swe_calc(jd, ipl, flag, x, serr) < 0) 
+      return jd_et_start - 1;
+    dist = swe_difdeg2n(x2cross, x[0]);
+    jd += dist / x[3];
+    if (jd >= jd_et_end)
+      return jd_et_start - 1;
+    if (fabs(dist) < CROSS_PRECISION) break;
+  } 
+  return jd;
+}
+
+
+/*************************************************
  * compute Sun'scrossing over some longitude, in UT
  * flag covers the following bits as used by swe_calc():
    SEFLG_HELCTR 		0 = geocentric, SUN, 1 = heliocentric, EARTH
@@ -8469,6 +8508,44 @@ double CALL_CONV swe_solcross_ut(double x2cross, double jd_ut, int flag, char *s
   } 
   return jd;
 }
+
+/*************************************************
+ * ADDED BY lfborjas 2021-08-14
+ * compute Sun'scrossing over some longitude in a date range, in UT
+ * flag covers the following bits as used by swe_calc():
+   SEFLG_HELCTR 		0 = geocentric, SUN, 1 = heliocentric, EARTH
+   SEFLG_TRUEPOS 	   	0 = apparent positions, 1 = true positions
+   SEFLG_NONUT 		0 = do nutation (true equinox of date)
+ * returns juldate of the next crossing, with jd > jd_ut
+ * The returned time is universal time;
+ * Errors are indicated by returning a jd < jd_ut!
+ *************************************************/
+double CALL_CONV swe_solcross_ut_between(double x2cross, double jd_ut_start, double jd_ut_end, int flag, char *serr)
+{
+  double x[6], xlp, dist;
+  double jd;
+  int ipl = SE_SUN;
+  /*
+   * compute the SUN at start date, and then estimate the crossing date
+   */
+  flag |= SEFLG_SPEED;
+  if (swe_calc_ut(jd_ut_start, ipl, flag, x, serr) < 0) 
+    return jd_ut_start - 1;
+  xlp = 360.0 / 365.24;	/* mean solar speed */
+  dist = swe_degnorm(x2cross - x[0]);
+  jd = jd_ut_start + dist / xlp;
+  for(;;) {
+    if (swe_calc_ut(jd, ipl, flag, x, serr) < 0) 
+      return jd_ut_start - 1;
+    dist = swe_difdeg2n(x2cross, x[0]);
+    jd += dist / x[3];
+    if (jd >= jd_ut_end)
+      return jd_ut_start - 1;
+    if (fabs(dist) < CROSS_PRECISION) break;
+  } 
+  return jd;
+}
+
 
 /*************************************************
  * compute Moon's crossing over some longitude
@@ -8505,6 +8582,44 @@ double CALL_CONV swe_mooncross(double x2cross, double jd_et, int flag, char *ser
 }
 
 /*************************************************
+ * ADDED BY lfborjas 2021-08-14
+ * compute Moon's crossing over some longitude
+ * flag covers the following bits as used by swe_calc():
+   SEFLG_TRUEPOS 	   	0 = apparent positions, 1 = true positions
+   SEFLG_NONUT 		0 = do nutation (true equinox of date)
+ * returns juldate of the next crossing, with jd > jd_et
+ * The returned time is ephemeris time; to get UT we must do
+ * jd_ut = jd - deltat(jd);
+ * Errors are indicated by returning a jd < jd_et!
+ *************************************************/
+double CALL_CONV swe_mooncross_between(double x2cross, double jd_et_start, double jd_et_end, int flag, char *serr)
+{
+  double x[6], xlp, dist;
+  double jd;
+  int ipl = SE_MOON;
+  /*
+   * compute the SUN at start date, and then estimate the crossing date
+   */
+  flag |= SEFLG_SPEED;
+  if (swe_calc(jd_et_start, ipl, flag, x, serr) < 0) 
+    return jd_et_start - 1;
+  xlp = 360.0 / 27.32;	/* mean lunar speed */
+  dist = swe_degnorm(x2cross - x[0]);
+  jd = jd_et_start + dist / xlp;
+  for(;;) {
+    if (swe_calc(jd, ipl, flag, x, serr) < 0) 
+      return jd_et_start - 1;
+    dist = swe_difdeg2n(x2cross, x[0]);
+    jd += dist / x[3];
+    if (jd >= jd_et_end)
+      return jd_et_start - 1; 
+    if (fabs(dist) < CROSS_PRECISION) break;
+  } 
+  return jd;
+}
+
+
+/*************************************************
  * compute Moon's crossing over some longitude
  * flag covers the following bits as used by swe_calc_ut():
    SEFLG_TRUEPOS 	0 = apparent positions, 1 = true positions
@@ -8539,6 +8654,46 @@ double CALL_CONV swe_mooncross_ut(double x2cross, double jd_ut, int flag, char *
   } 
   return jd;
 }
+
+/*************************************************
+ * ADDED BY lfborjas 2021-08-14
+ * compute Moon's crossing over some longitude
+ * flag covers the following bits as used by swe_calc_ut():
+   SEFLG_TRUEPOS 	0 = apparent positions, 1 = true positions
+   SEFLG_NONUT 		0 = do nutation (true equinox of date)
+   SEFLG_SIDEREAL       0 = do tropical
+ * returns juldate of the next crossing, with jd > jd_ut
+ * The returned time is UT
+ * Errors are indicated by returning a jd < jd_ut!
+ * If sidereal is chosen, default mode is Fagan/Bradley. For different aynamshas,
+ * swe_set_sid_mode() must be called first.
+ *************************************************/
+double CALL_CONV swe_mooncross_ut_between(double x2cross, double jd_ut_start, double jd_ut_end, int flag, char *serr)
+{
+  double x[6], xlp, dist;
+  double jd;
+  int ipl = SE_MOON;
+  /*
+   * compute the SUN at start date, and then estimate the crossing date
+   */
+  flag |= SEFLG_SPEED;
+  if (swe_calc_ut(jd_ut_start, ipl, flag, x, serr) < 0) 
+    return jd_ut_start - 1;
+  xlp = 360.0 / 27.32;	/* mean lunar speed */
+  dist = swe_degnorm(x2cross - x[0]);
+  jd = jd_ut_start + dist / xlp;
+  for(;;) {
+    if (swe_calc_ut(jd, ipl, flag, x, serr) < 0) 
+      return jd_ut_start - 1;
+    dist = swe_difdeg2n(x2cross, x[0]);
+    jd += dist / x[3];
+    if (jd >= jd_ut_end)
+      return jd_ut_start - 1;
+    if (fabs(dist) < CROSS_PRECISION) break;
+  } 
+  return jd;
+}
+
 
 /*************************************************
  * compute next Moon crossing over node, by finding zero latitude crossing

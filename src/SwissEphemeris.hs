@@ -73,7 +73,9 @@ module SwissEphemeris
     planetaryPhenomenonRaw,
     -- * Crossings over a longitude
     sunCrossing,
+    sunCrossingBetween,
     moonCrossing,
+    moonCrossingBetween,
     moonCrossingNode,
     heliocentricCrossing,
     -- * Eclipses
@@ -496,6 +498,55 @@ sunCrossing :: SingTSI ts
  -> IO (Either String (JulianDay ts))
 sunCrossing = sunCrossingOpt (mkCalculationOptions defaultCalculationOptions)
 
+sunCrossingBetweenOpt
+  :: SingTSI ts
+  => CalcFlag
+  -> Double
+  -> JulianDay ts
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts))
+sunCrossingBetweenOpt =
+  sunCrossingBetweenOpt' singTS
+
+sunCrossingBetweenOpt'
+  :: SingTimeStandard ts
+  -> CalcFlag
+  -> Double
+  -> JulianDay ts
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts))
+sunCrossingBetweenOpt' sing iflag ln jdStart jdEnd =
+  let fn :: CDouble -> CDouble -> CDouble -> CalcFlag -> CString -> IO CDouble
+      fn = case sing of
+        STT -> c_swe_solcross_between 
+        _   -> c_swe_solcross_ut_between
+      doubleJD = jd2C jdStart
+  in allocaErrorMessage $ \serr -> do
+    nextCrossing <-
+      fn
+        (realToFrac ln)
+        doubleJD
+        (jd2C jdEnd)
+        iflag
+        serr
+    if | nextCrossing < doubleJD && serr /= nullPtr ->
+        Left <$> peekCAString serr
+       | nextCrossing < doubleJD ->
+        pure . Left $ "No crossing found in the specified interval."
+       | otherwise ->
+        pure . Right $ mkJulianDay sing (realToFrac nextCrossing)
+
+-- | Given an ecliptic longitude, and two 'JulianDay' between which to search
+-- try to find intervening time when the Sun will be crossing the
+-- given longitude exactly (with a precision of 1 milliarcsecond,)
+-- from a geocentric perspective.
+sunCrossingBetween :: SingTSI ts
+ => Double
+ -> JulianDay ts
+ -> JulianDay ts
+ -> IO (Either String (JulianDay ts))
+sunCrossingBetween = sunCrossingBetweenOpt (mkCalculationOptions defaultCalculationOptions)
+
 moonCrossingOpt
   :: SingTSI ts
   => CalcFlag
@@ -541,6 +592,54 @@ moonCrossing :: SingTSI ts
  -> IO (Either String (JulianDay ts))
 moonCrossing = moonCrossingOpt (mkCalculationOptions defaultCalculationOptions)
 
+moonCrossingBetweenOpt
+  :: SingTSI ts
+  => CalcFlag
+  -> Double
+  -> JulianDay ts
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts))
+moonCrossingBetweenOpt =
+  moonCrossingBetweenOpt' singTS
+
+moonCrossingBetweenOpt'
+  :: SingTimeStandard ts
+  -> CalcFlag
+  -> Double
+  -> JulianDay ts
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts))
+moonCrossingBetweenOpt' sing iflag ln jdStart jdEnd =
+  let fn :: CDouble -> CDouble -> CDouble -> CalcFlag -> CString -> IO CDouble
+      fn = case sing of
+        STT -> c_swe_mooncross_between 
+        _   -> c_swe_mooncross_ut_between
+      doubleJD = jd2C jdStart
+  in allocaErrorMessage $ \serr -> do
+    nextCrossing <-
+      fn
+        (realToFrac ln)
+        doubleJD
+        (jd2C jdEnd)
+        iflag
+        serr
+    if | nextCrossing < doubleJD && serr /= nullPtr ->
+        Left <$> peekCAString serr
+       | nextCrossing < doubleJD ->
+        pure . Left $ "No crossing found in the specified interval."
+       | otherwise ->
+        pure . Right $ mkJulianDay sing (realToFrac nextCrossing)
+
+-- | Given an ecliptic longitude, and two 'JulianDay's between which to search
+-- try to find the intervening time when the Moon will be crossing the
+-- given longitude exactly (with a precision of 1 milliarcsecond,)
+-- from a geocentric perspective.
+moonCrossingBetween :: SingTSI ts
+ => Double
+ -> JulianDay ts
+ -> JulianDay ts
+ -> IO (Either String (JulianDay ts))
+moonCrossingBetween = moonCrossingBetweenOpt (mkCalculationOptions defaultCalculationOptions)
 
 moonCrossingNodeOpt'
   :: SingTimeStandard ts
