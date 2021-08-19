@@ -194,7 +194,7 @@ newtype JulianDay (s :: TimeStandard) = MkJulianDay {
                                           -- 'JulianDay': you'll have to obtain it
                                           -- through the various temporal conversion functions.
                                           getJulianDay :: Double}
-  deriving (Eq, Show, Enum)
+  deriving (Eq, Show, Enum, Ord)
 
  
 -- Aliases for those who dislike datakinds
