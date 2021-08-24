@@ -6,7 +6,7 @@
 // The start moment jd0_ut must be at least 30 minutes before the direction change.
 int swe_next_direction_change_ut(double jd0, int ipl, int iflag, double *jdx, int *idir, char *serr)
 {
-  double jd_end = jd0 + 700; // default to looking within two years from the start date
+  double jd_end = jd0 + 1000; // default to looking within three years from the start date
   return swe_next_direction_change_ut_between(
     jd0,
     jd_end,
@@ -31,7 +31,7 @@ int swe_next_direction_change_ut_between(double jd0_ut, double jd_ut_end, int ip
 
 int swe_next_direction_change(double jd0, int ipl, int iflag, double *jdx, int *idir, char *serr)
 {
-  double jd_end = jd0 + 700; // default to looking within two years from now
+  double jd_end = jd0 + 1000; // default to looking within three years from now
   return swe_next_direction_change_between(
     jd0,
     jd_end,
