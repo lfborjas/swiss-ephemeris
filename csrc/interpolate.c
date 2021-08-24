@@ -182,6 +182,7 @@ int swe_interpolate(int ipl, double x2cross, double jd0, double jd_end, int ifla
   
   c = a;
   fc = fa;
+  s = b;
   fs = fb;
   mflag = TRUE;
   
