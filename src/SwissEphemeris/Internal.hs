@@ -174,6 +174,11 @@ data LunarEclipseType
   | PartialLunarEclipse
   deriving (Eq, Show)
 
+data PlanetMotion
+  = RetrogradeMotion
+  | DirectMotion
+  deriving (Eq, Show)
+
 -- | The cusp of a given "house" or "sector". It is an ecliptic longitude.
 -- see:
 -- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847888 14.1 House cusp calculation>

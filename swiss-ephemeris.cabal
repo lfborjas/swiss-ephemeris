@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 90daa5f2efc4359cc6aca3a861f598ff28794b3a4f4354dd22bdf096dfc405c0
+-- hash: 1f78f55bc113fd41d97119660086ed24ad498a24fc93d13d8e09a0449e0e3e60
 
 name:           swiss-ephemeris
 version:        1.4.0.0
@@ -32,6 +32,7 @@ source-repository head
 
 library
   exposed-modules:
+      Foreign.Interpolate
       Foreign.SweEphe4
       Foreign.SwissEphemeris
       Foreign.SwissEphemerisExtras
@@ -61,6 +62,7 @@ library
       csrc/swephlib.h
       csrc/dgravgroup.h
       csrc/configurable_sweephe4.h
+      csrc/interpolate.h
   c-sources:
       csrc/swecl.c
       csrc/swedate.c
@@ -75,6 +77,7 @@ library
       csrc/swephlib.c
       csrc/dgravgroup.c
       csrc/configurable_sweephe4.c
+      csrc/interpolate.c
   build-depends:
       base >=4.10 && <4.16
     , time >=1.9 && <1.13

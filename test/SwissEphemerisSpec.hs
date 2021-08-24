@@ -293,6 +293,34 @@ spec = do
             -- perspective than from a geocentric perspective.
             julianNoon crossingJD `shouldBe` julianNoon expectedCrossing
 
+      describe "changes of direction" $ do
+        describe "nextDirectionChange" $
+          it "calculates the moment of direction change of a planet after a date" $ do
+            let startTime = mkJulian 2021 7 14 0.0
+                -- 2021-Jul-15 16:41:02.9 UTC
+                expectedCrossing = 2459411.1951724007
+                expectedMotion = RetrogradeMotion
+            Right (crossingJD, motion) <- nextDirectionChange Chiron startTime
+            getJulianDay crossingJD `shouldBe` expectedCrossing
+            motion `shouldBe` expectedMotion
+        describe "directionChangeBetween" $ do
+          it "calculates the moment of direction change if it happens in the interval" $ do
+            let startTime = mkJulian 2021 7 15 0.0
+                endTime   = mkJulian 2021 7 16 0.0
+                -- 2021-Jul-15 16:41:02.9 UTC
+                expectedCrossing = 2459411.1951724007
+                expectedMotion = RetrogradeMotion
+            Right (crossingJD, motion) <- directionChangeBetween Chiron startTime endTime
+            getJulianDay crossingJD `shouldBe` expectedCrossing
+            motion `shouldBe` expectedMotion
+
+          it "fails to calculate direction change if outside of the interval" $ do
+            let startTime = mkJulian 2021 7 14 0.0
+                endTime   = mkJulian 2021 7 15 0.0
+            Left msg <- directionChangeBetween Chiron startTime endTime
+            msg `shouldBe` "swe_next_direction_change: no change within 1.000000 days"
+
+
 {- For reference, here's an official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
 

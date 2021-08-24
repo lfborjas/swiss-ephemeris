@@ -50,6 +50,7 @@ library:
     - csrc/swephlib.c
     - csrc/dgravgroup.c
     - csrc/configurable_sweephe4.c
+    - csrc/interpolate.c
   include-dirs: csrc
   install-includes:
     - csrc/swedate.h
@@ -65,6 +66,7 @@ library:
     - csrc/swephlib.h
     - csrc/dgravgroup.h
     - csrc/configurable_sweephe4.h
+    - csrc/interpolate.h
 
 tests:
   swiss-ephemeris-test:

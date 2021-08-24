@@ -17,7 +17,7 @@
 --
 -- Currently, only a few select functions that are useful for western horoscopy are exported.
 -- There's a wealth of other calculations possible with the underlying library, however,
--- please refer to their documentation and the bundled sources for ideas!
+-- please refer to their documentation and thebundled sources for ideas!
 module SwissEphemeris
   ( -- * Classes for general concepts
     HasEclipticLongitude(..),
@@ -30,6 +30,7 @@ module SwissEphemeris
     ZodiacSignName (..),
     NakshatraName (..),
     EventSearchDirection(..),
+    PlanetMotion(..),
     -- * Coordinate/position systems
     EclipticPosition (..),
     EquatorialPosition (..),
@@ -84,6 +85,9 @@ module SwissEphemeris
     nextSolarEclipseWhere,
     nextLunarEclipse,
     nextLunarEclipseWhen,
+    -- * Changes of direction
+    directionChangeBetween,
+    nextDirectionChange,
     module SwissEphemeris.Time
   )
 where
@@ -92,6 +96,7 @@ import Control.Exception (bracket_)
 import Foreign
 import Foreign.C.String
 import Foreign.SwissEphemeris
+import Foreign.Interpolate
 import SwissEphemeris.Internal
 import System.IO.Unsafe (unsafePerformIO)
 import SwissEphemeris.Time
@@ -1021,3 +1026,115 @@ nextLunarEclipseWhen =
     onlyMax (Right (eclT, jd:_)) = Right (eclT, mkJulianDay SUT1 jd)
     onlyMax _ = Left "insufficient eclipse data"
  
+-------------------------------------------------------------------------------
+-- INTERPOLATION
+-------------------------------------------------------------------------------
+
+-- | Given two 'JulianDay' moments, determine if a change of direction
+-- for a given 'Planet' occurs; and if so, when exactly and what direction
+-- it changes to. 
+directionChangeBetween
+  :: SingTSI ts
+  => Planet
+  -> JulianDay ts
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts, PlanetMotion))
+directionChangeBetween =
+  directionChangeBetweenOpt (mkCalculationOptions defaultCalculationOptions )
+
+directionChangeBetweenOpt
+  :: SingTSI ts
+  => CalcFlag
+  -> Planet
+  -> JulianDay ts
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts, PlanetMotion))
+directionChangeBetweenOpt =
+  directionChangeBetweenOpt' singTS
+
+directionChangeBetweenOpt' 
+  :: SingTimeStandard ts
+  -> CalcFlag 
+  -> Planet 
+  -> JulianDay ts 
+  -> JulianDay ts 
+  -> IO (Either String (JulianDay ts, PlanetMotion))
+directionChangeBetweenOpt' sing iflag planet jdStart jdEnd =
+  let fn :: CDouble -> CDouble -> PlanetNumber -> CalcFlag -> Ptr CDouble -> Ptr CInt -> CString -> IO CInt
+      fn = case sing of
+        STT -> c_swe_next_direction_change_between
+        _   -> c_swe_next_direction_change_ut_between
+  in allocaErrorMessage $ \serr ->
+    alloca $ \nextCrossingPtr -> alloca $ \dir -> do
+      rval <-
+        fn
+          (jd2C jdStart)
+          (jd2C jdEnd)
+          (planetNumber planet)
+          iflag
+          nextCrossingPtr
+          dir
+          serr
+      if rval < 0 then
+        Left <$> peekCAString serr
+      else do
+        nextJD <- peek nextCrossingPtr
+        nextDir <- peek dir
+        let jd = mkJulianDay sing . realToFrac $ nextJD
+            rd = if nextDir < 0 then RetrogradeMotion else DirectMotion
+        pure . Right $ (jd, rd)
+
+-------------------------------------------------------------------------------
+
+-- | Given a 'Planet' and a 'JulianDay' to start searching, find the next time
+-- the Planet changes direction. The search must start at least 30 minutes before
+-- the change of direction, and will fail if ephemeris data is not available,
+-- or if the body in question doesn't go retrograde within 700 days of the start
+-- date (astronomically, this cannot happen for bodies that /do/ present retrograde
+-- motion, so it's a reasonable upper bound.)
+nextDirectionChange
+  :: SingTSI ts
+  => Planet
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts, PlanetMotion))
+nextDirectionChange =
+  nextDirectionChangeOpt (mkCalculationOptions defaultCalculationOptions )
+
+nextDirectionChangeOpt
+  :: SingTSI ts
+  => CalcFlag
+  -> Planet
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts, PlanetMotion))
+nextDirectionChangeOpt =
+  nextDirectionChangeOpt' singTS
+
+nextDirectionChangeOpt' 
+  :: SingTimeStandard ts
+  -> CalcFlag 
+  -> Planet 
+  -> JulianDay ts 
+  -> IO (Either String (JulianDay ts, PlanetMotion))
+nextDirectionChangeOpt' sing iflag planet jdStart =
+  let fn :: CDouble -> PlanetNumber -> CalcFlag -> Ptr CDouble -> Ptr CInt -> CString -> IO CInt
+      fn = case sing of
+        STT -> c_swe_next_direction_change
+        _   -> c_swe_next_direction_change_ut
+  in allocaErrorMessage $ \serr ->
+    alloca $ \nextCrossingPtr -> alloca $ \dir -> do
+      rval <-
+        fn
+          (jd2C jdStart)
+          (planetNumber planet)
+          iflag
+          nextCrossingPtr
+          dir
+          serr
+      if rval < 0 then
+        Left <$> peekCAString serr
+      else do
+        nextJD <- peek nextCrossingPtr
+        nextDir <- peek dir
+        let jd = mkJulianDay sing . realToFrac $ nextJD
+            rd = if nextDir < 0 then RetrogradeMotion else DirectMotion
+        pure . Right $ (jd, rd)
