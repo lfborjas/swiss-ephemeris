@@ -133,11 +133,14 @@ int swe_interpolate_ut(int ipl, double x2cross, double jd0_ut, double jd_ut_end,
   return rval;
 }
 
-/* Given two time values that bracket a planet's crossing, use Brent's method to find the exact moment of crossing
+/* Given two time values that bracket a planet's crossing, use the Brent-Dekker algorithm to find the exact moment of crossing
    from: https://en.wikipedia.org/wiki/Brent%27s_method.
    Defaults to 100 iterations, with a tolerance of one milliarcsecond. It is recommended that you provide values
-   that are somewhat known to contain a crossing; if a crossing isn't contained, it'll fail with a 'not bracketed''
+   that are known to contain a crossing; if a crossing isn't contained, it'll fail fast with a 'not bracketed'
    error; and if the interval is too long, it will run out of iterations.
+
+   Note that in rare cases, a planet may cross a given longitude more than once in any given interval of time.
+   We only find the first such crossing here.
 */
 int swe_interpolate(int ipl, double x2cross, double jd0, double jd_end, int iflag, double *jdx, char *serr)
 {
