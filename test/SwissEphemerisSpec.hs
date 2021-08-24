@@ -319,6 +319,26 @@ spec = do
                 endTime   = mkJulian 2021 7 15 0.0
             Left msg <- directionChangeBetween Chiron startTime endTime
             msg `shouldBe` "swe_next_direction_change: no change within 1.000000 days"
+      
+      describe "bracketed geocentric crossings" $ do
+        describe "crossingBetween" $ do
+          it "finds the moment the moon crosses over a given longitude" $ do
+            let jd1 = mkJulianDay SUT1 2459449.5
+                jd2 = mkJulianDay SUT1 2459450.5
+                cross = 341.89809835262577
+                -- 2021-Aug-23 09:52:07.39 UTC 
+                expectedTime = 2459449.911196674
+            Right crossesAt <- crossingBetween Moon cross jd1 jd2
+            getJulianDay crossesAt `shouldBe` expectedTime
+
+          it "fails if the given times don't bracket the crossing" $ do
+            let jd1 = succ $ mkJulianDay SUT1 2459449.5
+                jd2 = succ $ mkJulianDay SUT1 2459450.5
+                cross = 341.89809835262577
+            Left msg <- crossingBetween Moon cross jd1 jd2
+            msg `shouldBe` "swe_interpolate: not bracketed: 2459450.500802 - 2459451.500802"
+
+
 
 
 {- For reference, here's an official test output from swetest.c as retrieved from the swetest page:

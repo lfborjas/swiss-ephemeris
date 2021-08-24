@@ -84,7 +84,7 @@ int swe_next_direction_change_between(double jd0, double jd_end, int ipl, int if
       double t0 = t1 - jd_step;
       double t2 = t1 + jd_step;
       rval = swe_calc(t0 , ipl, iflag, xx, serr);
-      if (rval < 0) return rval; 
+      if (rval < 0) return rval;
       y0 = xx[0];
       rval = swe_calc(t1 , ipl, iflag, xx, serr);
       if (rval < 0) return rval; 
@@ -117,4 +117,147 @@ int swe_next_direction_change_between(double jd0, double jd_end, int ipl, int if
   if (serr != NULL)
     sprintf(serr, "swe_next_direction_change: no change within %lf days",  (orig_end - jd0));
   return ERR;
+}
+
+#define CROSS_PRECISION (1 / 3600000.0) 	// one milliarc sec
+
+
+int swe_interpolate_ut(int ipl, double x2cross, double jd0_ut, double jd_ut_end, int iflag, double *jdx, char *serr)
+{
+  double jd0 = jd0_ut + swe_deltat(jd0_ut);
+  double jd_end = jd_ut_end + swe_deltat(jd_ut_end);
+  double tx;
+  int rval = swe_interpolate(ipl, x2cross, jd0, jd_end, iflag, &tx, serr);
+  if (rval >= 0)
+    *jdx = tx - swe_deltat(tx);
+  return rval;
+}
+
+/* Given two time values that bracket a planet's crossing, use Brent's method to find the exact moment of crossing
+   from: https://en.wikipedia.org/wiki/Brent%27s_method.
+   Defaults to 100 iterations, with a tolerance of one milliarcsecond. It is recommended that you provide values
+   that are somewhat known to contain a crossing; if a crossing isn't contained, it'll fail with a 'not bracketed''
+   error; and if the interval is too long, it will run out of iterations.
+*/
+int swe_interpolate(int ipl, double x2cross, double jd0, double jd_end, int iflag, double *jdx, char *serr)
+{
+  double jd_step = 1;
+  double epsilon = CROSS_PRECISION; // we're done if close by a milliarcsecond
+  double xx[6], a, b, c, d, s, pa, pb, pc, ps, fa, fb, fc, fs, tmp;
+  int i;
+  AS_BOOL mflag;
+  int rval, is, max_iter;
+  max_iter = 100;
+  if (jd_step <= 0) jd_step = 1.0;
+  a = jd0;
+  b = jd_end;
+  
+  rval = swe_calc(a, ipl, iflag, xx, serr);
+  if (rval < 0) return rval;
+  pa = xx[0];
+  fa = swe_difdeg2n(pa, x2cross);
+
+  rval = swe_calc(b, ipl, iflag, xx, serr);
+  if (rval < 0) return rval;
+  pb = xx[0];
+  fb = swe_difdeg2n(pb, x2cross);
+
+  if ((fa * fb) >= 0){
+    sprintf(serr, "swe_interpolate: not bracketed: %lf - %lf", a, b);
+    return ERR;
+  }
+
+  if(fabs(fa) < fabs(fb)){
+    tmp = a;
+    a = b;
+    b = tmp;
+
+    tmp = fa;
+    fa = fb;
+    fb = tmp;
+  }
+  
+  c = a;
+  fc = fa;
+  fs = fb;
+  mflag = TRUE;
+  
+  for(i=0; i < max_iter; i++){
+    //printf("iteration: %d, s: %lf", i, s);
+    if(fabs(b-a) < epsilon){
+      //printf("ab epsilon? %lf", fabs(b-a));
+      break;
+    }
+    
+    if(fabs(fb) <= epsilon || fabs(fs) <= epsilon){
+      //printf("breaks epsilon? %lf | %lf", fb, fs);
+      break;
+    }
+    
+    if (fa != fc && fb != fc){
+      //printf("USING qUAD");
+      // inverse quadratic method
+      s = ((a*fb*fc)/(fa - fb)*(fa - fc))
+        + ((b*fa*fc)/(fb - fa)*(fb - fc))
+        + ((c*fa*fb)/(fc - fa)*(fc - fb));
+    } else {
+      // secant method
+      //printf("USING sECANT");
+      s = b - (fb*((b-a)/(fb-fa)));
+    }
+
+    if(!((3 * a + b)/4 < s && s < b)
+      || (mflag  && fabs(s-b) >= fabs(b-c)/2)
+      || (!mflag && fabs(s-b) >= fabs(c-d)/2)
+      || (mflag  && fabs(b-c) < epsilon)
+      || (!mflag && fabs(c-d) < epsilon)){
+        // bisection method
+        //printf("USING bISECT");
+        s = (a+b)/2;
+        mflag = TRUE;
+    } else {
+      mflag = FALSE;
+    }
+    
+    rval = swe_calc(s, ipl, iflag, xx, serr);
+    if (rval < 0) return rval;
+    ps = xx[0];
+    fs = swe_difdeg2n(ps, x2cross);
+
+    // first assignment of d; won't be used on the
+    // first iteration because mflag is set
+    d = c;
+
+    c = b;
+    fc = fb;
+
+    if (fa * fs < 0){
+      b = s;
+      fb = fs;
+    } else {
+      a = s;
+      fa = fs;
+    }
+
+    if(fabs(fa) < fabs(fb)){
+      tmp = a;
+      a = b;
+      b = tmp;
+
+      tmp = fa;
+      fa = fb;
+      fb = tmp;
+    }
+  } // done iterating
+
+  if (fabs(fs) <= epsilon){
+    *jdx = s;
+  } else if (fabs(fb) <= epsilon) {
+    *jdx = b;
+  } else {
+    sprintf(serr, "swe_interpolate: no root found within %d iterations, and epsilon %lf", i, epsilon);
+    return ERR;
+  }
+  return rval;
+
 }

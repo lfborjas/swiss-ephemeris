@@ -11,3 +11,5 @@ int swe_next_direction_change(double jd0, int ipl, int iflag, double *jdx, int *
 int swe_next_direction_change_between(double jd0, double jd_end, int ipl, int iflag, double *jdx, int *idir, char *serr);
 int swe_next_direction_change_ut(double jd0, int ipl, int iflag, double *jdx, int *idir, char *serr);
 int swe_next_direction_change_ut_between(double jd0, double jd_end, int ipl, int iflag, double *jdx, int *idir, char *serr);
+int swe_interpolate(int ipl, double x2cross, double jd0, double jd_end, int iflag, double *jdx, char *serr);
+int swe_interpolate_ut(int ipl, double x2cross, double jd0, double jd_end, int iflag, double *jdx, char *serr);

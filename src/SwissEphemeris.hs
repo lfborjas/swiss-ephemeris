@@ -79,6 +79,7 @@ module SwissEphemeris
     moonCrossingBetween,
     moonCrossingNode,
     heliocentricCrossing,
+    crossingBetween,
     -- * Eclipses
     nextSolarEclipse,
     nextSolarEclipseWhen,
@@ -1138,3 +1139,55 @@ nextDirectionChangeOpt' sing iflag planet jdStart =
         let jd = mkJulianDay sing . realToFrac $ nextJD
             rd = if nextDir < 0 then RetrogradeMotion else DirectMotion
         pure . Right $ (jd, rd)
+
+-------------------------------------------------------------------------------
+
+crossingBetween
+  :: SingTSI ts
+  => Planet
+  -> Double
+  -> JulianDay ts
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts))
+crossingBetween =
+  crossingBetweenOpt (mkCalculationOptions defaultCalculationOptions)
+
+crossingBetweenOpt 
+  :: SingTSI ts
+  => CalcFlag
+  -> Planet 
+  -> Double 
+  -> JulianDay ts 
+  -> JulianDay ts 
+  -> IO (Either String (JulianDay ts))
+crossingBetweenOpt =
+  crossingBetweenOpt' singTS
+
+crossingBetweenOpt' 
+  :: SingTimeStandard ts 
+  -> CalcFlag 
+  -> Planet 
+  -> Double 
+  -> JulianDay ts 
+  -> JulianDay ts 
+  -> IO (Either String (JulianDay ts))
+crossingBetweenOpt' sing iflag planet lng2Cross jdStart jdEnd =
+  let fn :: PlanetNumber -> CDouble -> CDouble -> CDouble -> CalcFlag -> Ptr CDouble -> CString -> IO CInt
+      fn = case sing of
+        STT -> c_swe_interpolate
+        _   -> c_swe_interpolate_ut 
+  in allocaErrorMessage $ \serr ->
+    alloca $ \nextCrossingPtr -> do
+      rval <-
+        fn
+          (planetNumber planet)
+          (realToFrac lng2Cross)
+          (jd2C jdStart)
+          (jd2C jdEnd)
+          iflag
+          nextCrossingPtr
+          serr
+      if rval < 0 then
+        Left <$> peekCAString serr
+      else
+        Right . mkJulianDay sing . realToFrac <$> peek nextCrossingPtr

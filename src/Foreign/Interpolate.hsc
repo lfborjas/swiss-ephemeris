@@ -83,3 +83,39 @@ foreign import ccall unsafe "interpolate.h swe_next_direction_change_ut_between"
                                          -- ^ error message
                                          -> IO CInt
                                          -- ^ OK/ERR
+
+foreign import ccall unsafe "interpolate.h swe_interpolate"
+  c_swe_interpolate :: PlanetNumber
+                    -- ^ planet crossing
+                    -> CDouble
+                    -- ^ longitude to cross
+                    -> CDouble
+                    -- ^ JD(TT) a moment before the crossing
+                    -> CDouble
+                    -- ^ JD(TT) a moment after the crossing
+                    -> CalcFlag
+                    -- iflag
+                    -> Ptr CDouble
+                    -- ^ moment of crossing
+                    -> CString
+                    -- err message
+                    -> IO CInt
+                    -- ^ OK/ERR
+
+foreign import ccall unsafe "interpolate.h swe_interpolate_ut"
+  c_swe_interpolate_ut :: PlanetNumber
+                       -- ^ planet crossing
+                       -> CDouble
+                       -- ^ longitude to cross
+                       -> CDouble
+                       -- ^ JD(UT1) a moment before the crossing
+                       -> CDouble
+                       -- ^ JD(UT1) a moment after the crossing
+                       -> CalcFlag
+                       -- iflag
+                       -> Ptr CDouble
+                       -- ^ moment of crossing
+                       -> CString
+                       -- err message
+                       -> IO CInt
+                       -- ^ OK/ERR
