@@ -89,6 +89,8 @@ module SwissEphemeris
     -- * Changes of direction
     directionChangeBetween,
     nextDirectionChange,
+    -- * Moon phases
+    moonPhaseExactAt,
     module SwissEphemeris.Time
   )
 where
@@ -1191,3 +1193,54 @@ crossingBetweenOpt' sing iflag planet lng2Cross jdStart jdEnd =
         Left <$> peekCAString serr
       else
         Right . mkJulianDay sing . realToFrac <$> peek nextCrossingPtr
+
+-------------------------------------------------------------------------------
+
+
+-- | Given start and end moments between which the moon is known to reach a
+-- given 'LunarPhase', determine the moment of exactitude.
+moonPhaseExactAt
+  :: SingTSI ts
+  => LunarPhase
+  -> JulianDay ts
+  -> JulianDay ts
+  -> IO (Either String (JulianDay ts))
+moonPhaseExactAt =
+  moonPhaseExactOpt (mkCalculationOptions defaultCalculationOptions)
+
+moonPhaseExactOpt 
+  :: SingTSI ts
+  => CalcFlag
+  -> LunarPhase
+  -> JulianDay ts 
+  -> JulianDay ts 
+  -> IO (Either String (JulianDay ts))
+moonPhaseExactOpt =
+  moonPhaseExactOpt' singTS
+
+moonPhaseExactOpt' 
+  :: SingTimeStandard ts 
+  -> CalcFlag 
+  -> LunarPhase 
+  -> JulianDay ts 
+  -> JulianDay ts 
+  -> IO (Either String (JulianDay ts))
+moonPhaseExactOpt' sing iflag lunarPhase jdStart jdEnd =
+  let fn :: CDouble -> CDouble -> CDouble -> CalcFlag -> Ptr CDouble -> CString -> IO CInt
+      fn = case sing of
+        STT -> c_swe_interpolate_moon_phase
+        _   -> c_swe_interpolate_moon_phase_ut
+  in allocaErrorMessage $ \serr ->
+    alloca $ \phaseExactAt -> do
+      rval <-
+        fn
+          (realToFrac . moonPhaseToAngle $ lunarPhase)
+          (jd2C jdStart)
+          (jd2C jdEnd)
+          iflag
+          phaseExactAt
+          serr
+      if rval < 0 then
+        Left <$> peekCAString serr
+      else
+        Right . mkJulianDay sing . realToFrac <$> peek phaseExactAt

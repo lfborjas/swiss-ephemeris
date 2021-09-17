@@ -178,6 +178,17 @@ data PlanetMotion
   = RetrogradeMotion
   | DirectMotion
   deriving (Eq, Show)
+  
+data LunarPhase
+  = NewMoon
+  | WaxingCrescent
+  | FirstQuarter
+  | WaxingGibbous
+  | FullMoon
+  | WaningGibbous
+  | LastQuarter
+  | WaningCrescent
+  deriving (Eq, Show, Ord)
 
 -- | The cusp of a given "house" or "sector". It is an ecliptic longitude.
 -- see:
@@ -448,3 +459,14 @@ ephemerisOptionToFlag :: EphemerisOption -> EpheFlag
 ephemerisOptionToFlag UseSwissEphemeris   = useSwissEph
 ephemerisOptionToFlag UseJPLEphemeris     = useJplEph
 ephemerisOptionToFlag UseMoshierEphemeris = useMoshierEph
+
+moonPhaseToAngle :: LunarPhase ->  Double
+moonPhaseToAngle = \case   
+  NewMoon -> 0
+  WaxingCrescent -> 45
+  FirstQuarter -> 90
+  WaxingGibbous -> 135
+  FullMoon -> 180
+  WaningGibbous -> 225
+  LastQuarter -> 270
+  WaningCrescent -> 315

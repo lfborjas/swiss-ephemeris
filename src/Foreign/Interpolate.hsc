@@ -119,3 +119,37 @@ foreign import ccall unsafe "interpolate.h swe_interpolate_ut"
                        -- err message
                        -> IO CInt
                        -- ^ OK/ERR
+
+foreign import ccall unsafe "interpolate.h swe_interpolate_moon_phase"
+  c_swe_interpolate_moon_phase
+    :: CDouble
+    -- ^ phase angle
+    -> CDouble
+    -- ^ JD(TT) a moment before the phase is exact
+    -> CDouble
+    -- ^ JD(TT) a moment after the phase is exact
+    -> CalcFlag
+    -- ^ iflag
+    -> Ptr CDouble
+    -- ^ moment of exactitude
+    -> CString
+    -- ^ err message
+    -> IO CInt
+    -- ^ OK/ERR
+
+foreign import ccall unsafe "interpolate.h swe_interpolate_moon_phase_ut"
+  c_swe_interpolate_moon_phase_ut
+    :: CDouble
+    -- ^ phase angle
+    -> CDouble
+    -- ^ JD(UT1) a moment before the phase is exact
+    -> CDouble
+    -- ^ JD(UT1) a moment after the phase is exact
+    -> CalcFlag
+    -- ^ iflag
+    -> Ptr CDouble
+    -- ^ moment of exactitude
+    -> CString
+    -- ^ err message
+    -> IO CInt
+    -- ^ OK/ERR

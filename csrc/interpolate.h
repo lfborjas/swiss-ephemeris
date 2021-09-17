@@ -31,6 +31,7 @@ int swe_next_direction_change_ut_between(double jd0, double jd_end, int ipl, int
 int swe_interpolate(int ipl, double x2cross, double jd0, double jd_end, int iflag, double *jdx, char *serr);
 int swe_interpolate_ut(int ipl, double x2cross, double jd0, double jd_end, int iflag, double *jdx, char *serr);
 int swe_interpolate_moon_phase(double phase, double jd0, double jd_end, int iflag, double *jdx, char *serr);
+int swe_interpolate_moon_phase_ut(double phase, double jd0_ut, double jd_end_ut, int iflag, double *jdx, char *serr);
 //helpers
 static int crosses(double t, double *xt, void *data, char *serr);
 static int moon_phase_matches(double t, double *phase, void *vdata, char *serr);

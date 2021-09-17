@@ -152,6 +152,17 @@ int swe_interpolate(int ipl, double x2cross, double jd0, double jd_end, int ifla
   return brent_dekker(&crosses, jd0, jd_end, CROSS_PRECISION, 100, jdx, &cross, serr);
 }
 
+int swe_interpolate_moon_phase_ut(double phase, double jd0_ut, double jd_end_ut, int iflag, double *jdx, char *serr)
+{
+  double jd0 = jd0_ut + swe_deltat(jd0_ut);
+  double jd_end = jd_end_ut + swe_deltat(jd_end_ut);
+  double tx;
+  int rval = swe_interpolate_moon_phase(phase, jd0, jd_end, iflag, &tx, serr);
+  if (rval >= 0)
+    *jdx = tx - swe_deltat(tx);
+  return rval;
+ 
+}
 /* Given a phase (angle between moon and sun positions) and a timeframe during which
    the phase happens, try to find the moment of exactitude. */
 int swe_interpolate_moon_phase(double phase, double jd0, double jd_end, int iflag, double *jdx, char *serr)
