@@ -19,12 +19,19 @@ typedef struct crossing_target{
   int crossing_planet; /* planet number */ 
 } crossing_data;
 
+typedef struct moon_phase_target{
+  double phase_angle; /* angle between moon and sun positions, in [0, 360) */
+  int iflag;
+} moon_phase_data;
+
 int swe_next_direction_change(double jd0, int ipl, int iflag, double *jdx, int *idir, char *serr);
 int swe_next_direction_change_between(double jd0, double jd_end, int ipl, int iflag, double *jdx, int *idir, char *serr);
 int swe_next_direction_change_ut(double jd0, int ipl, int iflag, double *jdx, int *idir, char *serr);
 int swe_next_direction_change_ut_between(double jd0, double jd_end, int ipl, int iflag, double *jdx, int *idir, char *serr);
 int swe_interpolate(int ipl, double x2cross, double jd0, double jd_end, int iflag, double *jdx, char *serr);
 int swe_interpolate_ut(int ipl, double x2cross, double jd0, double jd_end, int iflag, double *jdx, char *serr);
+int swe_interpolate_moon_phase(double phase, double jd0, double jd_end, int iflag, double *jdx, char *serr);
 //helpers
 static int crosses(double t, double *xt, void *data, char *serr);
+static int moon_phase_matches(double t, double *phase, void *vdata, char *serr);
 static int brent_dekker(callback_fn f, double start, double end, double epsilon, int max_iter, double *root, void *f_data, char *serr);

@@ -152,6 +152,37 @@ int swe_interpolate(int ipl, double x2cross, double jd0, double jd_end, int ifla
   return brent_dekker(&crosses, jd0, jd_end, CROSS_PRECISION, 100, jdx, &cross, serr);
 }
 
+/* Given a phase (angle between moon and sun positions) and a timeframe during which
+   the phase happens, try to find the moment of exactitude. */
+int swe_interpolate_moon_phase(double phase, double jd0, double jd_end, int iflag, double *jdx, char *serr)
+{
+  moon_phase_data phase_data;
+  phase_data.phase_angle = phase;
+  phase_data.iflag = iflag;
+
+  return brent_dekker(&moon_phase_matches, jd0, jd_end, CROSS_PRECISION, 100, jdx, &phase_data, serr);
+}
+
+static int moon_phase_matches(double t, double *phase, void *vdata, char *serr)
+{
+  int rval;
+  double xm[6], xs[6], d, dx;
+
+  moon_phase_data *data;
+  data = (moon_phase_data*)vdata;
+
+  rval = swe_calc(t, (int)SE_MOON, data->iflag, xm, serr); 
+  if (rval < 0) return rval;
+  
+  rval = swe_calc(t, (int)SE_SUN, data->iflag, xs, serr); 
+  if (rval < 0) return rval;
+  
+  d = swe_difdegn(xm[0], xs[0]);
+  dx = swe_difdeg2n(d, data->phase_angle);
+  
+  *phase = dx;
+  return rval;
+}
 
 /* given time `t`, return distance between a planet's position at that time and a given x to cross;
    which planet to calculate, the longitude to cross and flags are given as part of `data`*/
