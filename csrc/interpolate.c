@@ -144,26 +144,50 @@ int swe_interpolate_ut(int ipl, double x2cross, double jd0_ut, double jd_ut_end,
 */
 int swe_interpolate(int ipl, double x2cross, double jd0, double jd_end, int iflag, double *jdx, char *serr)
 {
-  double jd_step = 1;
-  double epsilon = CROSS_PRECISION; // we're done if close by a milliarcsecond
+  crossing_data cross;
+  cross.crossing_planet = ipl;
+  cross.iflag = iflag;
+  cross.x2cross = x2cross;
+
+  return brent_dekker(&crosses, jd0, jd_end, CROSS_PRECISION, 100, jdx, &cross, serr);
+}
+
+
+/* given time `t`, return distance between a planet's position at that time and a given x to cross;
+   which planet to calculate, the longitude to cross and flags are given as part of `data`*/
+static int crosses(double t, double *xt, void *vdata, char *serr)
+{
+  int rval;
+  double xx[6];
+  crossing_data *data;
+  data = (crossing_data*)vdata;
+
+  rval = swe_calc(t, data->crossing_planet, data->iflag, xx, serr);
+  if (rval < 0) return rval;
+
+  *xt = swe_difdeg2n(xx[0], data->x2cross);
+  return rval;
+}
+
+/* adaptation of the brent-dekker algorithm for root finding, can find a root
+   for a function that takes a double and produces a double; to make it compatible
+   with most swiss ephemeris routines, it expects the function to return an integer
+   indicating success or failure, and to work with an error string. Any additional
+   data necessary for calculation can be sent to the function through `f_data` */
+static int brent_dekker(callback_fn f, double start, double end, double epsilon, int max_iter, double *root, void *f_data, char *serr)
+{
   double xx[6], a, b, c, d, s, pa, pb, pc, ps, fa, fb, fc, fs, tmp;
   int i;
   AS_BOOL mflag;
-  int rval, is, max_iter;
-  max_iter = 100;
-  if (jd_step <= 0) jd_step = 1.0;
-  a = jd0;
-  b = jd_end;
+  int rval, is;
+  a = start;
+  b = end;
   
-  rval = swe_calc(a, ipl, iflag, xx, serr);
+  rval = (*f)(a, &fa, f_data, serr);
   if (rval < 0) return rval;
-  pa = xx[0];
-  fa = swe_difdeg2n(pa, x2cross);
 
-  rval = swe_calc(b, ipl, iflag, xx, serr);
+  rval = (*f)(b, &fb, f_data, serr);
   if (rval < 0) return rval;
-  pb = xx[0];
-  fb = swe_difdeg2n(pb, x2cross);
 
   if ((fa * fb) >= 0){
     sprintf(serr, "swe_interpolate: not bracketed: %lf - %lf", a, b);
@@ -223,10 +247,8 @@ int swe_interpolate(int ipl, double x2cross, double jd0, double jd_end, int ifla
       mflag = FALSE;
     }
     
-    rval = swe_calc(s, ipl, iflag, xx, serr);
+    rval = (*f)(s, &fs, f_data, serr);
     if (rval < 0) return rval;
-    ps = xx[0];
-    fs = swe_difdeg2n(ps, x2cross);
 
     // first assignment of d; won't be used on the
     // first iteration because mflag is set
@@ -255,9 +277,9 @@ int swe_interpolate(int ipl, double x2cross, double jd0, double jd_end, int ifla
   } // done iterating
 
   if (fabs(fs) <= epsilon){
-    *jdx = s;
+    *root = s;
   } else if (fabs(fb) <= epsilon) {
-    *jdx = b;
+    *root = b;
   } else {
     sprintf(serr, "swe_interpolate: no root found within %d iterations, and epsilon %lf", i, epsilon);
     return ERR;
