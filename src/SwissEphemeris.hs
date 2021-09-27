@@ -31,6 +31,7 @@ module SwissEphemeris
     NakshatraName (..),
     EventSearchDirection(..),
     PlanetMotion(..),
+    LunarPhase(..),
     -- * Coordinate/position systems
     EclipticPosition (..),
     EquatorialPosition (..),

@@ -338,6 +338,25 @@ spec = do
             Left msg <- crossingBetween Moon cross jd1 jd2
             msg `shouldBe` "swe_interpolate: not bracketed: 2459450.500802 - 2459451.500802"
 
+        describe "bracketed moon phase exactitude" $ do
+          it "finds all moments of exactitude for September 2021 (UTC)" $ do
+            let _newMoon@(nmA, nmB) = (mkJulian 2021 9 7 0, mkJulian 2021 9 8 0)
+                _firstQuarter@(fqA, fqB) = (mkJulian 2021 9 13 0, mkJulian 2021 9 14 0)
+                _fullMoon@(fmA, fmB) = (mkJulian 2021 9 20 0, mkJulian 2021 9 21 0)
+                _lastQuarter@(lqA, lqB) = (mkJulian 2021 9 29 0, mkJulian 2021 9 30 0)
+            Right exactNewMoon <- moonPhaseExactAt NewMoon nmA nmB
+            Right exactFirstQuarter <- moonPhaseExactAt FirstQuarter fqA fqB
+            Right exactFullMoon <- moonPhaseExactAt FullMoon fmA fmB
+            Right exactLastQuarter <- moonPhaseExactAt LastQuarter lqA lqB
+            -- 2021-09-07 00:51:46 UTC
+            getJulianDay exactNewMoon `shouldBe` 2459464.5359518672
+            -- 2021-09-13 20:39:22 UTC
+            getJulianDay exactFirstQuarter `shouldBe` 2459471.3606688627
+            -- 2021-09-20 23:54:42 UTC
+            getJulianDay exactFullMoon `shouldBe` 2459478.496323667
+            -- 2021-09-29 01:57:09 UTC
+            getJulianDay exactLastQuarter `shouldBe` 2459486.5813509836
+
 
 
 
