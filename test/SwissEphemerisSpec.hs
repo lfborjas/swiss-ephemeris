@@ -341,21 +341,38 @@ spec = do
         describe "bracketed moon phase exactitude" $ do
           it "finds all moments of exactitude for September 2021 (UTC)" $ do
             let _newMoon@(nmA, nmB) = (mkJulian 2021 9 7 0, mkJulian 2021 9 8 0)
+                _waxingCrescent@(wcA, wcB) = (mkJulian 2021 9 10 0, mkJulian 2021 9 11 0)
                 _firstQuarter@(fqA, fqB) = (mkJulian 2021 9 13 0, mkJulian 2021 9 14 0)
+                _waxingGibbous@(wgA, wgB) = (mkJulian 2021 9 17 0, mkJulian 2021 9 18 0)
                 _fullMoon@(fmA, fmB) = (mkJulian 2021 9 20 0, mkJulian 2021 9 21 0)
+                _waningGibbous@(gA, gB) = (mkJulian 2021 9 24 0, mkJulian 2021 9 25 0)
                 _lastQuarter@(lqA, lqB) = (mkJulian 2021 9 29 0, mkJulian 2021 9 30 0)
+                _waningCrescent@(cA, cB) = (mkJulian 2021 10 2 0, mkJulian 2021 10 3 0)
             Right exactNewMoon <- moonPhaseExactAt NewMoon nmA nmB
+            Right exactWaxingCrescent <- moonPhaseExactAt WaxingCrescent wcA wcB
             Right exactFirstQuarter <- moonPhaseExactAt FirstQuarter fqA fqB
+            Right exactWaxingGibbous <- moonPhaseExactAt WaxingGibbous wgA wgB
             Right exactFullMoon <- moonPhaseExactAt FullMoon fmA fmB
+            Right exactWaningGibbous <- moonPhaseExactAt WaningGibbous gA gB
             Right exactLastQuarter <- moonPhaseExactAt LastQuarter lqA lqB
+            Right exactWaningCrescent <- moonPhaseExactAt WaningCrescent cA cB
+            -- cf: https://ssd.jpl.nasa.gov/tools/jdc/#/jd
             -- 2021-09-07 00:51:46 UTC
             getJulianDay exactNewMoon `shouldBe` 2459464.5359518672
+            -- 2021-09-10 11:03:31 UTC
+            getJulianDay exactWaxingCrescent `shouldBe` 2459467.9607786587
             -- 2021-09-13 20:39:22 UTC
             getJulianDay exactFirstQuarter `shouldBe` 2459471.3606688627
+            -- 2021-09-17 08:18:20 UTC
+            getJulianDay exactWaxingGibbous `shouldBe` 2459474.8460611873
             -- 2021-09-20 23:54:42 UTC
             getJulianDay exactFullMoon `shouldBe` 2459478.496323667
+            -- 2021-09-24 22:32:33 UTC
+            getJulianDay exactWaningGibbous `shouldBe` 2459482.4392759944
             -- 2021-09-29 01:57:09 UTC
             getJulianDay exactLastQuarter `shouldBe` 2459486.5813509836
+            -- 2021-10-02 23:35:14 UTC
+            getJulianDay exactWaningCrescent `shouldBe` 2459490.482804646
 
 
 
