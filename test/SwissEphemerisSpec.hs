@@ -339,6 +339,10 @@ spec = do
             msg `shouldBe` "swe_interpolate: not bracketed: 2459450.500802 - 2459451.500802"
 
         describe "bracketed moon phase exactitude" $ do
+          it "returns an error if a phase doesn't happen during an interval" $ do
+            Left msg <- moonPhaseExactAt NewMoon (mkJulian 2021 9 8 0) (mkJulian 2021 9 10 0)
+            msg `shouldBe` "swe_interpolate: not bracketed: 2459465.500802 - 2459467.500802"
+
           it "finds all moments of exactitude for September 2021 (UTC)" $ do
             let _newMoon@(nmA, nmB) = (mkJulian 2021 9 7 0, mkJulian 2021 9 8 0)
                 _waxingCrescent@(wcA, wcB) = (mkJulian 2021 9 10 0, mkJulian 2021 9 11 0)
