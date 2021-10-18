@@ -1198,10 +1198,10 @@ crossingBetweenOpt' sing iflag planet lng2Cross jdStart jdEnd =
 
 
 -- | Given start and end moments between which the moon is known to reach a
--- given 'LunarPhase', determine the moment of exactitude.
+-- given 'LunarPhaseName', determine the moment of exactitude.
 moonPhaseExactAt
   :: SingTSI ts
-  => LunarPhase
+  => LunarPhaseName
   -> JulianDay ts
   -> JulianDay ts
   -> IO (Either String (JulianDay ts))
@@ -1211,7 +1211,7 @@ moonPhaseExactAt =
 moonPhaseExactOpt 
   :: SingTSI ts
   => CalcFlag
-  -> LunarPhase
+  -> LunarPhaseName
   -> JulianDay ts 
   -> JulianDay ts 
   -> IO (Either String (JulianDay ts))
@@ -1221,7 +1221,7 @@ moonPhaseExactOpt =
 moonPhaseExactOpt' 
   :: SingTimeStandard ts 
   -> CalcFlag 
-  -> LunarPhase 
+  -> LunarPhaseName 
   -> JulianDay ts 
   -> JulianDay ts 
   -> IO (Either String (JulianDay ts))

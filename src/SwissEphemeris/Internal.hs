@@ -179,7 +179,7 @@ data PlanetMotion
   | DirectMotion
   deriving (Eq, Show)
   
-data LunarPhase
+data LunarPhaseName
   = NewMoon
   | WaxingCrescent
   | FirstQuarter
@@ -460,7 +460,7 @@ ephemerisOptionToFlag UseSwissEphemeris   = useSwissEph
 ephemerisOptionToFlag UseJPLEphemeris     = useJplEph
 ephemerisOptionToFlag UseMoshierEphemeris = useMoshierEph
 
-moonPhaseToAngle :: LunarPhase ->  Double
+moonPhaseToAngle :: LunarPhaseName ->  Double
 moonPhaseToAngle = \case   
   NewMoon -> 0
   WaxingCrescent -> 45
