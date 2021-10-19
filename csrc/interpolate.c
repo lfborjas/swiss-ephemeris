@@ -322,6 +322,8 @@ static int brent_dekker(callback_fn f, double start, double end, double epsilon,
     *root = s;
   } else if (fabs(fb) <= epsilon) {
     *root = b;
+  } else if (fabs(b-a) < epsilon) {
+    *root = b;
   } else {
     sprintf(serr, "swe_interpolate: no root found within %d iterations, and epsilon %lf", i, epsilon);
     return ERR;

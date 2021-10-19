@@ -342,6 +342,16 @@ spec = do
           it "returns an error if a phase doesn't happen during an interval" $ do
             Left msg <- moonPhaseExactAt NewMoon (mkJulian 2021 9 8 0) (mkJulian 2021 9 10 0)
             msg `shouldBe` "swe_interpolate: not bracketed: 2459465.500802 - 2459467.500802"
+            
+          it "finds exactitude with tight lower bounds (edge cases for root finding)" $ do
+            let a1 = mkJulianDay STT 2459489.7091340744
+                a2 = succ a1
+                b1 = mkJulianDay STT 2459515.7091340744
+                b2 = succ b1
+            Right exactA <- moonPhaseExactAt WaningCrescent a1 a2
+            Right exactB <- moonPhaseExactAt LastQuarter b1 b2
+            getJulianDay exactA `shouldBe` 2459490.4836063166 
+            getJulianDay exactB `shouldBe` 2459516.3377326634
 
           it "finds all moments of exactitude for September 2021 (UTC)" $ do
             let _newMoon@(nmA, nmB) = (mkJulian 2021 9 7 0, mkJulian 2021 9 8 0)
