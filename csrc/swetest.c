@@ -86,11 +86,11 @@ static char *infocmd1 = "\n\
                 Note: the date format is day month year (European style).\n\
         -bj...  begin date as an absolute Julian day number; e.g. -bj2415020.5\n\
         -j...   same as -bj\n\
-        -tHH.MMSS  input time (as Ephemeris Time)\n\
+        -tHH[:MM[:SS]]  input time (as Ephemeris Time)\n\
         -ut     input date is Universal Time (UT1)\n\
-	-utHH:MM:SS input time (as Universal Time)\n\
-	-utHH.MMSS input time (as Universal Time)\n\
-	-utcHH.MM:SS input time (as Universal Time Coordinated UTC)\n\
+	-utHH[:MM[:SS]] input time (as Universal Time)\n\
+	-utcHH[:MM[:SS]] input time (as Universal Time Coordinated UTC)\n\
+		H,M,S can have one or two digits. Their limits are unchecked.\n\
      output time for eclipses, occultations, risings/settings is UT by default\n\
         -lmt    output date/time is LMT (with -geopos)\n\
         -lat    output date/time is LAT (with -geopos)\n\
@@ -1836,14 +1836,16 @@ int main(int argc, char *argv[])
         /* house position */
         if (strpbrk(fmt, "gGjzm") != NULL) {
 	  armc = swe_degnorm(swe_sidtime(tut) * 15 + geopos[0]);
-	  for (i = 0; i < 6; i++)
+	  for (i = 0; i < 6; i++) {
 	    xsv[i] = x[i];
+	  }
 	  if (hpos_meth == 1)
 	    xsv[1] = 0;
-	    if (ipl == SE_FIXSTAR) 
-	      strcpy(star2, star);
-	    else 
-	      *star2 = '\0';
+	  if (ipl == SE_FIXSTAR) {
+	    strcpy(star2, star);
+	  } else {
+	    *star2 = '\0';
+	  }
 	  if (hpos_meth >= 2 && toupper(ihsy) == 'G') {
 	    swe_gauquelin_sector(tut, ipl, star2, iflag, hpos_meth, geopos, 0, 0, &hposj, serr);
 	  } else {
@@ -2045,7 +2047,7 @@ static int print_line(int mode, AS_BOOL is_first, int sid_mode)
   double y_frac;
   double ar, sinp;
   double dret[20];
-  char slon[20];
+  char slon[40];
   char pnam[30];
   AS_BOOL is_house = ((mode & MODE_HOUSE) != 0);
   AS_BOOL is_label = ((mode & MODE_LABEL) != 0);
@@ -2065,7 +2067,7 @@ static int print_line(int mode, AS_BOOL is_first, int sid_mode)
   } else if (diff_mode == DIFF_MIDP) {
     sprintf(pnam, "%.3s/%.3s", spnam, spnam2);
   } else {
-    sprintf(pnam, "%-15s", spnam);
+    sprintf(pnam, "%-15.15s", spnam);
   }
   if (list_hor && strchr(fmt, 'P') == NULL) {
     sprintf(slon, "%.8s %s", pnam, "long.");
@@ -2962,8 +2964,8 @@ static int32 call_lunar_eclipse(double t_ut, int32 whicheph, int32 special_mode,
   int i, ii, retc = OK, eclflag, ecl_type = 0;
   int rval, ihou, imin, isec, isgn;
   double dfrc, attr[30], dt, xx[6], geopos_max[3];
-  char s1[AS_MAXCH], s2[AS_MAXCH], sout_short[AS_MAXCH], sfmt[AS_MAXCH], *styp = "none", *sgj;
-  char slon[8], slat[8], saros[20];
+  char s1[AS_MAXCH], s2[AS_MAXCH], sout_short[2 * LEN_SOUT], sfmt[AS_MAXCH], *styp = "none", *sgj;
+  char slon[8], slat[8], saros[40];
   geopos_max[0] = 0; geopos_max[1] = 0;
   /* no selective eclipse type set, set all */
   if (with_chart_link) do_printf("<pre>");
@@ -3189,8 +3191,8 @@ ERR) {
       do_printf(sout);
     }
     if (with_chart_link) {
-      char snat[AS_MAXCH];
-      char stim[AS_MAXCH];
+      char snat[2 * AS_MAXCH];
+      char stim[80];
       int iflg = 0; 
       char cal = gregflag ? 'g' : 'j';
       strcpy(stim, hms(jut,BIT_LZEROES));
@@ -3211,7 +3213,7 @@ static int32 call_solar_eclipse(double t_ut, int32 whicheph, int32 special_mode,
   int i, ii, retc = OK, eclflag, ecl_type = 0;
   double dt, tret[30], attr[30], geopos_max[3];
   char slon[8], slat[8], saros[20];
-  char s1[AS_MAXCH], s2[AS_MAXCH], sout_short[AS_MAXCH], *styp = "none", *sgj;
+  char s1[AS_MAXCH], s2[AS_MAXCH], sout_short[AS_MAXCH + LEN_SOUT], *styp = "none", *sgj;
   AS_BOOL has_found = FALSE;
   /* no selective eclipse type set, set all */
   if (with_chart_link) do_printf("<pre>");
@@ -3414,8 +3416,8 @@ attr, direction_flag, serr)) == ERR) {
 	do_printf(sout);
       }
       if (with_chart_link) {
-	char snat[AS_MAXCH];
-	char stim[AS_MAXCH];
+	char snat[2 * AS_MAXCH];
+	char stim[80];
 	int iflg = 0; // NAT_IFLG_UNKNOWN_TIME;
 	char cal = gregflag ? 'g' : 'j';
 	format_lon_lat(slon, slat, geopos_max[0], geopos_max[1]);
@@ -3698,10 +3700,11 @@ static int32 call_heliacal_event(double t_ut, int32 ipl, char *star, int32 which
     helflag |= SE_HELFLAG_OPTICAL_PARAMS;
   if (hel_using_AV)
     helflag |= SE_HELFLAG_AV;
-  if (ipl == SE_FIXSTAR)
+  if (ipl == SE_FIXSTAR) {
     strcpy(obj_name, star);
-  else
+  } else {
     swe_get_planet_name(ipl, obj_name);
+  }
   if (with_header) {
     printf("\ngeo. long %f, lat %f, alt %f", geopos[0], geopos[1], geopos[2]);
     do_printf("\n");

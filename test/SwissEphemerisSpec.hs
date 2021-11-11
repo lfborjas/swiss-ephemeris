@@ -9,6 +9,8 @@ import Test.Hspec
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
+import Utils
+import Data.Time (UTCTime)
 
 -- to verify that we're calling things correctly, refer to the swiss ephemeris test page:
 -- https://www.astro.com/swisseph/swetest.htm
@@ -16,26 +18,15 @@ import Test.QuickCheck.Monadic
 -- https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
 -- note the `PlbRS` format, which outputs latitude and longitude as decimals, not degrees
 -- for easier comparison.
-ephePath :: FilePath
-ephePath = "./swedist/sweph_18"
 
-uncurry4 :: (a -> b -> c -> d -> e) -> (a, b, c, d) -> e
-uncurry4 f (a, b, c, d) = f a b c d
+withoutEphemerides' :: IO ()
+withoutEphemerides' = setNoEphemeridesPath 
+
+withEphemerides' :: IO ()
+withEphemerides' = setEphemeridesPath ephePath
 
 spec :: Spec
 spec = do
-  describe "julianDay" $
-    it "returns the julian day number given a gregorian date" $
-      julianDay 2020 11 6 15.773315995931625 `shouldBe` JulianTime 2459160.1572215
-
-  describe "gregorianDateTime" $
-    it "returns a tuple representing a gregorian date, given a julian day number" $
-      gregorianDateTime (JulianTime 2459160.1572215) `shouldBe` (2020, 11, 6, 15.773315995931625)
-
-  prop "date round trips: transforming a julian day to gregorian and back" $
-    forAll genJulian $ \jd ->
-      uncurry4 julianDay (gregorianDateTime (JulianTime jd)) == JulianTime jd
-
   describe "eclipticToEquatorial" $
     it "converts between ecliptic and equatorial" $ do
       let e = eclipticToEquatorial (ObliquityInformation 23.2 0 0 0) $ EclipticPosition 285.6465775 (-0.0000826) 1 0 0 0
@@ -62,10 +53,10 @@ spec = do
           split = LongitudeComponents {longitudeZodiacSign = Just Capricorn, longitudeDegrees = 15, longitudeMinutes = 38, longitudeSeconds = 50, longitudeSecondsFraction = 0.0, longitudeSignum = Nothing, longitudeNakshatra = Nothing}
       splitDegreesZodiac longitude `shouldBe` split
 
-  around_ withoutEphemerides $ do
+  beforeAll_ withoutEphemerides' $ do
     describe "calculateEclipticPosition" $ do
       it "calculates ecliptic coordinates for the Sun for a specific day" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             expectedCoords =
               Right $
                 EclipticPosition
@@ -80,14 +71,14 @@ spec = do
         coords `compareCoords` expectedCoords
 
       it "fails to calculate coordinates for Chiron if no ephemeris file is set" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             expectedCoords = Left "SwissEph file 'seas_18.se1' not found in PATH '.:/users/ephe2/:/users/ephe/'"
         coords <- calculateEclipticPosition time Chiron
         coords `shouldBe` expectedCoords
 
     describe "calculateCuspsStrict" $ do
       it "calculates cusps and angles for a given place and time, keeping the same house system (not near the poles)" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
         let place = GeographicPosition {geoLat = 14.0839053, geoLng = -87.2750137}
         let expectedCalculations =
               CuspsCalculation
@@ -120,7 +111,7 @@ spec = do
         calcs `compareCalculations` Right expectedCalculations
 
       it "fails when using a house system that is unable to calculate cusps near the poles" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             -- Longyearbyen:
             place = GeographicPosition {geoLat = 78.2232, geoLng = 15.6267}
         calcs <- calculateCuspsStrict Placidus time place
@@ -128,7 +119,7 @@ spec = do
 
     describe "calculateCuspsLenient" $ do
       it "falls back to Porphyry when calculating cusps for a place near the poles" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             -- Longyearbyen:
             place = GeographicPosition {geoLat = 78.2232, geoLng = 15.6267}
             expected = CuspsCalculation {houseCusps = [190.88156009524067, 226.9336677703179, 262.9857754453951, 299.0378831204723, 322.9857754453951, 346.9336677703179, 10.881560095240673, 46.933667770317925, 82.98577544539512, 119.03788312047234, 142.98577544539512, 166.9336677703179], angles = Angles {ascendant = 190.88156009524067, mc = 119.03788312047234, armc = 121.17906552074543, vertex = 36.408617337292114, equatorialAscendant = 213.4074315205484, coAscendantKoch = 335.2547300150891, coAscendantMunkasey = 210.81731854391526, polarAscendant = 155.2547300150891}, systemUsed = Porphyrius}
@@ -158,7 +149,7 @@ spec = do
 
     describe "calculateHousePositionSimple" $
       it "calculates accurate house positions for some known planets" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             place = GeographicPosition {geoLat = 14.06, geoLng = -87.13}
             housePos = calculateHousePositionSimple Placidus time place
             houseN = fmap houseNumber
@@ -192,26 +183,47 @@ spec = do
 
     describe "calculateEquatorialPosition" $
       it "calculates equatorial coordinates for the Sun for a specific date" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             expectedPosition = Right (EquatorialPosition {rightAscension = 286.9771081985312, declination = -22.52537550693229, eqDistance = 0.9833448914987338, ascensionSpeed = 1.0963895541503408, declinationSpeed = 0.1184607330811988, eqDistanceSpeed = 1.736421046243553e-5})
         position <- calculateEquatorialPosition time Sun
         position `shouldBe` expectedPosition
 
     describe "calculateObliquity" $
       it "calculates obliquity of the ecliptic, and nutation, for a specific date" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             expectedObliquity = Right (ObliquityInformation {eclipticObliquity = 23.44288555112768, eclipticMeanObliquity = 23.44070869609064, nutationLongitude = 1.9483531068634399e-3, nutationObliquity = 2.1768550370416455e-3})
         obliquity <- calculateObliquity time
         obliquity `shouldBe` expectedObliquity
 
     describe "deltaTime" $
       it "calculates the Delta T for a specific date" $ do
-        let time = julianDay 1989 1 6 0.0
+        let time = mkJulian 1989 1 6 0.0
             expectedDeltaT = 6.517108007976064e-4
         deltaT <- deltaTime time
         deltaT `shouldBeApprox` expectedDeltaT
+        
+    describe "solar eclipses" $
+      it "calculates the date and location of a solar eclipse" $ do
+        let startTime = mkJulian 2021 8 9 0.0
+            expectedEclipseDate = mkJulian 2021 12 4 7.0
+        Right (nextEclipseType, nextEclipseJD) <- nextSolarEclipseWhen [] SearchForward startTime
+        Right nextEclipseLoc <- nextSolarEclipseWhere nextEclipseJD
+        nextEclipseType `shouldBe` TotalSolarEclipse
+        julianNoon nextEclipseJD `shouldBe` julianNoon expectedEclipseDate
+        -- somewhere in Antarctica
+        geoLat nextEclipseLoc `shouldBeApprox` -76.75422256653523
+        geoLng nextEclipseLoc `shouldBeApprox` -46.06809018915021
 
-  around_ (withEphemerides ephePath) $
+    describe "lunar eclipses" $
+      it "calculates the date of a lunar eclipse" $ do
+        let startTime = mkJulian 2021 8 9 0.0
+            expectedEclipseDate = mkJulian 2021 11 19 9.0
+        Right (nextEclipseType, nextEclipseJD) <- nextLunarEclipseWhen [] SearchForward startTime
+        nextEclipseType `shouldBe` PartialLunarEclipse
+        julianNoon nextEclipseJD `shouldBe` julianNoon expectedEclipseDate 
+ 
+
+  beforeAll_ withEphemerides' $
     context "with bundled ephemeris" $ do
       prop "calculates ecliptic coordinates for any of the planets in a wide range of time." $
         forAll genCoordinatesQuery $
@@ -223,6 +235,161 @@ spec = do
           \(time, planet) -> monadicIO $ do
             coords <- run $ calculateEclipticPosition time planet
             assert $ isLeft coords
+      describe "crossings" $ do
+        describe "sunCrossing" $  
+          it "calculates the geocentric solar crossing over a given longitude" $ do
+            let libraSeasonStart = mkJulian 2021 9 23 0
+                startTime = mkJulian 2021 8 9 0.0
+            Right crossingJD <- sunCrossing 180.0 startTime
+            julianNoon crossingJD `shouldBe` julianNoon libraSeasonStart
+
+        describe "sunCrossingBetween" $ do 
+          it "calculates the geocentric solar crossing over a given longitude in an interval" $ do
+            let libraSeasonStart = mkJulian 2021 9 23 0
+                startTime = mkJulian 2021 8 9 0.0
+                endTime   = mkJulian 2021 9 24 0.0
+            Right crossingJD <- sunCrossingBetween 180.0 startTime endTime
+            julianNoon crossingJD `shouldBe` julianNoon libraSeasonStart
+   
+          it "knows when to give up calculating the geocentric solar crossing over a given longitude in an interval" $ do
+            let startTime = mkJulian 2021 8 9 0.0
+                endTime   = mkJulian 2021 9 22 0.0
+            Left e <- sunCrossingBetween 180.0 startTime endTime
+            e `shouldBe` "No crossing found in the specified interval."
+
+        describe "moonCrossing" $
+          it "calculates the geocentric lunar crossing over a given longitude" $ do
+            let startTime = mkJulian 2021 8 9 0.0
+                -- 2021-Aug-09 06:56:14.57 UT
+                expectedCrossing = 2459435.7890575626
+                venusTrine = 265.5868455517535 - 120.0
+            Right crossingJD <- moonCrossing venusTrine startTime
+            getJulianDay crossingJD `shouldBe` expectedCrossing
+
+        describe "moonCrossingBetween" $ do
+          it "calculates the geocentric lunar crossing over a given longitude in an interval" $ do
+            let startTime = mkJulian 2021 8 9 0.0
+                endTime   = mkJulian 2021 8 10 0.0
+                -- 2021-Aug-09 06:56:14.57 UT
+                expectedCrossing = 2459435.7890575626
+                venusTrine = 265.5868455517535 - 120.0
+            Right crossingJD <- moonCrossingBetween venusTrine startTime endTime
+            getJulianDay crossingJD `shouldBe` expectedCrossing
+
+          it "knows when to give up when calculating the geocentric lunar crossing over a given longitude in an interval" $ do
+            let startTime = mkJulian 2021 8 9 0.0
+                endTime   = mkJulian 2021 8 9 2.0
+                venusTrine = 265.5868455517535 - 120.0
+            Left e <- moonCrossingBetween venusTrine startTime endTime
+            e `shouldBe` "No crossing found in the specified interval."
+
+        describe "heliocentricCrossing" $
+          it "calculates the heliocentric crossing of a planet over a given longitude" $ do
+            let startTime = mkJulian 2021 8 9 0.0
+                expectedCrossing = mkJulian 2021 9 4 13.0
+                libraLongitude = 180.0
+            Right crossingJD <- heliocentricCrossing SearchForward Mars libraLongitude startTime
+            -- note that Mars enters libra /earlier/ from a heliocentric
+            -- perspective than from a geocentric perspective.
+            julianNoon crossingJD `shouldBe` julianNoon expectedCrossing
+
+      describe "changes of direction" $ do
+        describe "nextDirectionChange" $
+          it "calculates the moment of direction change of a planet after a date" $ do
+            let startTime = mkJulian 2021 7 14 0.0
+                -- 2021-Jul-15 16:41:02.9 UTC
+                expectedCrossing = 2459411.1951724007
+                expectedMotion = RetrogradeMotion
+            Right (crossingJD, motion) <- nextDirectionChange Chiron startTime
+            getJulianDay crossingJD `shouldBe` expectedCrossing
+            motion `shouldBe` expectedMotion
+        describe "directionChangeBetween" $ do
+          it "calculates the moment of direction change if it happens in the interval" $ do
+            let startTime = mkJulian 2021 7 15 0.0
+                endTime   = mkJulian 2021 7 16 0.0
+                -- 2021-Jul-15 16:41:02.9 UTC
+                expectedCrossing = 2459411.1951724007
+                expectedMotion = RetrogradeMotion
+            Right (crossingJD, motion) <- directionChangeBetween Chiron startTime endTime
+            getJulianDay crossingJD `shouldBe` expectedCrossing
+            motion `shouldBe` expectedMotion
+
+          it "fails to calculate direction change if outside of the interval" $ do
+            let startTime = mkJulian 2021 7 14 0.0
+                endTime   = mkJulian 2021 7 15 0.0
+            Left msg <- directionChangeBetween Chiron startTime endTime
+            msg `shouldBe` "swe_next_direction_change: no change within 1.000000 days"
+      
+      describe "bracketed geocentric crossings" $ do
+        describe "crossingBetween" $ do
+          it "finds the moment the moon crosses over a given longitude" $ do
+            let jd1 = mkJulianDay SUT1 2459449.5
+                jd2 = mkJulianDay SUT1 2459450.5
+                cross = 341.89809835262577
+                -- 2021-Aug-23 09:52:07.39 UTC 
+                expectedTime = 2459449.911196674
+            Right crossesAt <- crossingBetween Moon cross jd1 jd2
+            getJulianDay crossesAt `shouldBe` expectedTime
+
+          it "fails if the given times don't bracket the crossing" $ do
+            let jd1 = succ $ mkJulianDay SUT1 2459449.5
+                jd2 = succ $ mkJulianDay SUT1 2459450.5
+                cross = 341.89809835262577
+            Left msg <- crossingBetween Moon cross jd1 jd2
+            msg `shouldBe` "swe_interpolate: not bracketed: 2459450.500802 - 2459451.500802"
+
+        describe "bracketed moon phase exactitude" $ do
+          it "returns an error if a phase doesn't happen during an interval" $ do
+            Left msg <- moonPhaseExactAt NewMoon (mkJulian 2021 9 8 0) (mkJulian 2021 9 10 0)
+            msg `shouldBe` "swe_interpolate: not bracketed: 2459465.500802 - 2459467.500802"
+            
+          it "finds exactitude with tight lower bounds (edge cases for root finding)" $ do
+            let a1 = mkJulianDay STT 2459489.7091340744
+                a2 = succ a1
+                b1 = mkJulianDay STT 2459515.7091340744
+                b2 = succ b1
+            Right exactA <- moonPhaseExactAt WaningCrescent a1 a2
+            Right exactB <- moonPhaseExactAt LastQuarter b1 b2
+            getJulianDay exactA `shouldBe` 2459490.4836063166 
+            getJulianDay exactB `shouldBe` 2459516.3377326634
+
+          it "finds all moments of exactitude for September 2021 (UTC)" $ do
+            let _newMoon@(nmA, nmB) = (mkJulian 2021 9 7 0, mkJulian 2021 9 8 0)
+                _waxingCrescent@(wcA, wcB) = (mkJulian 2021 9 10 0, mkJulian 2021 9 11 0)
+                _firstQuarter@(fqA, fqB) = (mkJulian 2021 9 13 0, mkJulian 2021 9 14 0)
+                _waxingGibbous@(wgA, wgB) = (mkJulian 2021 9 17 0, mkJulian 2021 9 18 0)
+                _fullMoon@(fmA, fmB) = (mkJulian 2021 9 20 0, mkJulian 2021 9 21 0)
+                _waningGibbous@(gA, gB) = (mkJulian 2021 9 24 0, mkJulian 2021 9 25 0)
+                _lastQuarter@(lqA, lqB) = (mkJulian 2021 9 29 0, mkJulian 2021 9 30 0)
+                _waningCrescent@(cA, cB) = (mkJulian 2021 10 2 0, mkJulian 2021 10 3 0)
+            Right exactNewMoon <- moonPhaseExactAt NewMoon nmA nmB
+            Right exactWaxingCrescent <- moonPhaseExactAt WaxingCrescent wcA wcB
+            Right exactFirstQuarter <- moonPhaseExactAt FirstQuarter fqA fqB
+            Right exactWaxingGibbous <- moonPhaseExactAt WaxingGibbous wgA wgB
+            Right exactFullMoon <- moonPhaseExactAt FullMoon fmA fmB
+            Right exactWaningGibbous <- moonPhaseExactAt WaningGibbous gA gB
+            Right exactLastQuarter <- moonPhaseExactAt LastQuarter lqA lqB
+            Right exactWaningCrescent <- moonPhaseExactAt WaningCrescent cA cB
+            -- cf: https://ssd.jpl.nasa.gov/tools/jdc/#/jd
+            -- 2021-09-07 00:51:46 UTC
+            getJulianDay exactNewMoon `shouldBe` 2459464.5359518672
+            -- 2021-09-10 11:03:31 UTC
+            getJulianDay exactWaxingCrescent `shouldBe` 2459467.9607786587
+            -- 2021-09-13 20:39:22 UTC
+            getJulianDay exactFirstQuarter `shouldBe` 2459471.3606688627
+            -- 2021-09-17 08:18:20 UTC
+            getJulianDay exactWaxingGibbous `shouldBe` 2459474.8460611873
+            -- 2021-09-20 23:54:42 UTC
+            getJulianDay exactFullMoon `shouldBe` 2459478.496323667
+            -- 2021-09-24 22:32:33 UTC
+            getJulianDay exactWaningGibbous `shouldBe` 2459482.4392759944
+            -- 2021-09-29 01:57:09 UTC
+            getJulianDay exactLastQuarter `shouldBe` 2459486.5813509836
+            -- 2021-10-02 23:35:14 UTC
+            getJulianDay exactWaningCrescent `shouldBe` 2459490.482804646
+
+
+
 
 {- For reference, here's an official test output from swetest.c as retrieved from the swetest page:
 https://www.astro.com/cgi/swetest.cgi?b=6.1.1989&n=1&s=1&p=p&e=-eswe&f=PlbRS&arg=
@@ -310,36 +477,53 @@ compareCalculations _ _ = expectationFailure "Unable to calculate"
 -- | As noted in the readme, the test ephemeris only covers from
 -- 1800-Jan-01 AD to 2399-Dec-31
 -- the Moshier ephemeris should cover a wider range of years, but
--- they cannot compute Chiron. We're choosing a range for which
--- we have Ephemeris for chiron.
+-- they cannot compute Chiron in the general case. 
+-- We're choosing a range for which we have continuous Ephemeris for chiron.
 -- These numbers were calculated with:
 -- https://ssd.jpl.nasa.gov/tc.cgi
 -- read more in the manual:
 -- https://www.astro.com/swisseph/swephprg.htm
-genJulian :: Gen Double
-genJulian = choose (2378496.5, 2597641.4)
+minT :: UTCTime
+minT = minTestEpheT 
 
--- bad range: 3000 BC to the beginning of our ephemeris,
-genBadJulian :: Gen Double
-genBadJulian = oneof [choose (625673.5, 2378496.5), choose (2597641.4, 2816787.5)]
+maxT :: UTCTime
+maxT = maxTestEpheT
+
+-- see:
+-- https://github.com/aloistr/swisseph/blob/7a9a56f858f8db5128c1e5c0bf1c3bde760a0cb3/sweph.h#L207-L208
+-- and:
+-- https://github.com/aloistr/swisseph/blob/40a0baa743a7c654f0ae3331c5d9170ca1da6a6a/sweph.c#L1079
+-- It seems that even though we don't have /data/ for Chiron beyond
+-- `minT` and `maxT` above, some far out dates are still interpolated
+-- just fine; so we work with the absolute limits of the library
+-- for the negative case, instead.
+minChironEphe, maxChironEphe :: UTCTime 
+minChironEphe = mkUTC "0675-01-01T00:00:00Z"
+maxChironEphe = mkUTC "4650-01-01T00:00:00Z"
+
+genJulian :: Gen JulianDayUT1
+genJulian = genJulianInRange minT maxT
+
+genBadJulian :: Gen JulianDayUT1
+genBadJulian = oneof [genJulianBefore minChironEphe, genJulianAfter maxChironEphe]
 
 genHouseSystem :: Gen HouseSystem
 genHouseSystem = elements [Placidus, Koch, Porphyrius, Regiomontanus, Campanus, Equal, WholeSign]
 
-genCoordinatesQuery :: Gen (JulianTime, Planet)
+genCoordinatesQuery :: Gen (JulianDayUT1, Planet)
 genCoordinatesQuery = do
   time <- genJulian
   planet <- elements [Sun .. Chiron]
-  return (JulianTime time, planet)
+  return (time, planet)
 
 -- only Chiron is reliably outside of our calculations,
 -- our ephemerides data does have some other bodies missing though.
-genBadCoordinatesQuery :: Gen (JulianTime, Planet)
+genBadCoordinatesQuery :: Gen (JulianDayUT1, Planet)
 genBadCoordinatesQuery = do
   time <- genBadJulian
   -- TODO: does the library _really_ misbehave for all bodies, or just Chiron?
   let planet = Chiron
-  return (JulianTime time, planet)
+  return (time, planet)
 
 genAnyCoords :: Gen (Double, Double)
 genAnyCoords = do
@@ -349,19 +533,19 @@ genAnyCoords = do
   anyLong <- choose (-180.0, 180.0)
   return (anyLat, anyLong)
 
-genCuspsQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
+genCuspsQuery :: Gen ((Double, Double), JulianDayUT1, HouseSystem)
 genCuspsQuery = do
   coords <- genAnyCoords
   time <- genJulian
   -- Placidus and Koch _sometimes_ succeed, for certain locations, but are more likely to fail.
   -- Regiomontanus and Campanus also struggle to calculate some angles.
   house <- genHouseSystem
-  return (coords, JulianTime time, house)
+  return (coords, time, house)
 
-genCuspsNonPolarQuery :: Gen ((Double, Double), JulianTime, HouseSystem)
+genCuspsNonPolarQuery :: Gen ((Double, Double), JulianDayUT1, HouseSystem)
 genCuspsNonPolarQuery = do
   nonPolarLat <- choose (-40.0, 40.0)
   anyLong <- choose (-180.0, 180.0)
   time <- genJulian
   house <- genHouseSystem
-  return ((nonPolarLat, anyLong), JulianTime time, house)
+  return ((nonPolarLat, anyLong), time, house)

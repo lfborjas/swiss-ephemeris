@@ -29,6 +29,9 @@ SWEOBJ = swedate.o swehouse.o swejpl.o swemmoon.o swemplan.o sweph.o\
 swetest: swetest.o libswe.a
 	$(CC) $(OP) -o swetest swetest.o -L. -lswe -lm -ldl
 
+swegen: swegen.o libswe.a
+	$(CC) $(OP) -o swegen configurable_sweephe4.c configurable_swephgen4.c -L. -lswe -lm -ldl
+
 swemini: swemini.o libswe.a
 	$(CC) $(OP) -o swemini swemini.o -L. -lswe -lm -ldl
 
@@ -42,7 +45,7 @@ libswe.so: $(SWEOBJ)
 	$(CC) -shared -o libswe.so $(SWEOBJ)
 
 clean:
-	rm -f *.o swetest libswe*
+	rm -f *.o swetest swegen libswe*
 	
 ###
 swecl.o: swejpl.h sweodef.h swephexp.h swedll.h sweph.h swephlib.h
@@ -57,3 +60,4 @@ swemplan.o: swephexp.h sweodef.h swedll.h sweph.h swephlib.h swemptab.h
 sweph.o: swejpl.h sweodef.h swephexp.h swedll.h sweph.h swephlib.h
 swephlib.o: swephexp.h sweodef.h swedll.h sweph.h swephlib.h
 swetest.o: swephexp.h sweodef.h swedll.h
+swegen.o: configurable_sweephe4.h swephexp.h sweodef.h 

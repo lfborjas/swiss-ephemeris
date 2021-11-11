@@ -4,10 +4,10 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7c2061bf4b8e112f814b3fb00216b2f0e3b831f7b349b40c14d07ab82449dffa
+-- hash: 1f78f55bc113fd41d97119660086ed24ad498a24fc93d13d8e09a0449e0e3e60
 
 name:           swiss-ephemeris
-version:        1.3.0.2
+version:        1.4.0.0
 synopsis:       Haskell bindings for the Swiss Ephemeris C library
 description:    Please see the README on GitHub at <https://github.com/lfborjas/swiss-ephemeris#readme>
 category:       Data, Astrology
@@ -24,6 +24,7 @@ extra-source-files:
     swedist/sweph_18/seas_18.se1
     swedist/sweph_18/semo_18.se1
     swedist/sweph_18/sepl_18.se1
+    swedist/precalc/sep4_244
 
 source-repository head
   type: git
@@ -31,11 +32,15 @@ source-repository head
 
 library
   exposed-modules:
+      Foreign.Interpolate
+      Foreign.SweEphe4
       Foreign.SwissEphemeris
       Foreign.SwissEphemerisExtras
       SwissEphemeris
       SwissEphemeris.ChartUtils
       SwissEphemeris.Internal
+      SwissEphemeris.Precalculated
+      SwissEphemeris.Time
   other-modules:
       Paths_swiss_ephemeris
   hs-source-dirs:
@@ -56,6 +61,8 @@ library
       csrc/swephexp.h
       csrc/swephlib.h
       csrc/dgravgroup.h
+      csrc/configurable_sweephe4.h
+      csrc/interpolate.h
   c-sources:
       csrc/swecl.c
       csrc/swedate.c
@@ -69,20 +76,28 @@ library
       csrc/sweph.c
       csrc/swephlib.c
       csrc/dgravgroup.c
+      csrc/configurable_sweephe4.c
+      csrc/interpolate.c
   build-depends:
       base >=4.10 && <4.16
+    , time >=1.9 && <1.13
+    , vector >=0.12 && <0.13
   default-language: Haskell2010
 
 test-suite swiss-ephemeris-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Arbitrary
       ChartUtilsSpec
+      PrecalculatedSpec
       SwissEphemerisSpec
+      TimeSpec
+      Utils
       Paths_swiss_ephemeris
   hs-source-dirs:
       test
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wpartial-fields -Wredundant-constraints
   build-tool-depends:
       hspec-discover:hspec-discover >=2.7 && <2.8
   build-depends:
@@ -90,5 +105,8 @@ test-suite swiss-ephemeris-test
     , base >=4.10 && <4.16
     , directory >=1.3 && <1.4
     , hspec >=2.7 && <2.8
+    , random
     , swiss-ephemeris
+    , time >=1.9 && <1.13
+    , vector >=0.12 && <0.13
   default-language: Haskell2010

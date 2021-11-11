@@ -1,5 +1,25 @@
 # Changelog for swiss-ephemeris
 
+## v1.4.0.0
+
+**BREAKING CHANGE:** Major refactoring of time values: `JulianDay` is no longer an alias for `Double`,
+and is now a type that carries a witness of its provenance -- which enables us to work with functions that
+transact in both Terrestrial (Ephemeris) Time, and Universal Time, without mixing them up.
+
+* Upgrades to version `2.10.02` of the C library.
+* Adds the `Precalculated` namespace with functions to read and write pre-calculated
+  ephemeris from a file on disk. Useful when examining an interval of time for ecliptic phenomena.
+* Introduces the `SwissEphemeris.Time` module, with various conversions between time standards
+  and some Haskell time values.
+* Introduces functions that find moments of exactitude for longitude crossings (heliocentric and geocentric,) 
+  and moments of exactitude for lunar phases. The geocentric interpolation, as well as lunar phases,
+  use the Brent-Dekker algorithm for root finding, the heliocentric functions are able to do faster
+  parabolic approximation. I need to study the C sources a bit more to see if something similar is possible
+  for interpolation in general (see the `events` files in the C sources for ideas.)
+* Adds functions for calculating planetary phenomena as visible from earth, as well as solar and lunar eclipses.
+* [dev] adds a `Dockerfile` and `NOTES.md` to aid in diagnosing memory leaks.
+* [dev] adds some basic Nix derivations for producing documentations and a release tarball.
+
 ## v1.3.0.2
 
 * More memory safety paranoia: ensure that `gravGroup` functions have appropriately
