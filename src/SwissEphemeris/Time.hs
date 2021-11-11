@@ -178,7 +178,7 @@ instance SingTSI 'UT1 where
 instance SingTSI 'UT where
   singTS = SUT
  
--- A @JulianDay@ can have different provenances, witnessed
+-- | A @JulianDay@ can have different provenances, witnessed
 -- by its accompanying phantom type:
 --
 -- * It could've been converted, purely, from a UTC value,
@@ -309,7 +309,7 @@ subtractDeltaTime (MkJulianDay jd) dt = MkJulianDay (jd - dt)
 -- for Day values.
 -------------------------------------------------------------------------------
 
--- Convenience "pure" function that pretends
+-- | Convenience "pure" function that pretends
 -- that a day at noon can be converted to /any/ JulianDay;
 -- in reality, it pretends that a JulianDay /in UT/ stands
 -- in for any other (e.g. in 'UT1' or 'TT') -- this is "good enough"
@@ -322,7 +322,7 @@ dayToJulianDay day =
   where
     (y, m, d) = toGregorian day
     
--- Convenience "pure" function that takes an arbitrary
+-- | Convenience "pure" function that takes an arbitrary
 -- 'JulianDay' value in any time standard, converts it to noon,
 -- and then to the corresponding 'Day.' Exploits the same circumstantial
 -- truths about time as 'dayToJulianDay'
@@ -392,6 +392,7 @@ gregorianFromJulianDay (MkJulianDay jd) =
       time <- peek jut
       return (fromIntegral year, fromIntegral month, fromIntegral day, realToFrac time)
 
+-- | Given a JulianDay in UT, produce the equivalent Gregorian date's components.
 gregorianFromJulianDayUT :: JulianDay 'UT -> (Integer, Int, Int, Double)
 gregorianFromJulianDayUT = gregorianFromJulianDay
 
@@ -577,16 +578,17 @@ julianUT1ToUTC ut1 = do
 -- Delta Time
 -------------------------------------------------------------------------------
 
-unsafeDeltaTime :: JulianDay 'UT1 -> IO Double
-unsafeDeltaTime (MkJulianDay jd) =
-  realToFrac <$> c_swe_deltat (realToFrac jd)
-
 -- | Somewhat naïve delta time calculation: if no ephemeris
 -- mode has been selected, it will use the default tidal
 -- acceleration value as per the DE431 JPL ephemeris,
 -- otherwise, it will use whatever ephemeris is currently set.
 -- It's considered unsafe since switching ephemeris modes will
 -- result in an incongruent delta time. See 'safeDeltaTime'
+unsafeDeltaTime :: JulianDay 'UT1 -> IO Double
+unsafeDeltaTime (MkJulianDay jd) =
+  realToFrac <$> c_swe_deltat (realToFrac jd)
+
+-- | Alias for 'unsafeDeltaTime'
 deltaTime :: JulianDay 'UT1 -> IO Double
 deltaTime = unsafeDeltaTime
 
@@ -603,19 +605,26 @@ safeDeltaTime epheOption (MkJulianDay jd) =
       else do
         return . pure . realToFrac $ dt
 
+-- | Try to produce a delta time for the @SwissEphemeris@ ephemeris mode,
+-- will fail if the current mode isn't set to @SwissEphemeris@.
 deltaTimeSE :: Fail.MonadFail m => JulianDay 'UT1 -> IO (m Double)
 deltaTimeSE = safeDeltaTime UseSwissEphemeris
 
+-- | Convert between an instant in UT1 to TT, as a @JulianDay@, may
+-- produce inaccurate results if an ephemeris mode isn't set explicitly.
 universalToTerrestrial :: JulianDay 'UT1 -> IO (JulianDay 'TT)
 universalToTerrestrial jdut = do
   deltaT <- unsafeDeltaTime jdut
   pure $ addDeltaTime jdut deltaT
 
+-- | Convert between an instant in UT1 to TT, as a @JulianDay@, using an explicit
+-- ephemeris mode; fails if not currently working in the expected mode.
 universalToTerrestrialSafe :: Fail.MonadFail m => EphemerisOption -> JulianDay 'UT1 -> IO (m (JulianDay 'TT))
 universalToTerrestrialSafe eo jdut = do
   deltaT <- safeDeltaTime eo jdut
   pure $ addDeltaTime jdut <$> deltaT
 
+-- | 'universaltoTerrestrialSafe', set to @SwissEphemeris@
 universalToTerrestrialSE :: Fail.MonadFail m => JulianDay 'UT1 -> IO (m (JulianDay 'TT))
 universalToTerrestrialSE = universalToTerrestrialSafe UseSwissEphemeris
 

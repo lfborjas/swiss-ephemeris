@@ -161,6 +161,7 @@ data EventSearchDirection
   | SearchForward
   deriving (Eq, Show)
 
+-- | All possible types of solar eclipses.
 data SolarEclipseType
   = TotalSolarEclipse
   | AnnularEclipse
@@ -168,17 +169,20 @@ data SolarEclipseType
   | PartialSolarEclipse
   deriving (Eq, Show)
 
+-- | All possible types of lunar eclipses.
 data LunarEclipseType
   = TotalLunarEclipse
   | PenumbralEclipse
   | PartialLunarEclipse
   deriving (Eq, Show)
 
+-- | Apparent motion of a planet, from a geocentric observation.
 data PlanetMotion
   = RetrogradeMotion
   | DirectMotion
   deriving (Eq, Show)
   
+-- | Traditional western moon phases.
 data LunarPhaseName
   = NewMoon
   | WaxingCrescent

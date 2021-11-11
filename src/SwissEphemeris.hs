@@ -37,7 +37,7 @@ module SwissEphemeris
     EquatorialPosition (..),
     GeographicPosition (..),
     HousePosition (..),
-    -- * Information about the ecliptic at a point in time.
+    -- * Information about the ecliptic at a point in time
     ObliquityInformation (..),
     Angles (..),
     CuspsCalculation (..),
@@ -66,7 +66,7 @@ module SwissEphemeris
     -- * Utilities for sidereal information
     calculateHousePosition,
     calculateHousePositionSimple,
-    -- * Utilities for display/splitting:
+    -- * Utilities for display/splitting
     defaultSplitDegreesOptions,
     splitDegrees,
     splitDegreesZodiac,
@@ -393,6 +393,7 @@ splitDegrees' options deg =
 -- PLANETARY PHENOMENA
 -------------------------------------------------------------------------------
 
+-- | Unprocessed vector of data of note for a planetary phenomenon (see 'planetaryPhenomenon')
 planetaryPhenomenonRaw :: SingTSI ts =>
   JulianDay ts ->
   PlanetNumber ->
@@ -770,6 +771,7 @@ for subsequent calculations.
 
 -}
 
+-- | Various moments of note for a solar eclipse. 
 data SolarEclipseInformation = SolarEclipseInformation
   { solarEclipseType :: SolarEclipseType
   , solarEclipseMax :: JulianDayUT1
@@ -928,6 +930,7 @@ nextSolarEclipseWhen =
     onlyMax _ = Left "insufficient eclipse data"
     
 
+-- | Various moments of note for a lunar eclipse. 
 data LunarEclipseInformation = LunarEclipseInformation
   { lunarEclipseType :: LunarEclipseType 
   , lunarEclipseMax :: JulianDayUT1
@@ -1145,6 +1148,18 @@ nextDirectionChangeOpt' sing iflag planet jdStart =
 
 -------------------------------------------------------------------------------
 
+-- | Given a @Planet@, a longitude it crosses, and a start and end
+-- @JulianDay@s, find the exact moment the planet crosses the given longitude,
+-- from a geocentric perspective (retrogrades are taken into account).
+-- 
+-- _NOTE_: works best when it is known beforehand that the planet crosses
+-- the longitude in the given interval, and when the interval is short (e.g. 24 hours): 
+-- if the interval is too long the maximum number of iterations to approximate
+-- the moment of exactitude may be exceeded. Additionally, if the planet changes
+-- direction in the interval and crosses the longitude more than once, only one
+-- of the crossings will be found (not necessarily the first one.) You may
+-- use 'nextDirectionChange' or 'directionChangeBetween' to subdivide the interval 
+-- into sub-intervals that contain one crossing each.
 crossingBetween
   :: SingTSI ts
   => Planet
