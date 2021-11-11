@@ -1,3 +1,13 @@
+## Reproducing tests failures
+
+When a quickcheck prop fails, one can re-run with the same seed:
+
+```sh
+stack test --test-arguments="--seed=1152638838"
+```
+
+(odd syntax bemoned at: https://github.com/commercialhaskell/stack/issues/2210)
+
 ## Detecting memory leaks/corruption
 
 First of all, macOS is a terrible environment for this: between having enough

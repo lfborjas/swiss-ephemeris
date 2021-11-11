@@ -41,6 +41,9 @@ newtype CalcFlag = CalcFlag
 newtype SplitDegFlag = SplitDegFlag
   { unSplitDegFlag :: CInt } deriving (Eq, Show)
 
+newtype EclipseFlag = EclipseFlag
+  { unEclipseFlag :: CInt} deriving (Eq, Show)
+
 -- following:
 -- https://en.wikibooks.org/wiki/Haskell/FFI#Enumerations
 
@@ -91,6 +94,22 @@ newtype SplitDegFlag = SplitDegFlag
  , splitKeepSign  = SE_SPLIT_DEG_KEEP_SIGN
  , splitKeepDeg   = SE_SPLIT_DEG_KEEP_DEG
  }
+ 
+#{enum EclipseFlag, EclipseFlag
+ , eclipseCentral = SE_ECL_CENTRAL
+ , eclipseNonCentral = SE_ECL_NONCENTRAL
+ , eclipseTotal = SE_ECL_TOTAL
+ , eclipseAnnular = SE_ECL_ANNULAR
+ , eclipsePartial = SE_ECL_PARTIAL
+ , eclipseAnnularTotal = SE_ECL_ANNULAR_TOTAL
+ , eclipseHybrid = SE_ECL_HYBRID
+ , eclipsePenumbral = SE_ECL_PENUMBRAL
+ , eclipseSolar = SE_ECL_ALLTYPES_SOLAR
+ , eclipseLunar = SE_ECL_ALLTYPES_LUNAR
+}
+
+anyEclipse :: EclipseFlag
+anyEclipse = EclipseFlag 0
 
 foreign import ccall unsafe "swephexp.h swe_set_ephe_path"
     c_swe_set_ephe_path :: CString -> IO ()
@@ -280,3 +299,304 @@ foreign import ccall unsafe "swephexp.h swe_jdut1_to_utc"
                       -> Ptr CDouble
                       -- ^ sec
                       -> IO ()
+
+foreign import ccall unsafe "swephexp.h swe_pheno"
+    c_swe_pheno :: CDouble
+                -- ^ JD (TT)
+                -> PlanetNumber
+                -- ^ ipl
+                -> CalcFlag
+                -- ^ iflag
+                -> Ptr CDouble
+                -- ^ *attr
+                -> CString
+                -- ^ *serr
+                -> IO CInt
+                -- ^ retval
+
+foreign import ccall unsafe "swephexp.h swe_pheno_ut"
+    c_swe_pheno_ut :: CDouble
+                   -- ^ JD (UT)
+                   -> PlanetNumber
+                   -- ^ ipl
+                   -> CalcFlag
+                   -- ^ iflag
+                   -> Ptr CDouble
+                   -- ^ *attr
+                   -> CString
+                   -- ^ *serr
+                   -> IO CInt
+                   -- ^ retval
+
+foreign import ccall unsafe "swephexp.h swe_solcross"
+  c_swe_solcross :: CDouble
+                 -- ^ x2cross -- longitude to cross
+                 -> CDouble
+                 -- ^ JD (TT)
+                 -> CalcFlag
+                 -- ^ flag
+                 -> CString
+                 -- ^ serr
+                 -> IO CDouble
+                 -- ^ JD (time of next crossing; if in the past, we failed.)
+
+foreign import ccall unsafe "swephexp.h swe_solcross_between"
+  c_swe_solcross_between :: CDouble
+                         -- ^ x2cross -- longitude to cross
+                         -> CDouble
+                         -- ^ JD (TT) -- start
+                         -> CDouble
+                         -- ^ JD (TT) -- end
+                         -> CalcFlag
+                         -- ^ flag
+                         -> CString
+                         -- ^ serr
+                         -> IO CDouble
+                         -- ^ JD (time of next crossing; if in the past, we failed.)
+
+
+foreign import ccall unsafe "swephexp.h swe_solcross_ut"
+  c_swe_solcross_ut :: CDouble
+                    -- ^ x2cross -- longitude to cross
+                    -> CDouble
+                    -- ^ JD (UT1/UT)
+                    -> CalcFlag
+                    -- ^ flag
+                    -> CString
+                    -- ^ serr
+                    -> IO CDouble
+                    -- ^ JD (time of next crossing; if in the past, we failed.)
+
+foreign import ccall unsafe "swephexp.h swe_solcross_ut_between"
+  c_swe_solcross_ut_between :: CDouble
+                            -- ^ x2cross -- longitude to cross
+                            -> CDouble
+                            -- ^ JD (UT1/UT) -- start
+                            -> CDouble
+                            -- ^ JD (UT1/UT) -- end
+                            -> CalcFlag
+                            -- ^ flag
+                            -> CString
+                            -- ^ serr
+                            -> IO CDouble
+                            -- ^ JD (time of next crossing; if in the past, we failed.)
+
+
+foreign import ccall unsafe "swephexp.h swe_mooncross"
+  c_swe_mooncross :: CDouble
+                  -- ^ x2cross -- longitude to cross
+                  -> CDouble
+                  -- ^ JD (TT)
+                  -> CalcFlag
+                  -- ^ flag
+                  -> CString
+                  -- ^ serr
+                  -> IO CDouble
+                  -- ^ JD (time of next crossing; if in the past, we failed.)
+
+foreign import ccall unsafe "swephexp.h swe_mooncross_between"
+  c_swe_mooncross_between :: CDouble
+                          -- ^ x2cross -- longitude to cross
+                          -> CDouble
+                          -- ^ JD (TT) -- start
+                          -> CDouble
+                          -- ^ JD (TT) -- end
+                          -> CalcFlag
+                          -- ^ flag
+                          -> CString
+                          -- ^ serr
+                          -> IO CDouble
+                          -- ^ JD (time of next crossing; if in the past, we failed.)
+
+
+foreign import ccall unsafe "swephexp.h swe_mooncross_ut"
+  c_swe_mooncross_ut :: CDouble
+                     -- ^ x2cross -- longitude to cross
+                     -> CDouble
+                     -- ^ JD (UT1/UT)
+                     -> CalcFlag
+                     -- ^ flag
+                     -> CString
+                     -- ^ serr
+                     -> IO CDouble
+                     -- ^ JD (time of next crossing; if in the past, we failed.)
+
+foreign import ccall unsafe "swephexp.h swe_mooncross_ut_between"
+  c_swe_mooncross_ut_between :: CDouble
+                             -- ^ x2cross -- longitude to cross
+                             -> CDouble
+                             -- ^ JD (UT1/UT) -- start
+                             -> CDouble
+                             -- ^ JD (UT1/UT) -- end
+                             -> CalcFlag
+                             -- ^ flag
+                             -> CString
+                             -- ^ serr
+                             -> IO CDouble
+                             -- ^ JD (time of next crossing; if in the past, we failed.)
+
+
+foreign import ccall unsafe "swephexp.h swe_mooncross_node"
+  c_swe_mooncross_node :: CDouble
+                       -- ^ JD (TT)
+                       -> CalcFlag
+                       -- ^ flag
+                       -> Ptr CDouble
+                       -- ^ [return] xlon
+                       -> Ptr CDouble
+                       -- ^ [return] xlat
+                       -> CString
+                       -- ^ serr
+                       -> IO CDouble
+                       -- ^ JD (time of next crossing) 
+
+foreign import ccall unsafe "swephexp.h swe_mooncross_node_ut"
+  c_swe_mooncross_node_ut :: CDouble
+                          -- ^ JD (TT)
+                          -> CalcFlag
+                          -- ^ flag
+                          -> Ptr CDouble
+                          -- ^ [return] xlon
+                          -> Ptr CDouble
+                          -- ^ [return] xlat
+                          -> CString
+                          -- ^ serr
+                          -> IO CDouble
+                          -- ^ JD (time of next crossing) 
+
+
+foreign import ccall unsafe "swephexp.h swe_helio_cross"
+  c_swe_helio_cross :: PlanetNumber
+                    -- ^ planet
+                    -> CDouble
+                    -- ^ x2cross
+                    -> CDouble
+                    -- ^ JD (TT)
+                    -> CalcFlag
+                    -- ^ iflag
+                    -> CInt
+                    -- ^ dir (< 0 back, >0 forward)
+                    -> Ptr CDouble
+                    -- ^ JD
+                    -> CString
+                    -- ^ serr
+                    -> IO CInt
+                    -- ^ retval (OK/ERR)
+
+foreign import ccall unsafe "swephexp.h swe_helio_cross_ut"
+  c_swe_helio_cross_ut :: PlanetNumber
+                       -- ^ planet
+                       -> CDouble
+                       -- ^ x2cross
+                       -> CDouble
+                       -- ^ JD (TT)
+                       -> CalcFlag
+                       -- ^ iflag
+                       -> CInt
+                       -- ^ dir (< 0 back, >0 forward)
+                       -> Ptr CDouble
+                       -- ^ JD
+                       -> CString
+                       -- ^ serr
+                       -> IO CInt
+                       -- ^ retval (OK/ERR)
+
+
+------------------------------------------------
+-- ECLIPSES
+------------------------------------------------
+
+foreign import ccall unsafe "swephexp.h swe_sol_eclipse_when_glob"
+  c_swe_sol_eclipse_when_glob :: CDouble
+                              -- ^ JD(UT)
+                              -> CalcFlag
+                              -- ^ iflag
+                              -> EclipseFlag
+                              -- ^ ifltype
+                              -> Ptr CDouble
+                              -- ^ ret[10] eclipse time highlights
+                              -> CInt
+                              -- ^ BOOL: search backward?
+                              -> CString
+                              -- ^ serr
+                              -> IO CInt
+                              -- ^ retval (ERR/Eclipse type)
+                              
+foreign import ccall unsafe "swephexp.h swe_sol_eclipse_where"
+  c_swe_sol_eclipse_where :: CDouble
+                          -- ^ JD(UT), must be known time of maximum eclipse
+                          -> CalcFlag
+                          -- ^ iflag
+                          -> Ptr CDouble
+                          -- ^ [return] geopos
+                          -> Ptr CDouble
+                          -- ^ [return] attr
+                          -> CString
+                          -- ^ serr
+                          -> IO CInt
+                          -- ^ ret (ERR/eclipse type)
+                          
+-- | Given a search date, lat/lng/height of a geographic vantage point,
+-- return an eclipse's maximum, four contacts and other important events,
+-- and various attributes. See:
+-- [8.2.  swe_sol_eclipse_when_loc](https://www.astro.com/swisseph/swephprg.htm#_Toc78973580).
+-- NOTE(luis) only providing the C binding right now, as I have no /current/ use for all this
+-- data, and don't want to provide an opinionated Haskell equivalent until I do. 
+foreign import ccall unsafe "swephexp.h swe_sol_eclipse_when_loc"
+  c_swe_sol_eclipse_when_loc :: CDouble
+                             -- ^ JD(UT), time to start searching
+                             -> CalcFlag
+                             -- ^ iflag
+                             -> Ptr CDouble
+                             -- ^ geopos of a known locale
+                             -> Ptr CDouble
+                             -- ^ [return] tret (contacts)
+                             -> Ptr CDouble
+                             -- ^ [return] other attributes
+                             -> CInt
+                             -- ^ BOOL: search backward?
+                             -> CString
+                             -- ^ serr
+                             -> IO CInt
+                             -- ^ ret (ERR/eclipse type)
+ 
+foreign import ccall unsafe "swephexp.h swe_lun_eclipse_when"
+  c_swe_lun_eclipse_when :: CDouble
+                         -- ^ JD(UT)
+                         -> CalcFlag
+                         -- ^ iflag
+                         -> EclipseFlag
+                         -- ^ ifltype
+                         -> Ptr CDouble
+                         -- ^ ret[10] eclipse time highlights
+                         -> CInt
+                         -- ^ BOOL: forward/backward
+                         -> CString
+                         -- ^ serr
+                         -> IO CInt
+                         -- ^ retval (OK/ERR)
+
+-- | Given a search date, lat/lng/height of a geographic vantage point,
+-- return an eclipse's maximum, four contacts and other important events,
+-- and various attributes. See:
+-- [8.9.  swe_lun_eclipse_when_loc](https://www.astro.com/swisseph/swephprg.htm#_Toc78973587).
+-- NOTE(luis) only providing the C binding right now, as I have no /current/ use for all this
+-- data, and don't want to provide an opinionated Haskell equivalent until I do. 
+foreign import ccall unsafe "swephexp.h swe_lun_eclipse_when_loc"
+  c_swe_lun_eclipse_when_loc :: CDouble
+                             -- ^ JD(UT), time to start searching
+                             -> CalcFlag
+                             -- ^ iflag
+                             -> Ptr CDouble
+                             -- ^ geopos of a known locale
+                             -> Ptr CDouble
+                             -- ^ [return] tret (contacts)
+                             -> Ptr CDouble
+                             -- ^ [return] other attributes
+                             -> CInt
+                             -- ^ BOOL: search backward?
+                             -> CString
+                             -- ^ serr
+                             -> IO CInt
+                             -- ^ ret (ERR/eclipse type)
+ 

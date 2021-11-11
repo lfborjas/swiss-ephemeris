@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 
 
 -- |
@@ -153,6 +154,46 @@ data EphemerisOption
   | UseMoshierEphemeris
   deriving (Eq, Show)
 
+-- | When looking for eclipses, occulations or crossings, determine
+-- the temporal direction to take from the provided start time.
+data EventSearchDirection
+  = SearchBackward
+  | SearchForward
+  deriving (Eq, Show)
+
+-- | All possible types of solar eclipses.
+data SolarEclipseType
+  = TotalSolarEclipse
+  | AnnularEclipse
+  | AnnularTotalEclipse
+  | PartialSolarEclipse
+  deriving (Eq, Show)
+
+-- | All possible types of lunar eclipses.
+data LunarEclipseType
+  = TotalLunarEclipse
+  | PenumbralEclipse
+  | PartialLunarEclipse
+  deriving (Eq, Show)
+
+-- | Apparent motion of a planet, from a geocentric observation.
+data PlanetMotion
+  = RetrogradeMotion
+  | DirectMotion
+  deriving (Eq, Show)
+  
+-- | Traditional western moon phases.
+data LunarPhaseName
+  = NewMoon
+  | WaxingCrescent
+  | FirstQuarter
+  | WaxingGibbous
+  | FullMoon
+  | WaningGibbous
+  | LastQuarter
+  | WaningCrescent
+  deriving (Eq, Show, Ord)
+
 -- | The cusp of a given "house" or "sector". It is an ecliptic longitude.
 -- see:
 -- <https://www.astro.com/swisseph/swephprg.htm#_Toc49847888 14.1 House cusp calculation>
@@ -249,6 +290,15 @@ data LongitudeComponents = LongitudeComponents
   }
   deriving (Show, Eq, Generic)
 
+-- | A Planet's "phenomena" record
+data PlanetPhenomenon = PlanetPhenomenon
+  { planetPhaseAngle :: Double
+  , planetPhase      :: Double
+  , planetElongation :: Double
+  , planetApparentDiameter :: Double
+  , planetApparentMagnitude :: Double
+  } deriving (Eq, Show)
+
 -- folders for bitwise flags, and some opinionated defaults.
 
 mkCalculationOptions :: [CalcFlag] -> CalcFlag
@@ -256,6 +306,9 @@ mkCalculationOptions = CalcFlag . foldr ((.|.) . unCalcFlag) 0
 
 defaultCalculationOptions :: [CalcFlag]
 defaultCalculationOptions = [speed, swissEph]
+
+defaultCalculationFlag :: CalcFlag
+defaultCalculationFlag = mkCalculationOptions defaultCalculationOptions
 
 foldSplitDegOptions :: [SplitDegFlag] -> SplitDegFlag
 foldSplitDegOptions = SplitDegFlag . foldr ((.|.) . unSplitDegFlag) 0
@@ -273,6 +326,71 @@ splitOptionToFlag KeepDegrees = splitKeepDeg
 -- Omit rounding if it would bring it over the next sign or degree.
 defaultSplitDegreesOptions :: [SplitDegreesOption]
 defaultSplitDegreesOptions = [KeepSign, KeepDegrees]
+
+solarEclipseTypeToFlag :: SolarEclipseType -> EclipseFlag
+solarEclipseTypeToFlag =
+  \case
+    TotalSolarEclipse -> eclipseTotal
+    AnnularEclipse -> eclipseAnnular
+    PartialSolarEclipse -> eclipsePartial
+    AnnularTotalEclipse -> eclipseAnnularTotal
+
+lunarEclipseTypeToFlag :: LunarEclipseType -> EclipseFlag
+lunarEclipseTypeToFlag =
+  \case
+    TotalLunarEclipse -> eclipseTotal
+    PartialLunarEclipse -> eclipsePartial
+    PenumbralEclipse -> eclipsePenumbral
+
+-- NOTE(luis) apart from the types of eclipses here, a solar eclipse
+-- can also be central or noncentral, and there's a notion of hybrid;
+-- see: https://github.com/aloistr/swisseph/blob/bc59eb7ab0c3480086132ae652c6f32924f25589/swetest.c#L3348
+eclipseFlagToTypeSolar :: EclipseFlag -> Maybe SolarEclipseType
+eclipseFlagToTypeSolar f
+    | f `match` eclipseTotal = Just TotalSolarEclipse
+    | f `match` eclipseAnnular = Just AnnularEclipse
+    | f `match` eclipsePartial = Just PartialSolarEclipse
+    | f `match` eclipseAnnularTotal = Just AnnularTotalEclipse
+    | otherwise = Nothing
+
+eclipseFlagToTypeLunar :: EclipseFlag -> Maybe LunarEclipseType
+eclipseFlagToTypeLunar f
+    | f `match` eclipseTotal = Just TotalLunarEclipse
+    | f `match` eclipsePartial = Just PartialLunarEclipse
+    | f `match` eclipsePenumbral = Just PenumbralEclipse 
+    | otherwise = Nothing
+
+-- | Equivalent to @flag & FLAG_VALUE@ in C.
+match :: EclipseFlag -> EclipseFlag -> Bool
+(EclipseFlag n) `match` (EclipseFlag m) = (n .&. m) /= 0
+
+foldEclipseOptions :: [EclipseFlag] -> EclipseFlag
+foldEclipseOptions typs =
+  EclipseFlag (foldr ((.|.) . unEclipseFlag) 0 typs)
+
+-- Some options recommended in the sweph library for types of eclipses
+-- that actually occur with the luminaries.
+
+defaultEclipseFlag :: EclipseFlag
+defaultEclipseFlag = anyEclipse
+totalSolarEclipseFlag :: EclipseFlag
+totalSolarEclipseFlag = foldEclipseOptions [eclipseTotal, eclipseNonCentral, eclipseCentral]
+annularSolarEclipseFlag :: EclipseFlag
+annularSolarEclipseFlag = foldEclipseOptions [eclipseAnnular , eclipseNonCentral, eclipseCentral]
+hybridSolarEclipseFlag :: EclipseFlag
+hybridSolarEclipseFlag = foldEclipseOptions [eclipseAnnularTotal, eclipseNonCentral, eclipseCentral]
+partialSolarEclipseFlag :: EclipseFlag
+partialSolarEclipseFlag = foldEclipseOptions [eclipsePartial]
+
+totalLunarEclipseFlag :: EclipseFlag
+totalLunarEclipseFlag = eclipseTotal
+partialLunarEclipseFlag :: EclipseFlag
+partialLunarEclipseFlag = eclipsePartial
+penumbralLunarEclipseFlag :: EclipseFlag
+penumbralLunarEclipseFlag = eclipsePenumbral
+
+
+
 
 -- Helpers
 
@@ -345,3 +463,14 @@ ephemerisOptionToFlag :: EphemerisOption -> EpheFlag
 ephemerisOptionToFlag UseSwissEphemeris   = useSwissEph
 ephemerisOptionToFlag UseJPLEphemeris     = useJplEph
 ephemerisOptionToFlag UseMoshierEphemeris = useMoshierEph
+
+moonPhaseToAngle :: LunarPhaseName ->  Double
+moonPhaseToAngle = \case   
+  NewMoon -> 0
+  WaxingCrescent -> 45
+  FirstQuarter -> 90
+  WaxingGibbous -> 135
+  FullMoon -> 180
+  WaningGibbous -> 225
+  LastQuarter -> 270
+  WaningCrescent -> 315

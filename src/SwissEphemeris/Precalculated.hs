@@ -99,7 +99,7 @@ import Foreign.SweEphe4
   )
 import GHC.Generics (Generic)
 import SwissEphemeris.Internal
-  ( 
+  (
     Planet
       ( Chiron,
         Jupiter,
@@ -116,7 +116,7 @@ import SwissEphemeris.Internal
         Uranus,
         Venus
       ),
-    allocaErrorMessage,
+    allocaErrorMessage, HasEclipticLongitude(..)
   )
 import SwissEphemeris.Time
 
@@ -208,6 +208,9 @@ data EphemerisPosition a = EphemerisPosition
     -- ^ ecliptic speed in @a@ units.
   }
   deriving (Eq, Show, Generic)
+
+instance (Real a, Eq a) => HasEclipticLongitude (EphemerisPosition a) where
+  getEclipticLongitude = realToFrac . epheLongitude
 
 -- | The positions of all planets for a given time,
 -- plus ecliptic and nutation.

@@ -11,7 +11,7 @@ import Test.QuickCheck
 import Test.QuickCheck.Monadic
 import Data.Time
 import Data.Maybe (isJust)
-import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds)
+import Data.Time.Clock.POSIX (utcTimeToPOSIXSeconds, POSIXTime)
 import Arbitrary ()
 import Utils ( ephePath, mkUTC, civilTime )
 
@@ -127,7 +127,8 @@ spec = beforeAll_ withEphemeris $ do
             let jdSeconds = utcTimeToPOSIXSeconds time
                 rtSeconds = utcTimeToPOSIXSeconds roundTripped
                 difference = abs $ subtract jdSeconds rtSeconds
-            assert $ difference < 1e-04
+
+            assert $ difference < timeEpsilon
 
       it "can produce a TT Julian from UTC" $ do
         let time = mkUTC "2021-07-03T23:05:54.696005Z"
@@ -146,7 +147,8 @@ spec = beforeAll_ withEphemeris $ do
             let jdSeconds = utcTimeToPOSIXSeconds time
                 rtSeconds = utcTimeToPOSIXSeconds roundTripped
                 difference = abs $ subtract jdSeconds rtSeconds
-            assert $ difference < 1e-04
+  
+            assert $ difference < timeEpsilon
 
   describe "delta time" $ do
     describe "deltaTime (simple)" $ do
@@ -187,3 +189,7 @@ shouldBeApprox expected actual =
         ]
 
 infix 1 `shouldBeApprox`
+
+-- | Acceptable difference between two roundtripped timestamps
+timeEpsilon :: POSIXTime
+timeEpsilon = 1e-03
