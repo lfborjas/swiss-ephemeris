@@ -83,6 +83,18 @@ spec = beforeAll_ withEphemeris $ do
         difference `shouldSatisfy` (< 0.00001)
 
   describe "conversion functions" $ do
+    describe "utcToJulianDays" $ do
+      it "can produce both a UT1 and TT Julian Days from UTC" $ do
+        let time = mkUTC  "2021-07-03T23:05:54.696005Z"
+            time' = mkUTC "2021-07-03T23:05:54.696017503738Z"
+        Just (jdTT, jdUT1) <- utcToJulianDays time :: (IO (Maybe (JulianDayTT, JulianDayUT1)))
+        roundTrippedTT  <- fromJulianDay jdTT :: IO UTCTime
+        roundTrippedUT1 <- fromJulianDay jdUT1 :: IO UTCTime
+        getJulianDay jdTT `shouldBe` 2459399.463239352
+        getJulianDay jdUT1 `shouldBe` 2459399.46243737
+        time' `shouldBe` roundTrippedTT
+        time' `shouldBe` roundTrippedUT1
+
     describe "toJulianDay/fromJulianDay" $ do
       it "can produce a UT Julian from UTC" $ do
         let time = mkUTC  "2021-07-03T23:05:54.696005Z"

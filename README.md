@@ -82,4 +82,4 @@ Feel free to add more! See the [astro.com documentation](https://www.astro.com/s
 
 ### Releasing
 
-I use `stack` for this project, so releasing it should just be a matter of running `stack sdist`.
+To generate docs (to proofread locally,) as well as the tarball for upload to hackage, run `nix-build ./nix/release.nix`. 

@@ -44,6 +44,8 @@ module SwissEphemeris.Time
     julianNoon,
     julianMidnight,
 
+    -- ** Impure conversion functions
+    utcToJulianDays,
     -- ** Pure conversion functions
     -- *** Lossy conversion of a @Day@ value
     dayFromJulianDay,
