@@ -1,6 +1,11 @@
 # Changelog for swiss-ephemeris
 
-## v1.4.0.0
+## UPCOMING
+
+* Export `utcToJulianDays`, to obtain a product of `(TT, UT1)` Julian Days from a `UTCTime` value --
+  saves you one IO trip vs. getting them separately.
+
+## v1.4.0.0 (2021-11-11)
 
 **BREAKING CHANGE:** Major refactoring of time values: `JulianDay` is no longer an alias for `Double`,
 and is now a type that carries a witness of its provenance -- which enables us to work with functions that
