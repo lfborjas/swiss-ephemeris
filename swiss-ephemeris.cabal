@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 1f78f55bc113fd41d97119660086ed24ad498a24fc93d13d8e09a0449e0e3e60
+-- hash: 0ce263f1e5ae501c5cc0ea1a7855a10c869263c48fa08be997f1876116c9c6e0
 
 name:           swiss-ephemeris
 version:        1.4.0.0
@@ -79,7 +79,7 @@ library
       csrc/configurable_sweephe4.c
       csrc/interpolate.c
   build-depends:
-      base >=4.10 && <4.16
+      base >=4.10 && <4.17
     , time >=1.9 && <1.13
     , vector >=0.12 && <0.13
   default-language: Haskell2010
@@ -102,7 +102,7 @@ test-suite swiss-ephemeris-test
       hspec-discover:hspec-discover >=2.7 && <2.8
   build-depends:
       QuickCheck >=2.12 && <=2.15
-    , base >=4.10 && <4.16
+    , base >=4.10 && <4.17
     , directory >=1.3 && <1.4
     , hspec >=2.7 && <2.8
     , random

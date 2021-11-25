@@ -21,7 +21,7 @@ category:            Data, Astrology
 description:         Please see the README on GitHub at <https://github.com/lfborjas/swiss-ephemeris#readme>
 
 dependencies:
-- base >= 4.10 && < 4.16
+- base >= 4.10 && < 4.17
 - vector >= 0.12 && < 0.13
 - time >= 1.9 && < 1.13
 
