@@ -4,6 +4,7 @@
 
 * Export `utcToJulianDays`, to obtain a product of `(TT, UT1)` Julian Days from a `UTCTime` value --
   saves you one IO trip vs. getting them separately.
+* Support for GHC 9.2.1
 
 ## v1.4.0.0 (2021-11-11)
 
