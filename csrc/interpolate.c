@@ -43,18 +43,24 @@ int swe_next_direction_change(double jd0, int ipl, int iflag, double *jdx, int *
   );
 }
 
+// modified version of fn shared by Alois in: https://groups.io/g/swisseph/message/7781
 int swe_next_direction_change_between(double jd0, double jd_end, int ipl, int iflag, double *jdx, int *idir, char *serr)
 {
   double jd_step = 1;
-  double xx[6], d1, d2, y0, y1, y2, a, b, jd, tx;
+  double xx[6], d1, d2, y0, y1, y2, a, b, jd, tx, orig_start, orig_end;
   int rval, is;
   if (jd_step <= 0) jd_step = 1.0;
-  // NOTE(luis) adding a couple of days to the end of the search since 3 positions
-  // are needed for interpolation, at least.
-  double orig_end = jd_end;
+  // NOTE(luis) adding some padding to the beginning and end since intervals that are too
+  // small won't produce the 3 points necessary for parabolic interpolation;
+  // also, as noted by Alois, the `jd0` moment must be at least 30 mins before
+  // the actual occurrence.
+  orig_start = jd0;
+  orig_end = jd_end;
+  jd0 -= 1;
   if (fabs(jd_end - jd0) < 3){
     jd_end += 3;
   }
+  // end of ugliness
   rval = swe_calc(jd0, ipl, iflag, xx, serr);
   if (rval < 0) return rval; 
   y0 = xx[0];
@@ -107,15 +113,16 @@ int swe_next_direction_change_between(double jd0, double jd_end, int ipl, int if
       *idir = 1;
     else
       *idir = -1;
-    if (*jdx > orig_end){
-      sprintf(serr, "swe_next_direction_change: no change within %lf days",  (orig_end - jd0));
+    // NOTE(luis) compensate for the fake bounds created for parabolic approximation
+    if (*jdx > orig_end || *jdx < orig_start){
+      sprintf(serr, "swe_next_direction_change: no change within %lf days",  (orig_end - orig_start));
       return ERR;
     }
     return rval;
   }
   // come here only if no change found in loop
   if (serr != NULL)
-    sprintf(serr, "swe_next_direction_change: no change within %lf days",  (orig_end - jd0));
+    sprintf(serr, "swe_next_direction_change: no change within %lf days",  (orig_end - orig_start));
   return ERR;
 }
 
