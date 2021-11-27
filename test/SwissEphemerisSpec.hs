@@ -314,6 +314,13 @@ spec = do
             getJulianDay crossingJD `shouldBe` expectedCrossing
             motion `shouldBe` expectedMotion
 
+          it "calculates a known direction change happening less than 30 mins after lookup starts" $ do
+            let startJD = mkJulianDay STT 2459266.500800741
+                endJD = mkJulianDay STT 2459267.500800741
+            Right (crossingJD, motion) <- directionChangeBetween Mercury startJD endJD
+            getJulianDay crossingJD `shouldBe` 2459266.536910611
+            motion `shouldBe` DirectMotion 
+
           it "fails to calculate direction change if outside of the interval" $ do
             let startTime = mkJulian 2021 7 14 0.0
                 endTime   = mkJulian 2021 7 15 0.0
