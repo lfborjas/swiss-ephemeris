@@ -140,42 +140,7 @@ gravGroupEasy :: HasEclipticLongitude a
   -> [(Planet, a)]
   -> [HouseCusp]
   -> Either String [PlanetGlyphInfo]
-gravGroupEasy w ps s = do
-  -- 13 sectors are necessary: the 13th is just to complete the circle
-  glyphs <- gravGroup (w/2,w/2) ps' (s' <> coda)
-  pure $ map (recenterGlyph s1) glyphs
-  where
-    coda = 
-      if null s' then mempty else [head s' + 360]
-    s1 = listToMaybe s
-    s' = map (relativeTo s1) s
-    ps' = map (second (\p -> setEclipticLongitude p (relativeTo s1 (getEclipticLongitude p)))) ps
-    
-    
-recenterGlyph :: Maybe Double -> GlyphInfo a -> GlyphInfo a
-recenterGlyph s1 g@GlyphInfo{originalPosition, placedPosition} = 
-  g{
-    originalPosition = unrelativeTo s1 originalPosition,
-    placedPosition   = unrelativeTo s1 placedPosition
-  } 
-
-relativeTo :: Maybe Double -> Double -> Double
-relativeTo Nothing pos = pos
-relativeTo (Just s1) pos = 
-  let corrected = pos - s1
-  in if corrected < 0 then
-    corrected + 360
-  else
-    corrected
-
-unrelativeTo :: Maybe Double -> Double -> Double
-unrelativeTo Nothing pos = pos
-unrelativeTo (Just s1) pos =
-  let undone = pos + s1
-  in if undone >= 360 then
-    undone - 360
-  else
-    undone
+gravGroupEasy = gravGroupEasy' gravGroup
 
 -- | Same semantics and warnings as 'gravGroup', but allows a couple of things for
 -- more advanced (or crowded) applications:
@@ -230,7 +195,8 @@ gravGroup2Easy :: HasEclipticLongitude a
   -> [HouseCusp]
   -> Bool
   -> Either String [PlanetGlyphInfo]
-gravGroup2Easy w ps s = gravGroup2 (w/2, w/2) ps (cuspsToSectors s)
+gravGroup2Easy w' ps' hs' shift' = 
+  gravGroupEasy' (\w ps hs -> gravGroup2 w ps hs shift') w' ps' hs'
 
 -- | Given glyph dimensions and a list of ecliptic positions for planets,
 -- execute the given computation with an array of @GravityObject@s,
@@ -289,3 +255,45 @@ glyphInfo GravityObject{pos, lsize, rsize, ppos, sector_no, sequence_no, level_n
     , glyphScale = realToFrac scale
     , extraData = planet'
     }
+
+gravGroupEasy' :: HasEclipticLongitude c =>
+  ((Double, Double) -> [(Planet, c)] -> [Double] -> Either String [PlanetGlyphInfo])
+  -> Double
+  -> [(Planet, c)]
+  -> [Double]
+  -> Either String [PlanetGlyphInfo]
+gravGroupEasy' gravGroupF w ps s = do
+  glyphs <- gravGroupF (w/2,w/2) ps' (s' <> coda)
+  pure $ map (recenterGlyph s1) glyphs
+  where
+    coda =
+      if null s' then mempty else [head s' + 360]
+    s1 = listToMaybe s
+    s' = map (relativeTo s1) s
+    ps' = map (second (\p -> setEclipticLongitude p (relativeTo s1 (getEclipticLongitude p)))) ps
+
+
+recenterGlyph :: Maybe Double -> GlyphInfo a -> GlyphInfo a
+recenterGlyph s1 g@GlyphInfo{originalPosition, placedPosition} =
+  g{
+    originalPosition = unrelativeTo s1 originalPosition,
+    placedPosition   = unrelativeTo s1 placedPosition
+  }
+
+relativeTo :: Maybe Double -> Double -> Double
+relativeTo Nothing pos = pos
+relativeTo (Just s1) pos =
+  let corrected = pos - s1
+  in if corrected < 0 then
+    corrected + 360
+  else
+    corrected
+
+unrelativeTo :: Maybe Double -> Double -> Double
+unrelativeTo Nothing pos = pos
+unrelativeTo (Just s1) pos =
+  let undone = pos + s1
+  in if undone >= 360 then
+    undone - 360
+  else
+    undone
