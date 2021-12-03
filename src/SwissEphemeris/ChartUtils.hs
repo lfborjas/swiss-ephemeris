@@ -29,6 +29,8 @@ import System.IO.Unsafe (unsafePerformIO)
 import Data.List ( sort )
 import Control.Monad (forM)
 import Control.Exception (bracket)
+import Data.Bifunctor (second)
+import Data.Maybe (listToMaybe)
 
 type PlanetGlyph = GravityObject Planet
 
@@ -127,18 +129,53 @@ gravGroup sz positions sectors =
             glyphInfos <- mapM glyphInfo repositioned
             pure . Right $ glyphInfos
 
--- | /Easy/ version of 'gravGroup' that assumes:
+-- | /Easy/ version of 'gravGroup' that:
 --
--- * Glyphs are square/symmetrical, so the left and right widths
+-- * Assums glyphs are square/symmetrical, so the left and right widths
 -- are just half of the provided width, each.
--- * The provided cusps can be "linearized" by the naïve approach of 'cuspsToSectors'
--- 
+-- * Will "linearize" all positions before processing by setting them to be
+--   relative to the first cusp/sector, and correct them afterwards.
 gravGroupEasy :: HasEclipticLongitude a
   => Double
   -> [(Planet, a)]
   -> [HouseCusp]
   -> Either String [PlanetGlyphInfo]
-gravGroupEasy w ps s = gravGroup (w/2,w/2) ps (cuspsToSectors s)
+gravGroupEasy w ps s = do
+  -- 13 sectors are necessary: the 13th is just to complete the circle
+  glyphs <- gravGroup (w/2,w/2) ps' (s' <> coda)
+  pure $ map (recenterGlyph s1) glyphs
+  where
+    coda = 
+      if null s' then mempty else [head s' + 360]
+    s1 = listToMaybe s
+    s' = map (relativeTo s1) s
+    ps' = map (second (\p -> setEclipticLongitude p (relativeTo s1 (getEclipticLongitude p)))) ps
+    
+    
+recenterGlyph :: Maybe Double -> GlyphInfo a -> GlyphInfo a
+recenterGlyph s1 g@GlyphInfo{originalPosition, placedPosition} = 
+  g{
+    originalPosition = unrelativeTo s1 originalPosition,
+    placedPosition   = unrelativeTo s1 placedPosition
+  } 
+
+relativeTo :: Maybe Double -> Double -> Double
+relativeTo Nothing pos = pos
+relativeTo (Just s1) pos = 
+  let corrected = pos - s1
+  in if corrected < 0 then
+    corrected + 360
+  else
+    corrected
+
+unrelativeTo :: Maybe Double -> Double -> Double
+unrelativeTo Nothing pos = pos
+unrelativeTo (Just s1) pos =
+  let undone = pos + s1
+  in if undone >= 360 then
+    undone - 360
+  else
+    undone
 
 -- | Same semantics and warnings as 'gravGroup', but allows a couple of things for
 -- more advanced (or crowded) applications:

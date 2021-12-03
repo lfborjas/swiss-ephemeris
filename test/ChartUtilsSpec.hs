@@ -11,6 +11,7 @@ newtype Lng = Lng Double
 
 instance HasEclipticLongitude Lng where
   getEclipticLongitude (Lng d) = d
+  setEclipticLongitude (Lng _) d' = Lng d'
 
 examplePositions :: [(Planet, Lng)]
 examplePositions =
@@ -70,22 +71,32 @@ spec = do
     it "returns planets in corrected positions, when applicable" $ do
       let grouped = fromRight [] $ gravGroupEasy 5.0 examplePositions exampleCusps
           redux = sortBy sectorCompare grouped
-
       redux
-        `shouldBe` [ GlyphInfo {originalPosition = 22.78, glyphSize = (2.5, 2.5), placedPosition = 22.78, sectorNumber = 0, sequenceNumber = 4, levelNumber = 0, glyphScale = 1.0, extraData = Mars},
-                     GlyphInfo {originalPosition = 56.44, glyphSize = (2.5, 2.5), placedPosition = 56.44, sectorNumber = 1, sequenceNumber = 5, levelNumber = 0, glyphScale = 1.0, extraData = Jupiter},
-                     GlyphInfo {originalPosition = 93.53, glyphSize = (2.5, 2.5), placedPosition = 93.53, sectorNumber = 2, sequenceNumber = 12, levelNumber = 0, glyphScale = 1.0, extraData = Chiron},
-                     GlyphInfo {originalPosition = 176.41, glyphSize = (2.5, 2.5), placedPosition = 176.41, sectorNumber = 5, sequenceNumber = 11, levelNumber = 0, glyphScale = 1.0, extraData = MeanApog},
-                     GlyphInfo {originalPosition = 224.68, glyphSize = (2.5, 2.5), placedPosition = 224.68, sectorNumber = 7, sequenceNumber = 9, levelNumber = 0, glyphScale = 1.0, extraData = Pluto},
-                     GlyphInfo {originalPosition = 262.47, glyphSize = (2.5, 2.5), placedPosition = 258.6401159871351, sectorNumber = 8, sequenceNumber = 1, levelNumber = 0, glyphScale = 1.0, extraData = Moon},
-                     GlyphInfo {originalPosition = 264.04, glyphSize = (2.5, 2.5), placedPosition = 263.6401159871351, sectorNumber = 8, sequenceNumber = 3, levelNumber = 0, glyphScale = 1.0, extraData = Venus},
-                     GlyphInfo {originalPosition = 272.05, glyphSize = (2.5, 2.5), placedPosition = 268.6401159871351, sectorNumber = 8, sequenceNumber = 7, levelNumber = 0, glyphScale = 1.0, extraData = Uranus},
-                     GlyphInfo {originalPosition = 276.18, glyphSize = (2.5, 2.5), placedPosition = 273.6401159871351, sectorNumber = 8, sequenceNumber = 6, levelNumber = 0, glyphScale = 1.0, extraData = Saturn},
-                     GlyphInfo {originalPosition = 280.11, glyphSize = (2.5, 2.5), placedPosition = 278.6401159871351, sectorNumber = 8, sequenceNumber = 8, levelNumber = 0, glyphScale = 1.0, extraData = Neptune},
-                     GlyphInfo {originalPosition = 285.64, glyphSize = (2.5, 2.5), placedPosition = 285.64, sectorNumber = 9, sequenceNumber = 0, levelNumber = 0, glyphScale = 1.0, extraData = Sun},
-                     GlyphInfo {originalPosition = 304.31, glyphSize = (2.5, 2.5), placedPosition = 304.31, sectorNumber = 9, sequenceNumber = 2, levelNumber = 0, glyphScale = 1.0, extraData = Mercury},
-                     GlyphInfo {originalPosition = 337.52, glyphSize = (2.5, 2.5), placedPosition = 337.52, sectorNumber = 10, sequenceNumber = 10, levelNumber = 0, glyphScale = 1.0, extraData = MeanNode}
+        `shouldBe` [
+                    GlyphInfo {originalPosition = 224.68, glyphSize = (2.5, 2.5), placedPosition = 224.68, sectorNumber = 1, sequenceNumber = 9, levelNumber = 0, glyphScale = 1.0, extraData = Pluto},
+                    GlyphInfo {originalPosition = 262.47, glyphSize = (2.5, 2.5), placedPosition = 258.6401159871351, sectorNumber = 2, sequenceNumber = 1, levelNumber = 0, glyphScale = 1.0, extraData = Moon},
+                    GlyphInfo {originalPosition = 264.04, glyphSize = (2.5, 2.5), placedPosition = 263.6401159871351, sectorNumber = 2, sequenceNumber = 3, levelNumber = 0, glyphScale = 1.0, extraData = Venus},
+                    GlyphInfo {originalPosition = 272.05, glyphSize = (2.5, 2.5), placedPosition = 268.6401159871351, sectorNumber = 2, sequenceNumber = 7, levelNumber = 0, glyphScale = 1.0, extraData = Uranus},
+                    GlyphInfo {originalPosition = 276.18, glyphSize = (2.5, 2.5), placedPosition = 273.6401159871351, sectorNumber = 2, sequenceNumber = 6, levelNumber = 0, glyphScale = 1.0, extraData = Saturn},
+                    GlyphInfo {originalPosition = 280.11, glyphSize = (2.5, 2.5), placedPosition = 278.6401159871351, sectorNumber = 2, sequenceNumber = 8, levelNumber = 0, glyphScale = 1.0, extraData = Neptune},
+                    GlyphInfo {originalPosition = 285.64, glyphSize = (2.5, 2.5), placedPosition = 285.64, sectorNumber = 3, sequenceNumber = 0, levelNumber = 0, glyphScale = 1.0, extraData = Sun},
+                    GlyphInfo {originalPosition = 304.31, glyphSize = (2.5, 2.5), placedPosition = 304.31, sectorNumber = 3, sequenceNumber = 2, levelNumber = 0, glyphScale = 1.0, extraData = Mercury},
+                    GlyphInfo {originalPosition = 337.52, glyphSize = (2.5, 2.5), placedPosition = 337.52, sectorNumber = 4, sequenceNumber = 10, levelNumber = 0, glyphScale = 1.0, extraData = MeanNode},
+                    GlyphInfo {originalPosition = 22.779999999999973, glyphSize = (2.5, 2.5), placedPosition = 22.779999999999973, sectorNumber = 6, sequenceNumber = 4, levelNumber = 0, glyphScale = 1.0, extraData = Mars},
+                    GlyphInfo {originalPosition = 56.44, glyphSize = (2.5, 2.5), placedPosition = 56.44, sectorNumber = 7, sequenceNumber = 5, levelNumber = 0, glyphScale = 1.0, extraData = Jupiter},
+                    GlyphInfo {originalPosition = 93.53000000000003, glyphSize = (2.5, 2.5), placedPosition = 93.53000000000003, sectorNumber = 8, sequenceNumber = 12, levelNumber = 0, glyphScale = 1.0, extraData = Chiron},
+                    GlyphInfo {originalPosition = 176.41000000000008, glyphSize = (2.5, 2.5), placedPosition = 176.41000000000008, sectorNumber = 11, sequenceNumber = 11, levelNumber = 0, glyphScale = 1.0, extraData = MeanApog}
                    ]
+
+    it "can deal with sectors that jump 360" $ do
+      let planets = [(Uranus, Lng 41.685460865149885), (Chiron, Lng 8.560852515243027)]
+          sectors = [355.2817671250407, 26.407082565767553, 57.62582859633026]
+          grouped = fromRight [] $ gravGroupEasy 6 planets sectors
+      grouped `shouldBe` [
+                          GlyphInfo {originalPosition = 8.560852515243027, glyphSize = (3.0,3.0), placedPosition = 8.560852515243027, sectorNumber = 0, sequenceNumber = 1, levelNumber = 0, glyphScale = 1.0, extraData = Chiron},
+                          GlyphInfo {originalPosition = 41.68546086514988, glyphSize = (3.0,3.0), placedPosition = 41.68546086514988, sectorNumber = 1, sequenceNumber = 0, levelNumber = 0, glyphScale = 1.0, extraData = Uranus}
+                         ]
+
 
   describe "gravGroup2Easy" $ do
     it "accepts empty sectors" $ do
