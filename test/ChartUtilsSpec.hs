@@ -93,8 +93,9 @@ spec = do
           sectors = []
           grouped = fromRight [] $ gravGroup2Easy 5.0 positions sectors True
       grouped
-        `shouldBe` [ GlyphInfo {originalPosition = 275.0, glyphSize = (2.5, 2.5), placedPosition = 272.25, sectorNumber = 0, sequenceNumber = 1, levelNumber = 0, glyphScale = 1.0, extraData = Venus},
-                     GlyphInfo {originalPosition = 274.5, glyphSize = (2.5, 2.5), placedPosition = 277.25, sectorNumber = 0, sequenceNumber = 0, levelNumber = 0, glyphScale = 1.0, extraData = Mars}
+        `shouldBe` [
+                     GlyphInfo {originalPosition = 274.5, glyphSize = (2.5, 2.5), placedPosition = 272.25, sectorNumber = 0, sequenceNumber = 0, levelNumber = 0, glyphScale = 1.0, extraData = Mars},
+                     GlyphInfo {originalPosition = 275.0, glyphSize = (2.5, 2.5), placedPosition = 277.25, sectorNumber = 0, sequenceNumber = 1, levelNumber = 0, glyphScale = 1.0, extraData = Venus}
                    ]
 
     it "shifts glyphs in narrow sectors to different levels, keeps the scale" $ do
@@ -103,8 +104,9 @@ spec = do
           sectors = [270.0, 274.0, 280.0]
           grouped = fromRight [] $ gravGroup2Easy 5.0 positions sectors True
       grouped
-        `shouldBe` [ GlyphInfo {originalPosition = 275.0, glyphSize = (2.5, 2.5), placedPosition = 276.5, sectorNumber = 1, sequenceNumber = 1, levelNumber = 0, glyphScale = 1.0, extraData = Venus},
-                     GlyphInfo {originalPosition = 274.5, glyphSize = (2.5, 2.5), placedPosition = 276.5, sectorNumber = 1, sequenceNumber = 0, levelNumber = 1, glyphScale = 1.0, extraData = Mars}
+        `shouldBe` [ 
+                     GlyphInfo {originalPosition = 274.5, glyphSize = (2.5, 2.5), placedPosition = 276.5, sectorNumber = 1, sequenceNumber = 0, levelNumber = 0, glyphScale = 1.0, extraData = Mars},
+                     GlyphInfo {originalPosition = 275.0, glyphSize = (2.5, 2.5), placedPosition = 276.5, sectorNumber = 1, sequenceNumber = 1, levelNumber = 1, glyphScale = 1.0, extraData = Venus}
                    ]
 
     it "returns planets in corrected positions, when applicable" $ do

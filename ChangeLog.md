@@ -1,7 +1,8 @@
 # Changelog for swiss-ephemeris
 
-## UPCOMING
+## v1.4.1.0 (2021-11-27)
 
+* Fix edge case in grav group
 * Export `utcToJulianDays`, to obtain a product of `(TT, UT1)` Julian Days from a `UTCTime` value --
   saves you one IO trip vs. getting them separately.
 * Support for GHC 9.2.1
