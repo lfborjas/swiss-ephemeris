@@ -21,6 +21,7 @@ import Foreign.Storable
 -- in a 1-dimensional "longitude-only" manner.
 class Eq a => HasEclipticLongitude a where
   getEclipticLongitude :: a -> Double
+  setEclipticLongitude :: a -> Double -> a
 
 -- | All bodies for which a position can be calculated. Covers planets
 -- in the solar system, points between the Earth and the Moon, and
@@ -215,6 +216,7 @@ data EclipticPosition = EclipticPosition
 
 instance HasEclipticLongitude EclipticPosition where
   getEclipticLongitude = lng
+  setEclipticLongitude p l' = p{lng=l'}
 
 -- | Represents a point on Earth, with negative values
 -- for latitude meaning South, and negative values for longitude

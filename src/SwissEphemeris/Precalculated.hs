@@ -209,8 +209,9 @@ data EphemerisPosition a = EphemerisPosition
   }
   deriving (Eq, Show, Generic)
 
-instance (Real a, Eq a) => HasEclipticLongitude (EphemerisPosition a) where
+instance (Real a, Eq a, Fractional a) => HasEclipticLongitude (EphemerisPosition a) where
   getEclipticLongitude = realToFrac . epheLongitude
+  setEclipticLongitude p l' = p{epheLongitude = realToFrac l'}
 
 -- | The positions of all planets for a given time,
 -- plus ecliptic and nutation.
