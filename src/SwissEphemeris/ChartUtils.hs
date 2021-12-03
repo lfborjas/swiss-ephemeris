@@ -13,7 +13,6 @@ module SwissEphemeris.ChartUtils (
   GlyphInfo(..),
   PlanetGlyphInfo,
   glyphPlanet,
-  cuspsToSectors,
   gravGroup,
   gravGroupEasy,
   gravGroup2,
@@ -26,7 +25,6 @@ import Foreign.C.String
 import Foreign.SwissEphemerisExtras
 import SwissEphemeris.Internal
 import System.IO.Unsafe (unsafePerformIO)
-import Data.List ( sort )
 import Control.Monad (forM)
 import Control.Exception (bracket)
 import Data.Bifunctor (second)
@@ -71,22 +69,6 @@ type PlanetGlyphInfo = GlyphInfo Planet
 glyphPlanet :: PlanetGlyphInfo -> Planet
 glyphPlanet = extraData
 
--- | This function does a little bit of insider trading:
--- given N cusps, returns N+1 sectors; where the last
--- sector is an "impossible" position beyond 360, that
--- sets the end of the last sector as the first sector's beginning,
--- beyond one turn. That way, any body occurring in
--- the last sector will exist between @sectors[N-1]@ and
--- @sectors[N]@. I've been using this as the "linearization"
--- approach for the sectors required by 'gravGroup',
--- but one may choose something different.
-cuspsToSectors :: [HouseCusp] -> [Double]
-cuspsToSectors [] = []
-cuspsToSectors cusps =
-  sortedCusps ++ [head sortedCusps + 360.0]
-  where
-    sortedCusps = sort cusps
-
 -- | Given dimensions, planet positions and "sectors" within which
 -- the planets are meant to be drawn as glyphs, return a list
 -- pairing each position with a 'PlanetGlyphInfo' that not only
@@ -96,12 +78,11 @@ cuspsToSectors cusps =
 --
 -- Note that "sectors" are usually cusps, but one must take that they're
 -- sorted or "linearized": no sector should jump over 0/360, and the
--- last sector should mark the "end" of the circle. I use 'cuspsToSectors'
--- on cusps obtained from the main module's cusp calculation functionality
--- and that seems to ensure that sectors are adequately monotonic and not
--- truncated, but one would be wise to take heed to the swiss ephemeris author's
--- notes, too:
--- https://groups.io/g/swisseph/message/5568
+-- last sector should mark the "end" of the circle. 
+-- See 'gravGroupEasy' for an approach 
+-- that incorporates the advice of Alois, from astro.com: https://groups.io/g/swisseph/message/5568
+-- (in short: make all positions, planets and sectors, relative to the first sector,
+-- to ensure there's no "jumping" the 360 degree mark.)
 gravGroup
   :: HasEclipticLongitude  a
   => (Double, Double)

@@ -2,7 +2,10 @@
 
 ## v1.4.1.0 (2021-11-27)
 
-* Fix edge case in grav group
+* Fix edge case in grav group: incorrect casting in the C code was causing
+  planets that were too close to a sector boundary or another planet to be thrown
+  back into the first sector.
+* Remove `cuspsToSectors`.
 * Export `utcToJulianDays`, to obtain a product of `(TT, UT1)` Julian Days from a `UTCTime` value --
   saves you one IO trip vs. getting them separately.
 * Support for GHC 9.2.1
