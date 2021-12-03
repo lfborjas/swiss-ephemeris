@@ -244,7 +244,9 @@ gravGroupEasy' :: HasEclipticLongitude c =>
   -> [Double]
   -> Either String [PlanetGlyphInfo]
 gravGroupEasy' gravGroupF w ps s = do
-  glyphs <- gravGroupF (w/2,w/2) ps' (s' <> coda)
+  -- NOTE(luis) Only using `(++)` to please base <= 4.10,
+  -- I'm partial to treating all Semigroups uniformly!
+  glyphs <- gravGroupF (w/2,w/2) ps' (s' ++ coda)
   pure $ map (recenterGlyph s1) glyphs
   where
     coda =
