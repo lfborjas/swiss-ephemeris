@@ -1,6 +1,16 @@
 # Changelog for swiss-ephemeris
 
-## UPCOMING
+
+# v1.4.2.0 (2021-12-03) 
+
+* Fix edge case in grav group: incorrect casting in the C code was causing
+  planets that were too close to a sector boundary or another planet to be thrown
+  back into the first sector.
+* Remove `cuspsToSectors`.
+* Add ability to set longitude in `HasEclipticLongitude` typeclass
+
+
+## v1.4.1.0 (2021-11-27)
 
 * Export `utcToJulianDays`, to obtain a product of `(TT, UT1)` Julian Days from a `UTCTime` value --
   saves you one IO trip vs. getting them separately.

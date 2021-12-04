@@ -65,7 +65,8 @@
 
 int grob_compare(const GROB *g1, const GROB *g2)
 {
-  return (int)(g1->pos - g2->pos);
+  // convert to centiseconds
+  return (int)(g1->pos * 360000) - (int)(g2->pos * 360000);
 }
 
 /*

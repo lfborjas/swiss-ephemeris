@@ -13,7 +13,6 @@ module SwissEphemeris.ChartUtils (
   GlyphInfo(..),
   PlanetGlyphInfo,
   glyphPlanet,
-  cuspsToSectors,
   gravGroup,
   gravGroupEasy,
   gravGroup2,
@@ -26,9 +25,10 @@ import Foreign.C.String
 import Foreign.SwissEphemerisExtras
 import SwissEphemeris.Internal
 import System.IO.Unsafe (unsafePerformIO)
-import Data.List ( sort )
 import Control.Monad (forM)
 import Control.Exception (bracket)
+import Data.Bifunctor (second)
+import Data.Maybe (listToMaybe)
 
 type PlanetGlyph = GravityObject Planet
 
@@ -69,22 +69,6 @@ type PlanetGlyphInfo = GlyphInfo Planet
 glyphPlanet :: PlanetGlyphInfo -> Planet
 glyphPlanet = extraData
 
--- | This function does a little bit of insider trading:
--- given N cusps, returns N+1 sectors; where the last
--- sector is an "impossible" position beyond 360, that
--- sets the end of the last sector as the first sector's beginning,
--- beyond one turn. That way, any body occurring in
--- the last sector will exist between @sectors[N-1]@ and
--- @sectors[N]@. I've been using this as the "linearization"
--- approach for the sectors required by 'gravGroup',
--- but one may choose something different.
-cuspsToSectors :: [HouseCusp] -> [Double]
-cuspsToSectors [] = []
-cuspsToSectors cusps =
-  sortedCusps ++ [head sortedCusps + 360.0]
-  where
-    sortedCusps = sort cusps
-
 -- | Given dimensions, planet positions and "sectors" within which
 -- the planets are meant to be drawn as glyphs, return a list
 -- pairing each position with a 'PlanetGlyphInfo' that not only
@@ -94,12 +78,11 @@ cuspsToSectors cusps =
 --
 -- Note that "sectors" are usually cusps, but one must take that they're
 -- sorted or "linearized": no sector should jump over 0/360, and the
--- last sector should mark the "end" of the circle. I use 'cuspsToSectors'
--- on cusps obtained from the main module's cusp calculation functionality
--- and that seems to ensure that sectors are adequately monotonic and not
--- truncated, but one would be wise to take heed to the swiss ephemeris author's
--- notes, too:
--- https://groups.io/g/swisseph/message/5568
+-- last sector should mark the "end" of the circle. 
+-- See 'gravGroupEasy' for an approach 
+-- that incorporates the advice of Alois, from astro.com: https://groups.io/g/swisseph/message/5568
+-- (in short: make all positions, planets and sectors, relative to the first sector,
+-- to ensure there's no "jumping" the 360 degree mark.)
 gravGroup
   :: HasEclipticLongitude  a
   => (Double, Double)
@@ -127,18 +110,18 @@ gravGroup sz positions sectors =
             glyphInfos <- mapM glyphInfo repositioned
             pure . Right $ glyphInfos
 
--- | /Easy/ version of 'gravGroup' that assumes:
+-- | /Easy/ version of 'gravGroup' that:
 --
--- * Glyphs are square/symmetrical, so the left and right widths
+-- * Assums glyphs are square/symmetrical, so the left and right widths
 -- are just half of the provided width, each.
--- * The provided cusps can be "linearized" by the naïve approach of 'cuspsToSectors'
--- 
+-- * Will "linearize" all positions before processing by setting them to be
+--   relative to the first cusp/sector, and correct them afterwards.
 gravGroupEasy :: HasEclipticLongitude a
   => Double
   -> [(Planet, a)]
   -> [HouseCusp]
   -> Either String [PlanetGlyphInfo]
-gravGroupEasy w ps s = gravGroup (w/2,w/2) ps (cuspsToSectors s)
+gravGroupEasy = gravGroupEasy' gravGroup
 
 -- | Same semantics and warnings as 'gravGroup', but allows a couple of things for
 -- more advanced (or crowded) applications:
@@ -193,7 +176,8 @@ gravGroup2Easy :: HasEclipticLongitude a
   -> [HouseCusp]
   -> Bool
   -> Either String [PlanetGlyphInfo]
-gravGroup2Easy w ps s = gravGroup2 (w/2, w/2) ps (cuspsToSectors s)
+gravGroup2Easy w' ps' hs' shift' = 
+  gravGroupEasy' (\w ps hs -> gravGroup2 w ps hs shift') w' ps' hs'
 
 -- | Given glyph dimensions and a list of ecliptic positions for planets,
 -- execute the given computation with an array of @GravityObject@s,
@@ -252,3 +236,47 @@ glyphInfo GravityObject{pos, lsize, rsize, ppos, sector_no, sequence_no, level_n
     , glyphScale = realToFrac scale
     , extraData = planet'
     }
+
+gravGroupEasy' :: HasEclipticLongitude c =>
+  ((Double, Double) -> [(Planet, c)] -> [Double] -> Either String [PlanetGlyphInfo])
+  -> Double
+  -> [(Planet, c)]
+  -> [Double]
+  -> Either String [PlanetGlyphInfo]
+gravGroupEasy' gravGroupF w ps s = do
+  -- NOTE(luis) Only using `(++)` to please base <= 4.10,
+  -- I'm partial to treating all Semigroups uniformly!
+  glyphs <- gravGroupF (w/2,w/2) ps' (s' ++ coda)
+  pure $ map (recenterGlyph s1) glyphs
+  where
+    coda =
+      if null s' then mempty else [head s' + 360]
+    s1 = listToMaybe s
+    s' = map (relativeTo s1) s
+    ps' = map (second (\p -> setEclipticLongitude p (relativeTo s1 (getEclipticLongitude p)))) ps
+
+
+recenterGlyph :: Maybe Double -> GlyphInfo a -> GlyphInfo a
+recenterGlyph s1 g@GlyphInfo{originalPosition, placedPosition} =
+  g{
+    originalPosition = unrelativeTo s1 originalPosition,
+    placedPosition   = unrelativeTo s1 placedPosition
+  }
+
+relativeTo :: Maybe Double -> Double -> Double
+relativeTo Nothing pos = pos
+relativeTo (Just s1) pos =
+  let corrected = pos - s1
+  in if corrected < 0 then
+    corrected + 360
+  else
+    corrected
+
+unrelativeTo :: Maybe Double -> Double -> Double
+unrelativeTo Nothing pos = pos
+unrelativeTo (Just s1) pos =
+  let undone = pos + s1
+  in if undone >= 360 then
+    undone - 360
+  else
+    undone
