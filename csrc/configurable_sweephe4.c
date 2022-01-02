@@ -537,6 +537,8 @@ int eph4_posit(int jlong, AS_BOOL writeflag, char *errtext)
     printf("setting the EP4 path");
     ephe4_set_ephe_path(NULL);
     printf("path is now %s", ephe4d.ephe4path);
+  } else {
+    printf("PATH IS SET????");
   }
 
   filenr = jlong / EP4_NDAYS;
@@ -568,7 +570,7 @@ int eph4_posit(int jlong, AS_BOOL writeflag, char *errtext)
 
         if (!writeflag)
         {
-          nchars = snprintf(errtext, AS_MAXCH, "eph4_posit: file %s does not exist\n", fname);
+          nchars = snprintf(errtext, AS_MAXCH, "eph4_posit: file %s DOES NOT EXIST\n", fname);
           if (nchars >= AS_MAXCH)
           {
             sprintf(errtext, "eph4_posit: file does not exist\n");
