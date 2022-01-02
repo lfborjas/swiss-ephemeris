@@ -534,7 +534,9 @@ int eph4_posit(int jlong, AS_BOOL writeflag, char *errtext)
   /* ensure that we've set the base path. */
   if (!ephe4d.ephe4_path_is_set)
   {
+    printf("setting the EP4 path");
     ephe4_set_ephe_path(NULL);
+    printf("path is now %s", ephe4d.ephe4path);
   }
 
   filenr = jlong / EP4_NDAYS;
@@ -830,6 +832,7 @@ void CALL_CONV ephe4_set_ephe_path(char *path)
   */
   if ((sp = getenv("EP4_PATH")) != NULL && strlen(sp) != 0 && strlen(sp) <= AS_MAXCH - 1 - 13)
   {
+    printf("found a path %s", sp);
     strcpy(s, sp);
   }
   else if (path == NULL || *path == '\0')
