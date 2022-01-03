@@ -834,6 +834,8 @@ void CALL_CONV ephe4_set_ephe_path(char *path)
   */
   if (spd = getenv("EP4_PATH") != NULL){
     fprintf(stderr, "there IS a path %s - %d", spd, strlen(spd));
+  }else{
+    fprintf(stderr, "no env var set??");
   }
    
   if ((sp = getenv("EP4_PATH")) != NULL && strlen(sp) != 0 && strlen(sp) <= AS_MAXCH - 1 - 13)
