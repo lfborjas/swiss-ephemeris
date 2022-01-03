@@ -832,8 +832,8 @@ void CALL_CONV ephe4_set_ephe_path(char *path)
      * The provided path.
      * If invalid, or NULL, from the EP4_PATH macro
   */
-  if (spd = getenv("EP4_PATH") != NULL){
-    fprintf(stderr, "there IS a path %s - %d", spd, strlen(spd));
+  if ((spd = getenv("EP4_PATH")) != NULL){
+    fprintf(stderr, "there IS a path %s - %lu", spd, strlen(spd));
   }else{
     fprintf(stderr, "no env var set??");
   }
