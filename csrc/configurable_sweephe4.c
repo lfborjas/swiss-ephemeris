@@ -825,13 +825,17 @@ void CALL_CONV ephe4_set_ephe_path(char *path)
 {
   int i;
   char s[AS_MAXCH];
-  char *sp;
+  char *sp, *spd;
 
   /* Attempt to set the path from:
      * The EP4_PATH environment variable.
      * The provided path.
      * If invalid, or NULL, from the EP4_PATH macro
   */
+  if (spd = getenv("EP4_PATH") != NULL){
+    fprintf(stderr, "there IS a path %s - %d", spd, strlen(spd));
+  }
+   
   if ((sp = getenv("EP4_PATH")) != NULL && strlen(sp) != 0 && strlen(sp) <= AS_MAXCH - 1 - 13)
   {
     fprintf(stderr, "found a path %s", sp);
